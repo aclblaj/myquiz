@@ -178,9 +178,16 @@ public class QuestionService {
                     authorErrorService.addAuthorError(authorName, initials, "eroare template - suma punctajelor 2/4 este incorecta", currentRowNumber);
                     skipDueToError = true;
                 }
-                if (((PR1 == 100 || PR2 == 100 || PR3 == 100 || PR4 == 100) && (total != 100 || total != -200))) {
-                    authorErrorService.addAuthorError(authorName, initials, "eroare template - suma punctajelor 1/4 este incorecta", currentRowNumber);
-                    skipDueToError = true;
+                
+                if (PR1 == 100 || PR2 == 100 || PR3 == 100 || PR4 == 100) {
+                    if (total == 100) {
+                        skipDueToError = false;
+                    } else if (total == -200) {
+                        skipDueToError = false;
+                    } else {
+                        authorErrorService.addAuthorError(authorName, initials, "eroare template - suma punctajelor 1/4 este incorecta", currentRowNumber);
+                        skipDueToError = true;
+                    }
                 }
 
                 if (!skipDueToError) {
