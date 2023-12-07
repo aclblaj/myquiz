@@ -77,16 +77,22 @@ public class QuestionService {
             // Iterate over rows
             for (Row row : sheet) {
                 int currentRowNumber = row.getRowNum();
+                boolean isHeaderRow = false;
+
+                if (row.getCell(3) != null) {
+                    if (row.getCell(3).getCellType() == CellType.STRING && (row.getCell(3).getStringCellValue().contains("PR1") || row.getCell(3).getStringCellValue().contains("Punctaj"))) {
+                        isHeaderRow = true;
+                        continue; // skip header line
+                    }
+                }
 
                 int noNotNull = countNotNullValues(row);
                 if (noNotNull < 11) {
                     authorErrorService.addAuthorError(authorName, initials, "eroare - valori lipsa, mai putin de 11 ", currentRowNumber);
-                    break;
-                }
-
-                if (row.getCell(3) != null) {
-                    if (row.getCell(3).getCellType() == CellType.STRING && (row.getCell(3).getStringCellValue().contains("PR1") || row.getCell(3).getStringCellValue().contains("Punctaj"))) {
-                        continue; // skip header line
+                    if (isHeaderRow) {
+                        break;
+                    } else {
+                        continue;
                     }
                 }
 
