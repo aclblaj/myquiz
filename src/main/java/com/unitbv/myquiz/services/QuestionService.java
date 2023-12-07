@@ -299,31 +299,9 @@ public class QuestionService {
         text = text.replace("4)", "");
         return text;
     }
+    
     private static String cleanEnumerations(String text) {
-        text = text.replace("A.", "");
-        text = text.replace("B.", "");
-        text = text.replace("C.", "");
-        text = text.replace("D.", "");
-        text = text.replace("a.", "");
-        text = text.replace("b.", "");
-        text = text.replace("c.", "");
-        text = text.replace("d.", "");
-        text = text.replace("1.", "");
-        text = text.replace("2.", "");
-        text = text.replace("3.", "");
-        text = text.replace("4.", "");
-        text = text.replace("A)", "");
-        text = text.replace("B)", "");
-        text = text.replace("C)", "");
-        text = text.replace("D)", "");
-        text = text.replace("a)", "");
-        text = text.replace("b)", "");
-        text = text.replace("c)", "");
-        text = text.replace("d)", "");
-        text = text.replace("1)", "");
-        text = text.replace("2)", "");
-        text = text.replace("3)", "");
-        text = text.replace("4)", "");
+        text = text.replaceAll("[A-Da-d1-4]\\.|[A-Da-d1-4]\\)", "");
         return text;
     }
 
