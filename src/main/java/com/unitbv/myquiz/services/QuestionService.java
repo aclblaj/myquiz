@@ -9,7 +9,6 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.mozilla.universalchardet.UniversalDetector;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -17,13 +16,14 @@ import org.springframework.stereotype.Service;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
 @Service
 public class QuestionService {
+
+
     Logger logger = Logger.getLogger(QuestionService.class.getName());
 
     @Autowired
@@ -35,13 +35,16 @@ public class QuestionService {
     @Autowired
     QuestionRepository questionRepository;
 
+    @Autowired
+    EncodingSevice encodingSevice;
+
     String authorName;
     String initials;
 
 
     public int parseExcelFilesFromFolder(File folder, int noFilesInput) {
         int noFiles = noFilesInput;
-        if (folder.isDirectory()) {
+        if (folder.exists() && folder.isDirectory()) {
             File[] files = folder.listFiles();
             if (files != null) {
                 for (File file : files) {
@@ -55,7 +58,11 @@ public class QuestionService {
             noFiles++;
         } else {
             logger.info("Not readable target file: " + folder.getAbsolutePath());
-            authorErrorService.addAuthorError(authorName, initials,"eroare template - fisierul nu are tipul cerut (excel)", -1);
+            Question question = new Question();
+            question.setAuthor(authorName);
+            question.setInitiale(initials);
+            question.setCrtNo(-1);
+            authorErrorService.addAuthorError(question, "eroare template - fisierul nu are tipul cerut (excel)");
         }
         return noFiles;
     }
@@ -63,20 +70,31 @@ public class QuestionService {
     private void readAndParseFirstSheetFromExcelFile(String filePath) {
         logger.info("Parse excel file: " + filePath);
 
-
         try (FileInputStream fileInputStream = new FileInputStream(filePath);Workbook workbook = new XSSFWorkbook(fileInputStream)) {
 
             Sheet sheet = workbook.getSheetAt(0); // Get the first sheet
+            Question question = new Question();
+            question.setAuthor(authorName);
+            question.setInitiale(initials);
+            question.setCrtNo(0);
+            question.setType(QuestionType.MULTICHOICE);
 
             if (sheet.getLastRowNum() < 15) {
-                authorErrorService.addAuthorError(authorName, initials, "tema incompleta - mai putin de 15 intrebari multiple choice", 0);
-                logger.info("tema incompleta: sheet.getLastRowNum()<15");
+                authorErrorService.addAuthorError(question, MyUtil.INCOMPLETE_ASSIGNMENT_LESS_THAN_15_QUESTIONS);
+                logger.info(MyUtil.INCOMPLETE_ASSIGNMENT_LESS_THAN_15_QUESTIONS);
                 return;
             }
 
             // Iterate over rows
             for (Row row : sheet) {
                 int currentRowNumber = row.getRowNum();
+
+                question = new Question();
+                question.setAuthor(authorName);
+                question.setInitiale(initials);
+                question.setCrtNo(currentRowNumber);
+                question.setType(QuestionType.MULTICHOICE);
+
                 boolean isHeaderRow = false;
 
                 if (row.getCell(3) != null) {
@@ -88,144 +106,141 @@ public class QuestionService {
 
                 int noNotNull = countNotNullValues(row);
                 if (noNotNull < 11) {
-                    authorErrorService.addAuthorError(authorName, initials, "eroare - valori lipsa, mai putin de 11 ", currentRowNumber);
+                    authorErrorService.addAuthorError(question, MyUtil.MISSING_VALUES_LESS_THAN_11);
                     if (isHeaderRow) {
                         break;
                     } else {
-                        continue;
+                        question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
                     }
                 }
 
-                boolean skipDueToError = false;
 
-                double cellNrCrtDouble = 0.0;
-                String titlu = "";
-                String text = "";
-                double PR1 = 0.0;
-                String Raspuns1;
-                double PR2 = 0.0;
-                String Raspuns2;
-                double PR3 = 0.0;
-                String Raspuns3;
-                double PR4 = 0.0;
-                String Raspuns4;
+                convertRowToQuestion(row, question);
 
-                Cell cellNrCrt = row.getCell(0);
-                cellNrCrtDouble = convertCellToDouble(cellNrCrt);
+                checkQuestionTotalPoint(question);
 
-                Cell cellTitlu = row.getCell(1);
-                if (cellTitlu == null) {
-                    authorErrorService.addAuthorError(authorName, initials, "eroare template - titlul este null", currentRowNumber);
-                    skipDueToError = true;
-                } else {
-                    if (cellTitlu.getCellType() == CellType.NUMERIC) {
-                        authorErrorService.addAuthorError(authorName, initials, "eroare template - titlu nu este string", currentRowNumber);
-                        break;
-                    }
-                    titlu = cellTitlu.getStringCellValue();
-                    if (titlu.length() < 2) {
-                        authorErrorService.addAuthorError(authorName, initials, "eroare template - titlu nu este introdus", currentRowNumber);
-                        skipDueToError = true;
-                    } else {
-                        if (titlu.contains("Kapazität Null") || titlu.contains("Kommunikationsmuster") || titlu.contains("ICMP") || titlu.contains("Roluri 2PC") || titlu.contains(
-                                "IP header") || titlu.contains("c02_scheduler_functie")) {
-                            authorErrorService.addAuthorError(authorName, initials, "eroare template - intrebare sablon - de sters: ", currentRowNumber);
-                            continue;
-                        }
-                    }
-                }
+                checkQuestionStrings(question);
 
-                Cell cellText = row.getCell(2);
-                if (cellText == null) {
-                    authorErrorService.addAuthorError(authorName, initials, "eroare template - test intrebare este null", currentRowNumber);
-                    skipDueToError = true;
-                } else {
-                    text = cellText.getStringCellValue();
-                    if (text.length() == 0) {
-                        authorErrorService.addAuthorError(authorName, initials, "eroare template - text nu este introdus", currentRowNumber);
-                        skipDueToError = true;
-                    }
-                }
-
-                Cell cellPR1 = row.getCell(3);
-                PR1 = convertCellToDouble(cellPR1);
-
-                Cell cellRaspuns1 = row.getCell(4);
-                Raspuns1 = getValueAsString(cellRaspuns1);
-
-                Cell cellPR2 = row.getCell(5);
-                PR2 = convertCellToDouble(cellPR2);
-
-                Cell cellRaspuns2 = row.getCell(6);
-                Raspuns2 = getValueAsString(cellRaspuns2);
-
-                Cell cellPR3 = row.getCell(7);
-                PR3 = convertCellToDouble(cellPR3);
-
-                Cell cellRaspuns3 = row.getCell(8);
-                Raspuns3 = getValueAsString(cellRaspuns3);
-
-                Cell cellPR4 = row.getCell(9);
-                PR4 = convertCellToDouble(cellPR4);
-
-                Cell cellRaspuns4 = row.getCell(10);
-                Raspuns4 = getValueAsString(cellRaspuns4);
-
-                double total = PR1 + PR2 + PR3 + PR4;
-                if (PR1 == 25 && total != 100) {
-                    authorErrorService.addAuthorError(authorName, initials, "eroare template - suma punctajelor 4/4 este incorecta", currentRowNumber);
-                    skipDueToError = true;
-                }
-                if (((int) PR1 == 33 || (int) PR2 == 33 || (int) PR3 == 33 || (int) PR4 == 33) && total > 1) {
-                    authorErrorService.addAuthorError(authorName, initials, "eroare template - suma punctajelor 3/4 este incorecta", currentRowNumber);
-                    break;
-                }
-                if ((PR1 == 50 || PR2 == 50 || PR3 == 50 || PR4 == 50) && total != 0) {
-                    authorErrorService.addAuthorError(authorName, initials, "eroare template - suma punctajelor 2/4 este incorecta", currentRowNumber);
-                    skipDueToError = true;
-                }
-                
-                if (PR1 == 100 || PR2 == 100 || PR3 == 100 || PR4 == 100) {
-                    if (total == 100) {
-                        skipDueToError = false;
-                    } else if (total == -200) {
-                        skipDueToError = false;
-                    } else {
-                        authorErrorService.addAuthorError(authorName, initials, "eroare template - suma punctajelor 1/4 este incorecta", currentRowNumber);
-                        skipDueToError = true;
-                    }
-                }
-
-                if (!skipDueToError) {
-                    titlu = cleanAndConvertString(titlu);
-                    text = cleanAndConvertString(text);
-                    Raspuns1 = cleanAndConvertString(Raspuns1);
-                    Raspuns2 = cleanAndConvertString(Raspuns2);
-                    Raspuns3 = cleanAndConvertString(Raspuns3);
-                    Raspuns4 = cleanAndConvertString(Raspuns4);
-
-                    if (!Raspuns1.isEmpty() && !Raspuns2.isEmpty() && !Raspuns3.isEmpty() && !Raspuns4.isEmpty()) {
-                        Question question = initQuestion(cellNrCrtDouble, titlu, text, PR1, Raspuns1, PR2, Raspuns2, PR3, Raspuns3, PR4, Raspuns4);
-                        if (checkAllAnswersForDuplicates(question)) {
-                            authorErrorService.addAuthorError(authorName, initials, "raspuns dublat - reformulare raspunsuri/intrebare ", currentRowNumber);
-                        }
-//                       else if (checkAllTitlesForDuplicates(titlu)) {
-//                            addAuthorError("titlu dublat - reformulare titlu intrebare ", currentRowNumber);
-//                        };
-                        else if (!addQuestion(question)) {
-                            authorErrorService.addAuthorError(authorName, initials, "eroare salvare - caractere nepermise", currentRowNumber);
-                        }
-                    } else {
-                        authorErrorService.addAuthorError(authorName, initials, "eroare template - cel putin un raspuns lipsa", currentRowNumber);
-                    }
-                }
+                saveQuestion(question);
             }
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private static String cleanSpecialChars(String text) {
+    private void saveQuestion(Question question) {
+        if (!question.getTitle().equals(MyUtil.SKIPPED_DUE_TO_ERROR)) {
+            if (!addQuestion(question)) {
+                authorErrorService.addAuthorError(question, MyUtil.UNALLOWED_CHARS);
+            }
+        }
+    }
+
+    private void convertRowToQuestion(Row row, Question question) {
+        double cellNrCrtDouble = 0.0;
+
+        Cell cellNrCrt = row.getCell(0);
+        cellNrCrtDouble = convertCellToDouble(cellNrCrt, question);
+
+        Cell cellTitlu = row.getCell(1);
+        if (cellTitlu == null) {
+            authorErrorService.addAuthorError(question, MyUtil.MISSING_TITLE);
+            question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+        } else {
+            if (cellTitlu.getCellType() == CellType.NUMERIC) {
+                authorErrorService.addAuthorError(question, MyUtil.TITLE_NOT_STRING);
+                question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+            }
+            question.setTitle(cellTitlu.getStringCellValue());
+            if (question.getTitle().length() < 2) {
+                authorErrorService.addAuthorError(question, MyUtil.MISSING_TITLE);
+                question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+            } else {
+                if (MyUtil.forbiddenTitles.contains(question.getTitle())) {
+                    authorErrorService.addAuthorError(question, MyUtil.REMOVE_TEMPLATE_QUESTION + question.getTitle());
+                    question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+                }
+            }
+        }
+        question.setTitle(cleanAndConvert(question.getTitle()));
+
+        String questionText = "";
+        Cell cellText = row.getCell(2);
+        if (cellText == null) {
+            authorErrorService.addAuthorError(question, MyUtil.EMPTY_QUESTION_TEXT);
+            question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+        } else {
+            questionText = cellText.getStringCellValue();
+            if (questionText.length() == 0) {
+                authorErrorService.addAuthorError(question, MyUtil.EMPTY_QUESTION_TEXT);
+                question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+            }
+        }
+        question.setText(cleanAndConvert(questionText));
+
+        Cell cellPR1 = row.getCell(3);
+        question.setWeightResponse1(convertCellToDouble(cellPR1, question));
+
+        Cell cellResponse1 = row.getCell(4);
+        question.setResponse1(cleanAndConvert(getValueAsString(cellResponse1, question)));
+
+        Cell cellPR2 = row.getCell(5);
+        question.setWeightResponse2(convertCellToDouble(cellPR2, question));
+
+        Cell cellResponse2 = row.getCell(6);
+        question.setResponse2(cleanAndConvert(getValueAsString(cellResponse2, question)));
+
+        Cell cellPR3 = row.getCell(7);
+        question.setWeightResponse3(convertCellToDouble(cellPR3, question));
+
+        Cell cellResponse3 = row.getCell(8);
+        question.setResponse3(cleanAndConvert(getValueAsString(cellResponse3, question)));
+
+        Cell cellPR4 = row.getCell(9);
+        question.setWeightResponse4(convertCellToDouble(cellPR4, question));
+
+        Cell cellResponse4 = row.getCell(10);
+        question.setResponse4(cleanAndConvert(getValueAsString(cellResponse4, question)));
+    }
+
+    private void checkQuestionTotalPoint(Question question) {
+        double total = question.getWeightResponse1() + question.getWeightResponse2() + question.getWeightResponse3() + question.getWeightResponse4();
+        if (question.getWeightResponse1() == 25 && total != 100) {
+            authorErrorService.addAuthorError(question, MyUtil.TEMPLATE_ERROR_4_4_POINTS_WRONG);
+            question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+        }
+        if ((question.getWeightResponse1().intValue() == 33 || question.getWeightResponse2().intValue() == 33 || question.getWeightResponse3().intValue() == 33 || question.getWeightResponse4().intValue() == 33) && total > 1) {
+            authorErrorService.addAuthorError(question, MyUtil.TEMPLATE_ERROR_3_4_POINTS_WRONG);
+            question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+        }
+        if ((question.getWeightResponse1().intValue() == 50 || question.getWeightResponse2().intValue() == 50 || question.getWeightResponse3().intValue() == 50 || question.getWeightResponse4().intValue() == 50) && total != 0) {
+            authorErrorService.addAuthorError(question, MyUtil.TEMPLATE_ERROR_2_4_POINTS_WRONG);
+            question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+        }
+        if (question.getWeightResponse1().intValue() == 100 || question.getWeightResponse2().intValue() == 100 || question.getWeightResponse3().intValue() == 100 || question.getWeightResponse4().intValue() == 100) {
+            if (total != 100 && total != -200) {
+                authorErrorService.addAuthorError(question, MyUtil.TEMPLATE_ERROR_1_4_POINTS_WRONG);
+                question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+            }
+        }
+    }
+
+    private void checkQuestionStrings(Question question) {
+        if (question.getResponse1() != null && question.getResponse2() != null && question.getResponse3() != null && question.getResponse4() != null) {
+            if (checkAllAnswersForDuplicates(question)) {
+                authorErrorService.addAuthorError(question, MyUtil.REFORMULATE_QUESTION_ANSWER_ALREADY_EXISTS);
+                question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+            } else if (checkAllTitlesForDuplicates(question.getTitle())) {
+                authorErrorService.addAuthorError(question, MyUtil.REFORMULATE_QUESTION_TITLE_ALREADY_EXISTS);
+                question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+            }
+        } else {
+            authorErrorService.addAuthorError(question, MyUtil.MISSING_ANSWER);
+            question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+        }
+    }
+
+    private static String removeSpecialChars(String text) {
         text = text.replace("–", "-");
         text = text.replace("„", "\"");
         text = text.replace("”", "\"");
@@ -244,85 +259,19 @@ public class QuestionService {
         text = text.trim();
         return text;
     }
-    private static String cleanDiacritics(String text) {
-        text = text.replace("ș", "s");
-        text = text.replace("ț", "t");
-        text = text.replace("ţ", "t");
-        text = text.replace("ț", "t");
-        text = text.replace("ă", "a");
-        text = text.replace("â", "a");
-        text = text.replace("î", "i");
-        text = text.replace("Ș", "S");
-        text = text.replace("Ț", "T");
-        text = text.replace("Ă", "A");
-        text = text.replace("Â", "A");
-        text = text.replace("Î", "I");
-        text = text.replace("–", "-");
-        text = text.replace("„", "\"");
-        text = text.replace("”", "\"");
-        text = text.replace("’", "'");
-        text = text.replace("…", "...");
-        text = text.replace("–", "-");
-        text = text.replace("—", "-");
-        text = text.replace("\n", " ");
-        text = text.replace("\r", " ");
-        text = text.replace("\t", " ");
-        text = text.replace("&", " ");
-        text = text.replace("  ", " ");
-        text = text.replace("  ", " ");
-        text = text.replace("  ", " ");
-        text = text.replace("  ", " ");
-        text = text.trim();
-        text = text.replace("A.", "");
-        text = text.replace("B.", "");
-        text = text.replace("C.", "");
-        text = text.replace("D.", "");
-        text = text.replace("a.", "");
-        text = text.replace("b.", "");
-        text = text.replace("c.", "");
-        text = text.replace("d.", "");
-        text = text.replace("1.", "");
-        text = text.replace("2.", "");
-        text = text.replace("3.", "");
-        text = text.replace("4.", "");
-        text = text.replace("A)", "");
-        text = text.replace("B)", "");
-        text = text.replace("C)", "");
-        text = text.replace("D)", "");
-        text = text.replace("a)", "");
-        text = text.replace("b)", "");
-        text = text.replace("c)", "");
-        text = text.replace("d)", "");
-        text = text.replace("1)", "");
-        text = text.replace("2)", "");
-        text = text.replace("3)", "");
-        text = text.replace("4)", "");
-        return text;
-    }
-    
-    private static String cleanEnumerations(String text) {
+
+
+    private static String removeEnumerations(String text) {
         text = text.replaceAll("[A-Da-d1-4]\\.|[A-Da-d1-4]\\)", "");
         return text;
     }
 
-    private static String convertFromUTF8(String text) {
-        UniversalDetector detector = new UniversalDetector(null);
-        detector.handleData(text.getBytes(), 0, text.length() - 1);
-        detector.dataEnd();
-        String encoding = detector.getDetectedCharset();
-
-        String result = text;
-        if (encoding != null && encoding.equalsIgnoreCase("UTF-8")) {
-            result = new String(text.getBytes(StandardCharsets.UTF_8), StandardCharsets.ISO_8859_1);
-        }
-        return result;
-    }
-
-    private double convertCellToDouble(Cell cell) {
+    private double convertCellToDouble(Cell cell, Question question) {
         double result = 0.0;
         try {
             if (cell == null) {
-                authorErrorService.addAuthorError(authorName, initials,"lipsa nrcrt/punctaj", -1);
+                question.setCrtNo(-1);
+                authorErrorService.addAuthorError(question, MyUtil.MISSING_POINTS);
             } else {
                 CellType cellType = cell.getCellType();
                 if (cellType == CellType.STRING) {
@@ -330,26 +279,29 @@ public class QuestionService {
                 } else if (cellType == CellType.NUMERIC) {
                     result = cell.getNumericCellValue();
                 } else {
-                    authorErrorService.addAuthorError(authorName, initials,"coloana nrcrt/punctaj nu e numeric (sau string convertibil)", cell.getRowIndex());
+                    question.setCrtNo(cell.getRowIndex());
+                    authorErrorService.addAuthorError(question, MyUtil.NOT_NUMERIC_COLUMN);
                 }
             }
         } catch (Exception e) {
-            authorErrorService.addAuthorError(authorName, initials,"tip de date eronat", cell.getRowIndex());
+            authorErrorService.addAuthorError(question, MyUtil.DATATYPE_ERROR);
+            String logMsg = e.getMessage();
+            if (logMsg.length() > 512) {
+                logMsg = logMsg.substring(0, 512);
+            }
+            authorErrorService.addAuthorError(question, logMsg);
         }
         return result;
     }
-    private String cleanAndConvertString(String text) {
+    private String cleanAndConvert(String text) {
         if (text == null) {
             return "";
         }
 
-        text = cleanDiacritics(text);
-        text = cleanEnumerations(text);
-        text = convertFromUTF8(text);
-        text = cleanSpecialChars(text);
+        text = encodingSevice.convertToUTF8(text);
+        text = removeEnumerations(text);
+        text = removeSpecialChars(text);
 
-//        text = cleanSpecialChars(text);
-//        String result = convertFromUTF8(text);
         return text;
     }
 
@@ -369,7 +321,7 @@ public class QuestionService {
         return count;
     }
 
-    private String getValueAsString(Cell cell) {
+    private String getValueAsString(Cell cell, Question question) {
         String result = "";
         try {
             if (cell != null) {
@@ -381,46 +333,36 @@ public class QuestionService {
                 }
             }
             if (result.isEmpty()) {
-                authorErrorService.addAuthorError(authorName, initials,"raspuns lipsa", cell.getRowIndex());
+                authorErrorService.addAuthorError(question, MyUtil.MISSING_ANSWER);
             }
         } catch (Exception e) {
-            authorErrorService.addAuthorError(authorName, initials,"tip de date valoare eronata", cell.getRowIndex());
+            authorErrorService.addAuthorError(question, MyUtil.DATATYPE_ERROR);
+            String logMsg = e.getMessage();
+            if (logMsg.length() > 512) {
+                logMsg = logMsg.substring(0, 512);
+            }
+            authorErrorService.addAuthorError(question, logMsg);
         }
         return result;
     }
 
-    private Question initQuestion(double cellNrCrtDouble, String titlu, String text, double pr1, String raspuns1, double pr2, String raspuns2, double pr3, String raspuns3, double pr4, String raspuns4) {
-        Question question = new Question();
-        question.setCrtNo((int) cellNrCrtDouble);
-        question.setTitle(titlu);
-        question.setText(text);
-        question.setType(QuestionType.MULTICHOICE);
-        question.setWeightResponse1(pr1);
-        question.setResponse1(raspuns1);
-        question.setWeightResponse2(pr2);
-        question.setResponse2(raspuns2);
-        question.setWeightResponse3(pr3);
-        question.setResponse3(raspuns3);
-        question.setWeightResponse4(pr4);
-        question.setResponse4(raspuns4);
-        question.setAuthor(authorName);
-        question.setInitiale(initials);
-        return question;
-    }
     private boolean addQuestion(Question question) {
         try {
             questionRepository.save(question);
             return true;
         } catch (Exception e) {
-            System.out.println("error: " + e.getMessage());
-            System.out.println("question: " + question.toString());
+            String logMsg = e.getMessage();
+            if (logMsg.length() > 512) {
+                logMsg = logMsg.substring(0, 512);
+            }
+            authorErrorService.addAuthorError(question, logMsg);
             return false;
         }
     }
 
-    private boolean checkAllTitlesForDuplicates(String titlu) {
+    private boolean checkAllTitlesForDuplicates(String title) {
         List<String> allTitles = putAllTitlesToList();
-        if (titlu != null && allTitles.contains(titlu.toLowerCase())) {
+        if (title != null && allTitles.contains(title.toLowerCase())) {
             return true;
         }
         return false;
@@ -463,6 +405,5 @@ public class QuestionService {
         }
         return allAnswers;
     }
-
 
 }
