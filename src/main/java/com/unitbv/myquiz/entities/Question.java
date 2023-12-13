@@ -7,25 +7,32 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
 import jakarta.persistence.SequenceGenerator;
 
 @Entity
 public class Question {
     int crtNo;
     String title;
+    @Column(length = 1024)
     String text;
     @Enumerated(EnumType.STRING)
     QuestionType type;
     Double weightResponse1;
+    @Column(length = 1024)
     String response1;
     Double weightResponse2;
+    @Column(length = 1024)
     String response2;
     Double weightResponse3;
+    @Column(length = 1024)
     String response3;
     Double weightResponse4;
+    @Column(length = 1024)
     String response4;
     String author;
     String initiale;
+
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "question_gen")
     @SequenceGenerator(name = "question_gen", sequenceName = "question_seq")
