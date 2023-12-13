@@ -1,8 +1,5 @@
 package com.unitbv.myquiz.services;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 public class MyUtil {
@@ -24,10 +21,10 @@ public class MyUtil {
     public static final String TEMPLATE_ERROR_3_4_POINTS_WRONG = "Template error - wrong sum for 3/4 points";
     public static final String TEMPLATE_ERROR_4_4_POINTS_WRONG = "Template error - wrong sum for 4/4 points";
 
-    public static final String UNALLOWED_CHARS = "eroare salvare - caractere nepermise";
-    public static final String EMPTY_QUESTION_TEXT = "eroare template - test intrebare este null";
-    public static final String REMOVE_TEMPLATE_QUESTION = "eroare template - intrebare sablon - de sters: ";
-    public static final String TITLE_NOT_STRING = "eroare template - questionTitle nu este string";
-    public static final String MISSING_VALUES_LESS_THAN_11 = "eroare - valori lipsa, mai putin de 11 ";
-    public static final String INCOMPLETE_ASSIGNEMENT_LESS_THAN_15_QUESTIONS = "tema incompleta - mai putin de 15 intrebari multiple choice";
+    public static final String UNALLOWED_CHARS = "Save error - chars not supported";
+    public static final String EMPTY_QUESTION_TEXT = "Empty question text";
+    public static final String REMOVE_TEMPLATE_QUESTION = "Template question - to be removed";
+    public static final String TITLE_NOT_STRING = "Title not string";
+    public static final String MISSING_VALUES_LESS_THAN_11 = "Missing values - less than 11";
+    public static final String INCOMPLETE_ASSIGNMENT_LESS_THAN_15_QUESTIONS = "Incomplete assignment - less than 15 questions";
 }

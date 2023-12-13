@@ -10,6 +10,7 @@ import java.util.Optional;
 @Repository
 public interface QuestionRepository extends PagingAndSortingRepository<Question, Long> {
     Question save(Question question);
+
     Optional<Question> findById(Long id);
 
     @Query(value = "SHOW server_encoding", nativeQuery = true)
