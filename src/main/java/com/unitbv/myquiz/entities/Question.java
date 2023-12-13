@@ -7,7 +7,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.SequenceGenerator;
 
 @Entity
@@ -142,7 +141,9 @@ public class Question {
         return response4;
     }
 
-    public void setResponse4(String response4) { this.response4 = response4; }
+    public void setResponse4(String response4) {
+        this.response4 = response4;
+    }
 
     public String getAuthor() {
         return author;
@@ -162,22 +163,6 @@ public class Question {
 
     @Override
     public String toString() {
-        return "Question{" +
-                "crtNo=" + crtNo +
-                ", title='" + title + '\'' +
-                ", text='" + text + '\'' +
-                ", type=" + type +
-                ", weightResponse1=" + weightResponse1 +
-                ", response1='" + response1 + '\'' +
-                ", weightResponse2=" + weightResponse2 +
-                ", response2='" + response2 + '\'' +
-                ", weightResponse3=" + weightResponse3 +
-                ", response3='" + response3 + '\'' +
-                ", weightResponse4=" + weightResponse4 +
-                ", response4='" + response4 + '\'' +
-                ", author='" + author + '\'' +
-                ", initiale='" + initiale + '\'' +
-                ", id=" + id +
-                '}';
+        return "Question{" + "crtNo=" + crtNo + ", title='" + title + '\'' + ", text='" + text + '\'' + ", type=" + type + ", weightResponse1=" + weightResponse1 + ", response1='" + response1 + '\'' + ", weightResponse2=" + weightResponse2 + ", response2='" + response2 + '\'' + ", weightResponse3=" + weightResponse3 + ", response3='" + response3 + '\'' + ", weightResponse4=" + weightResponse4 + ", response4='" + response4 + '\'' + ", author='" + author + '\'' + ", initiale='" + initiale + '\'' + ", id=" + id + '}';
     }
 }

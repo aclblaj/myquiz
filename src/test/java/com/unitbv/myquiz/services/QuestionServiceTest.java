@@ -7,7 +7,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import java.io.File;
 import java.util.logging.Logger;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @SpringBootTest
 class QuestionServiceTest {

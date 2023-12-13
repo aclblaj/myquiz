@@ -80,8 +80,8 @@ public class QuestionService {
             question.setType(QuestionType.MULTICHOICE);
 
             if (sheet.getLastRowNum() < 15) {
-                authorErrorService.addAuthorError(question, MyUtil.INCOMPLETE_ASSIGNEMENT_LESS_THAN_15_QUESTIONS);
-                logger.info(MyUtil.INCOMPLETE_ASSIGNEMENT_LESS_THAN_15_QUESTIONS);
+                authorErrorService.addAuthorError(question, MyUtil.INCOMPLETE_ASSIGNMENT_LESS_THAN_15_QUESTIONS);
+                logger.info(MyUtil.INCOMPLETE_ASSIGNMENT_LESS_THAN_15_QUESTIONS);
                 return;
             }
 
