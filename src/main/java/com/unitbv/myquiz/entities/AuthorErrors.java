@@ -5,11 +5,13 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Lob;
 
 @Entity
 public class AuthorErrors {
     String name;
     String initials;
+    @Column(length = 512)
     String description;
     Integer rowNumber;
     @Id
