@@ -10,6 +10,7 @@ import jakarta.persistence.Id;
 public class AuthorErrors {
     String name;
     String initials;
+    @Column(length = 512)
     String description;
     Integer rowNumber;
     @Id

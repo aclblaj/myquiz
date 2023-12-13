@@ -5,11 +5,9 @@ public enum QuestionType {
     MULTICHOICE(1);
 
     final int value;
+
     QuestionType(int value) {
         this.value = value;
-    }
-    public Integer getValue() {
-        return value;
     }
 
     public static QuestionType fromInteger(Integer value) {
@@ -21,6 +19,10 @@ public enum QuestionType {
             }
         }
         return QuestionType.UNKNOWN;
+    }
+
+    public Integer getValue() {
+        return value;
     }
 
 }
