@@ -1,5 +1,6 @@
 package com.unitbv.myquiz.services;
 
+import com.unitbv.myquiz.entities.Author;
 import com.unitbv.myquiz.entities.Question;
 import com.unitbv.myquiz.entities.QuestionType;
 import com.unitbv.myquiz.repositories.QuestionRepository;
@@ -54,6 +55,11 @@ public class QuestionService {
         } else if (folder.isFile() && folder.getName().endsWith(".xlsx")) {
             authorName = authorService.getAuthorName(folder.getAbsolutePath());
             initials = authorService.extractInitials(authorName);
+            Author author = new Author();
+            author.setName(authorName);
+            author.setInitials(initials);
+            author = authorService.saveAuthor(author);
+
             readAndParseFirstSheetFromExcelFile(folder.getAbsolutePath());
             noFiles++;
         } else {
@@ -150,15 +156,16 @@ public class QuestionService {
             if (cellTitlu.getCellType() == CellType.NUMERIC) {
                 authorErrorService.addAuthorError(question, MyUtil.TITLE_NOT_STRING);
                 question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
-            }
-            question.setTitle(cellTitlu.getStringCellValue());
-            if (question.getTitle().length() < 2) {
-                authorErrorService.addAuthorError(question, MyUtil.MISSING_TITLE);
-                question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
-            } else {
-                if (MyUtil.forbiddenTitles.contains(question.getTitle())) {
-                    authorErrorService.addAuthorError(question, MyUtil.REMOVE_TEMPLATE_QUESTION + question.getTitle());
+            } else if (cellTitlu.getCellType() == CellType.STRING) {
+                question.setTitle(cellTitlu.getStringCellValue());
+                if (question.getTitle().length() < 2) {
+                    authorErrorService.addAuthorError(question, MyUtil.MISSING_TITLE);
                     question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+                } else {
+                    if (MyUtil.forbiddenTitles.contains(question.getTitle())) {
+                        authorErrorService.addAuthorError(question, MyUtil.REMOVE_TEMPLATE_QUESTION + question.getTitle());
+                        question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+                    }
                 }
             }
         }
@@ -170,10 +177,15 @@ public class QuestionService {
             authorErrorService.addAuthorError(question, MyUtil.EMPTY_QUESTION_TEXT);
             question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
         } else {
-            questionText = cellText.getStringCellValue();
-            if (questionText.length() == 0) {
-                authorErrorService.addAuthorError(question, MyUtil.EMPTY_QUESTION_TEXT);
+            if (cellText.getCellType() == CellType.NUMERIC) {
+                authorErrorService.addAuthorError(question, MyUtil.DATATYPE_ERROR);
                 question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+            } else if (cellText.getCellType() == CellType.STRING) {
+                questionText = cellText.getStringCellValue();
+                if (questionText.length() == 0) {
+                    authorErrorService.addAuthorError(question, MyUtil.EMPTY_QUESTION_TEXT);
+                    question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+                }
             }
         }
         question.setText(cleanAndConvert(questionText));

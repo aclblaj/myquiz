@@ -24,7 +24,7 @@ class QuestionServiceTest {
     @Test
     void parseExcelFilesFromFolderITSecQ1() {
         if (encodingSevice.checkServerEncoding()) return;
-        final String XLSX_DIR_WITH_FILES = "C:\\work\\_mi\\2024-ITSec\\inpQ1\\";
+        final String XLSX_DIR_WITH_FILES = "C:\\work\\_mi\\2024-BD\\inpQ1\\";
         String folderPath = XLSX_DIR_WITH_FILES;
         File folder = new File(folderPath);
         int result = questionService.parseExcelFilesFromFolder(folder, 0);

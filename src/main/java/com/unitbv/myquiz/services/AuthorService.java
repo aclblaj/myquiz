@@ -1,9 +1,15 @@
 package com.unitbv.myquiz.services;
 
+import com.unitbv.myquiz.entities.Author;
+import com.unitbv.myquiz.repositories.AuthorRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AuthorService {
+
+    @Autowired
+    AuthorRepository authorRepository;
     String authorName;
     String initials;
 
@@ -22,5 +28,9 @@ public class AuthorService {
             }
         }
         return initials;
+    }
+
+    public Author saveAuthor(Author author) {
+        return authorRepository.save(author);
     }
 }
