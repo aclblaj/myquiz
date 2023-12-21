@@ -1,5 +1,6 @@
 package com.unitbv.myquiz.services;
 
+import com.unitbv.myquiz.entities.Author;
 import com.unitbv.myquiz.entities.AuthorError;
 import com.unitbv.myquiz.entities.Question;
 import com.unitbv.myquiz.repositories.AuthorErrorRepository;
@@ -11,12 +12,11 @@ public class AuthorErrorService {
 
     @Autowired
     AuthorErrorRepository authorErrorRepository;
-    public void addAuthorError(Question question, String description) {
+    public void addAuthorError(Author author, Question question, String description) {
         AuthorError authorError = new AuthorError();
-        authorError.setName(question.getAuthor());
-        authorError.setInitials(question.getInitiale());
         authorError.setDescription(description);
         authorError.setRowNumber(question.getCrtNo());
+        authorError.setAuthor(author);
         authorErrorRepository.save(authorError);
     }
 }

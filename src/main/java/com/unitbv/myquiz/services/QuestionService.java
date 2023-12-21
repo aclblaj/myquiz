@@ -39,7 +39,7 @@ public class QuestionService {
     @Autowired
     EncodingSevice encodingSevice;
 
-    String authorName;
+    Author author;
     String initials;
 
 
@@ -53,9 +53,9 @@ public class QuestionService {
                 }
             }
         } else if (folder.isFile() && folder.getName().endsWith(".xlsx")) {
-            authorName = authorService.getAuthorName(folder.getAbsolutePath());
+            String authorName = authorService.getAuthorName(folder.getAbsolutePath());
             initials = authorService.extractInitials(authorName);
-            Author author = new Author();
+            author = new Author();
             author.setName(authorName);
             author.setInitials(initials);
             author = authorService.saveAuthor(author);
@@ -65,10 +65,10 @@ public class QuestionService {
         } else {
             logger.info("Not readable target file: " + folder.getAbsolutePath());
             Question question = new Question();
-            question.setAuthor(authorName);
-            question.setInitiale(initials);
+            question.setAuthor(author.getName());
+            question.setInitiale(author.getInitials());
             question.setCrtNo(-1);
-            authorErrorService.addAuthorError(question, "eroare template - fisierul nu are tipul cerut (excel)");
+            authorErrorService.addAuthorError(author, question, "eroare template - fisierul nu are tipul cerut (excel)");
         }
         return noFiles;
     }
@@ -80,13 +80,13 @@ public class QuestionService {
 
             Sheet sheet = workbook.getSheetAt(0); // Get the first sheet
             Question question = new Question();
-            question.setAuthor(authorName);
-            question.setInitiale(initials);
+            question.setAuthor(author.getName());
+            question.setInitiale(author.getInitials());
             question.setCrtNo(0);
             question.setType(QuestionType.MULTICHOICE);
 
             if (sheet.getLastRowNum() < 15) {
-                authorErrorService.addAuthorError(question, MyUtil.INCOMPLETE_ASSIGNMENT_LESS_THAN_15_QUESTIONS);
+                authorErrorService.addAuthorError(author, question, MyUtil.INCOMPLETE_ASSIGNMENT_LESS_THAN_15_QUESTIONS);
                 logger.info(MyUtil.INCOMPLETE_ASSIGNMENT_LESS_THAN_15_QUESTIONS);
                 return;
             }
@@ -96,8 +96,8 @@ public class QuestionService {
                 int currentRowNumber = row.getRowNum();
 
                 question = new Question();
-                question.setAuthor(authorName);
-                question.setInitiale(initials);
+                question.setAuthor(author.getName());
+                question.setInitiale(author.getInitials());
                 question.setCrtNo(currentRowNumber);
                 question.setType(QuestionType.MULTICHOICE);
 
@@ -112,7 +112,7 @@ public class QuestionService {
 
                 int noNotNull = countNotNullValues(row);
                 if (noNotNull < 11) {
-                    authorErrorService.addAuthorError(question, MyUtil.MISSING_VALUES_LESS_THAN_11);
+                    authorErrorService.addAuthorError(author, question, MyUtil.MISSING_VALUES_LESS_THAN_11);
                     if (isHeaderRow) {
                         break;
                     } else {
@@ -137,7 +137,7 @@ public class QuestionService {
     private void saveQuestion(Question question) {
         if (!question.getTitle().equals(MyUtil.SKIPPED_DUE_TO_ERROR)) {
             if (!addQuestion(question)) {
-                authorErrorService.addAuthorError(question, MyUtil.UNALLOWED_CHARS);
+                authorErrorService.addAuthorError(author, question, MyUtil.UNALLOWED_CHARS);
             }
         }
     }
@@ -150,20 +150,20 @@ public class QuestionService {
 
         Cell cellTitlu = row.getCell(1);
         if (cellTitlu == null) {
-            authorErrorService.addAuthorError(question, MyUtil.MISSING_TITLE);
+            authorErrorService.addAuthorError(author, question, MyUtil.MISSING_TITLE);
             question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
         } else {
             if (cellTitlu.getCellType() == CellType.NUMERIC) {
-                authorErrorService.addAuthorError(question, MyUtil.TITLE_NOT_STRING);
+                authorErrorService.addAuthorError(author, question, MyUtil.TITLE_NOT_STRING);
                 question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
             } else if (cellTitlu.getCellType() == CellType.STRING) {
                 question.setTitle(cellTitlu.getStringCellValue());
                 if (question.getTitle().length() < 2) {
-                    authorErrorService.addAuthorError(question, MyUtil.MISSING_TITLE);
+                    authorErrorService.addAuthorError(author, question, MyUtil.MISSING_TITLE);
                     question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
                 } else {
                     if (MyUtil.forbiddenTitles.contains(question.getTitle())) {
-                        authorErrorService.addAuthorError(question, MyUtil.REMOVE_TEMPLATE_QUESTION + question.getTitle());
+                        authorErrorService.addAuthorError(author, question, MyUtil.REMOVE_TEMPLATE_QUESTION + question.getTitle());
                         question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
                     }
                 }
@@ -174,16 +174,16 @@ public class QuestionService {
         String questionText = "";
         Cell cellText = row.getCell(2);
         if (cellText == null) {
-            authorErrorService.addAuthorError(question, MyUtil.EMPTY_QUESTION_TEXT);
+            authorErrorService.addAuthorError(author, question, MyUtil.EMPTY_QUESTION_TEXT);
             question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
         } else {
             if (cellText.getCellType() == CellType.NUMERIC) {
-                authorErrorService.addAuthorError(question, MyUtil.DATATYPE_ERROR);
+                authorErrorService.addAuthorError(author, question, MyUtil.DATATYPE_ERROR);
                 question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
             } else if (cellText.getCellType() == CellType.STRING) {
                 questionText = cellText.getStringCellValue();
                 if (questionText.length() == 0) {
-                    authorErrorService.addAuthorError(question, MyUtil.EMPTY_QUESTION_TEXT);
+                    authorErrorService.addAuthorError(author, question, MyUtil.EMPTY_QUESTION_TEXT);
                     question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
                 }
             }
@@ -218,20 +218,20 @@ public class QuestionService {
     private void checkQuestionTotalPoint(Question question) {
         double total = question.getWeightResponse1() + question.getWeightResponse2() + question.getWeightResponse3() + question.getWeightResponse4();
         if (question.getWeightResponse1() == 25 && total != 100) {
-            authorErrorService.addAuthorError(question, MyUtil.TEMPLATE_ERROR_4_4_POINTS_WRONG);
+            authorErrorService.addAuthorError(author, question, MyUtil.TEMPLATE_ERROR_4_4_POINTS_WRONG);
             question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
         }
         if ((question.getWeightResponse1().intValue() == 33 || question.getWeightResponse2().intValue() == 33 || question.getWeightResponse3().intValue() == 33 || question.getWeightResponse4().intValue() == 33) && total > 1) {
-            authorErrorService.addAuthorError(question, MyUtil.TEMPLATE_ERROR_3_4_POINTS_WRONG);
+            authorErrorService.addAuthorError(author, question, MyUtil.TEMPLATE_ERROR_3_4_POINTS_WRONG);
             question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
         }
         if ((question.getWeightResponse1().intValue() == 50 || question.getWeightResponse2().intValue() == 50 || question.getWeightResponse3().intValue() == 50 || question.getWeightResponse4().intValue() == 50) && total != 0) {
-            authorErrorService.addAuthorError(question, MyUtil.TEMPLATE_ERROR_2_4_POINTS_WRONG);
+            authorErrorService.addAuthorError(author, question, MyUtil.TEMPLATE_ERROR_2_4_POINTS_WRONG);
             question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
         }
         if (question.getWeightResponse1().intValue() == 100 || question.getWeightResponse2().intValue() == 100 || question.getWeightResponse3().intValue() == 100 || question.getWeightResponse4().intValue() == 100) {
             if (total != 100 && total != -200) {
-                authorErrorService.addAuthorError(question, MyUtil.TEMPLATE_ERROR_1_4_POINTS_WRONG);
+                authorErrorService.addAuthorError(author, question, MyUtil.TEMPLATE_ERROR_1_4_POINTS_WRONG);
                 question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
             }
         }
@@ -240,14 +240,14 @@ public class QuestionService {
     private void checkQuestionStrings(Question question) {
         if (question.getResponse1() != null && question.getResponse2() != null && question.getResponse3() != null && question.getResponse4() != null) {
             if (checkAllAnswersForDuplicates(question)) {
-                authorErrorService.addAuthorError(question, MyUtil.REFORMULATE_QUESTION_ANSWER_ALREADY_EXISTS);
+                authorErrorService.addAuthorError(author, question, MyUtil.REFORMULATE_QUESTION_ANSWER_ALREADY_EXISTS);
                 question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
             } else if (checkAllTitlesForDuplicates(question.getTitle())) {
-                authorErrorService.addAuthorError(question, MyUtil.REFORMULATE_QUESTION_TITLE_ALREADY_EXISTS);
+                authorErrorService.addAuthorError(author, question, MyUtil.REFORMULATE_QUESTION_TITLE_ALREADY_EXISTS);
                 question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
             }
         } else {
-            authorErrorService.addAuthorError(question, MyUtil.MISSING_ANSWER);
+            authorErrorService.addAuthorError(author, question, MyUtil.MISSING_ANSWER);
             question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
         }
     }
@@ -283,7 +283,7 @@ public class QuestionService {
         try {
             if (cell == null) {
                 question.setCrtNo(-1);
-                authorErrorService.addAuthorError(question, MyUtil.MISSING_POINTS);
+                authorErrorService.addAuthorError(author, question, MyUtil.MISSING_POINTS);
             } else {
                 CellType cellType = cell.getCellType();
                 if (cellType == CellType.STRING) {
@@ -292,16 +292,16 @@ public class QuestionService {
                     result = cell.getNumericCellValue();
                 } else {
                     question.setCrtNo(cell.getRowIndex());
-                    authorErrorService.addAuthorError(question, MyUtil.NOT_NUMERIC_COLUMN);
+                    authorErrorService.addAuthorError(author, question, MyUtil.NOT_NUMERIC_COLUMN);
                 }
             }
         } catch (Exception e) {
-            authorErrorService.addAuthorError(question, MyUtil.DATATYPE_ERROR);
+            authorErrorService.addAuthorError(author, question, MyUtil.DATATYPE_ERROR);
             String logMsg = e.getMessage();
             if (logMsg.length() > 512) {
                 logMsg = logMsg.substring(0, 512);
             }
-            authorErrorService.addAuthorError(question, logMsg);
+            authorErrorService.addAuthorError(author, question, logMsg);
         }
         return result;
     }
@@ -345,15 +345,15 @@ public class QuestionService {
                 }
             }
             if (result.isEmpty()) {
-                authorErrorService.addAuthorError(question, MyUtil.MISSING_ANSWER);
+                authorErrorService.addAuthorError(author, question, MyUtil.MISSING_ANSWER);
             }
         } catch (Exception e) {
-            authorErrorService.addAuthorError(question, MyUtil.DATATYPE_ERROR);
+            authorErrorService.addAuthorError(author, question, MyUtil.DATATYPE_ERROR);
             String logMsg = e.getMessage();
             if (logMsg.length() > 512) {
                 logMsg = logMsg.substring(0, 512);
             }
-            authorErrorService.addAuthorError(question, logMsg);
+            authorErrorService.addAuthorError(author, question, logMsg);
         }
         return result;
     }
@@ -367,7 +367,7 @@ public class QuestionService {
             if (logMsg.length() > 512) {
                 logMsg = logMsg.substring(0, 512);
             }
-            authorErrorService.addAuthorError(question, logMsg);
+            authorErrorService.addAuthorError(author, question, logMsg);
             return false;
         }
     }

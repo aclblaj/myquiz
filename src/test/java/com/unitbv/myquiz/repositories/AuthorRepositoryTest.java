@@ -23,22 +23,24 @@ class AuthorRepositoryTest {
     @Test
     void save() {
         Author author = new Author();
-        author.setName("test name 20 dec");
-        author.setInitials("TN");
+        author.setName("Max Mustermann");
+        author.setInitials("MM");
 
         Set<AuthorError> errors = new HashSet<>();
 
-        AuthorError authorError = new AuthorError();
-        authorError.setDescription("test error");
-//        authorErrorRepository.save(authorError);
+        AuthorError authorError1 = new AuthorError();
+        authorError1.setDescription("Duplicate author");
+        authorError1.setAuthor(author);
 
-        errors.add(authorError);
+        errors.add(authorError1);
 
-        authorError = new AuthorError();
-        authorError.setDescription("test error 2");
-//        authorErrorRepository.save(authorError);
+        AuthorError authorError2 = new AuthorError();
+        authorError2.setDescription("Missing value");
+        authorError2.setAuthor(author);
 
-        errors.add(authorError);
+        errors.add(authorError2);
+
+        author.setAuthorErrors(errors);
 
         author = authorRepository.save(author);
         assertNotNull(author.getId());
@@ -46,6 +48,10 @@ class AuthorRepositoryTest {
         System.out.println("id: " + author.getId());
         System.out.println("author: " + author.toString());
 
-        //authorRepository.delete(author);
+        authorRepository.delete(author);
     }
+
+    // create test to save an author having 3 author errors
+
+
 }

@@ -1,5 +1,6 @@
 package com.unitbv.myquiz.entities;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -11,8 +12,6 @@ import jakarta.persistence.ManyToOne;
 
 @Entity
 public class AuthorError {
-    String name;
-    String initials;
     @Column(length = 512)
     String description;
     Integer rowNumber;
@@ -27,10 +26,7 @@ public class AuthorError {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-//    @Column(name = "id", nullable = false)
     private Long id;
-
-
 
     @ManyToOne
     @JoinColumn(name = "author_id")
@@ -55,22 +51,6 @@ public class AuthorError {
         this.rowNumber = rowNumber;
     }
 
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getInitials() {
-        return initials;
-    }
-
-    public void setInitials(String initials) {
-        this.initials = initials;
-    }
-
     public String getDescription() {
         return description;
     }
@@ -79,16 +59,13 @@ public class AuthorError {
         this.description = description;
     }
 
-
     @Override
     public String toString() {
         return "AuthorError{" +
-                "name='" + name + '\'' +
-                ", initials='" + initials + '\'' +
+                "author=" + author +
                 ", description='" + description + '\'' +
                 ", rowNumber=" + rowNumber +
                 ", id=" + id +
-                ", author=" + author +
                 '}';
     }
 }

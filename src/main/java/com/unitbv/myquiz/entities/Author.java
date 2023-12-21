@@ -18,8 +18,6 @@ public class Author {
     String initials;
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-//    @Column(name = "author_id", nullable = false)
-    @Column(insertable=false, updatable=false)
     private Long id;
 
     @OneToMany(mappedBy = "author", cascade = CascadeType.ALL)
@@ -28,17 +26,17 @@ public class Author {
     public Author() {
     }
 
+    public Author(String name, String initials) {
+        this.name = name;
+        this.initials = initials;
+    }
+
     public Set<AuthorError> getAuthorErrors() {
         return authorErrors;
     }
 
     public void setAuthorErrors(Set<AuthorError> authorErrors) {
         this.authorErrors = authorErrors;
-    }
-
-    public Author(String name, String initials) {
-        this.name = name;
-        this.initials = initials;
     }
 
     public Long getId() {
