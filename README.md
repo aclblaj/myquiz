@@ -1,7 +1,15 @@
-# myquiz
-Import multiple choice questions from xlsx files into postgresql database and export them to moodle xml format
+## myquiz
+Import of multiple choice questions from xlsx files into postgresql database and export them to moodle xml format.
+The import can be made by adapting and running the unit tests.
 
-# Remarks
+The first sheet of the input file is read and its header contains the next structure:
+
+| No | Title | Text | PR1 | Response 1 | PR2 | Response 2 | PR3 | Response 3 | PR4 | Response 4 |
+
+
+The application is written in Java 17 and uses Spring Boot 3.1.5 and Maven 3.8.2.
+
+## Remarks
 - Download with: git clone https://github.com/aclblaj/myquiz.git
 - Open in IntelliJ or Eclipse, in IntelliJ, access project structure and set jdk to java 17
 - Source files should be available into a subfolder: "inpQ1\John Doe_123\fis.xlsx"
@@ -17,4 +25,4 @@ UPDATE pg_database SET encoding = pg_char_to_encoding('UTF8') WHERE datname = 'm
 SELECT datname, pg_encoding_to_char(encoding) AS encoding FROM pg_database WHERE datname = 'myQuiz'
 ```
 - Adapt the connection string inside the application.properties file (e.g switch to: spring.datasource.url=jdbc:postgresql://localhost:5432/myQuiz)
-- Change path to analysez files and run the unit test parseExcelFilesFromFolder from the QuestionServiceTest test class
+- Change path to files and run the unit test parseExcelFilesFromFolder from the QuestionServiceTest test class
