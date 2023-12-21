@@ -1,5 +1,6 @@
 package com.unitbv.myquiz.entities;
 
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -7,6 +8,8 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.SequenceGenerator;
 
 @Entity
@@ -29,8 +32,10 @@ public class Question {
     Double weightResponse4;
     @Column(length = 1024)
     String response4;
-    String author;
-    String initiale;
+
+    @ManyToOne(cascade = {CascadeType.MERGE})
+    @JoinColumn(name = "author_id")
+    Author author;
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "question_gen")
@@ -41,6 +46,13 @@ public class Question {
     public Question() {
     }
 
+    public Author getAuthor() {
+        return author;
+    }
+
+    public void setAuthor(Author author) {
+        this.author = author;
+    }
     public QuestionType getType() {
         return type;
     }
@@ -145,24 +157,22 @@ public class Question {
         this.response4 = response4;
     }
 
-    public String getAuthor() {
-        return author;
-    }
-
-    public void setAuthor(String author) {
-        this.author = author;
-    }
-
-    public String getInitiale() {
-        return initiale;
-    }
-
-    public void setInitiale(String initiale) {
-        this.initiale = initiale;
-    }
-
     @Override
     public String toString() {
-        return "Question{" + "crtNo=" + crtNo + ", title='" + title + '\'' + ", text='" + text + '\'' + ", type=" + type + ", weightResponse1=" + weightResponse1 + ", response1='" + response1 + '\'' + ", weightResponse2=" + weightResponse2 + ", response2='" + response2 + '\'' + ", weightResponse3=" + weightResponse3 + ", response3='" + response3 + '\'' + ", weightResponse4=" + weightResponse4 + ", response4='" + response4 + '\'' + ", author='" + author + '\'' + ", initiale='" + initiale + '\'' + ", id=" + id + '}';
+        return "Question{" +
+                "crtNo=" + crtNo +
+                ", title='" + title + '\'' +
+                ", text='" + text + '\'' +
+                ", type=" + type +
+                ", weightResponse1=" + weightResponse1 +
+                ", response1='" + response1 + '\'' +
+                ", weightResponse2=" + weightResponse2 +
+                ", response2='" + response2 + '\'' +
+                ", weightResponse3=" + weightResponse3 +
+                ", response3='" + response3 + '\'' +
+                ", weightResponse4=" + weightResponse4 +
+                ", response4='" + response4 + '\'' +
+                ", id=" + id +
+                '}';
     }
 }

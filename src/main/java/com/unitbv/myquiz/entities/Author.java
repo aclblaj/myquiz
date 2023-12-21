@@ -23,12 +23,23 @@ public class Author {
     @OneToMany(mappedBy = "author", cascade = CascadeType.ALL)
     Set<AuthorError> authorErrors;
 
+    @OneToMany(mappedBy = "author", cascade = CascadeType.ALL)
+    Set<Question> questions;
+
     public Author() {
     }
 
     public Author(String name, String initials) {
         this.name = name;
         this.initials = initials;
+    }
+
+    public Set<Question> getQuestions() {
+        return questions;
+    }
+
+    public void setQuestions(Set<Question> questions) {
+        this.questions = questions;
     }
 
     public Set<AuthorError> getAuthorErrors() {

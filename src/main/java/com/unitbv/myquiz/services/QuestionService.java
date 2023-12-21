@@ -87,8 +87,7 @@ public class QuestionService {
         } else {
             logger.info("Not readable target file: {}", folder.getAbsolutePath());
             Question question = new Question();
-            question.setAuthor(author.getName());
-            question.setInitiale(author.getInitials());
+            question.setAuthor(author);
             question.setCrtNo(-1);
             authorErrorService.addAuthorError(author, question, MyUtil.ERROR_WRONG_FILE_TYPE);
         }
@@ -103,8 +102,7 @@ public class QuestionService {
 
             Sheet sheet = workbook.getSheetAt(0); // Get the first sheet
             Question question = new Question();
-            question.setAuthor(author.getName());
-            question.setInitiale(author.getInitials());
+            question.setAuthor(author);
             question.setCrtNo(0);
             question.setType(QuestionType.MULTICHOICE);
 
@@ -119,8 +117,7 @@ public class QuestionService {
                 int currentRowNumber = row.getRowNum();
 
                 question = new Question();
-                question.setAuthor(author.getName());
-                question.setInitiale(author.getInitials());
+                question.setAuthor(author);
                 question.setCrtNo(currentRowNumber);
                 question.setType(QuestionType.MULTICHOICE);
 

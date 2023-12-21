@@ -1,5 +1,6 @@
 package com.unitbv.myquiz.repositories;
 
+import com.unitbv.myquiz.entities.Author;
 import com.unitbv.myquiz.entities.Question;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,6 +36,13 @@ class QuestionRepositoryTest {
     private long addTestQuestion() {
         Question question = new Question();
         question.setTitle("Test question");
+
+        Author author = new Author();
+        author.setName("Test author");
+        author.setInitials("TA");
+
+        question.setAuthor(author);
+
         question = questionRepository.save(question);
         return question.getId();
     }
