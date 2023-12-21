@@ -27,4 +27,5 @@ public class MyUtil {
     public static final String TITLE_NOT_STRING = "Title not string";
     public static final String MISSING_VALUES_LESS_THAN_11 = "Missing values - less than 11";
     public static final String INCOMPLETE_ASSIGNMENT_LESS_THAN_15_QUESTIONS = "Incomplete assignment - less than 15 questions";
+    public static final String ERROR_WRONG_FILE_TYPE = "Wrong file type";
 }
