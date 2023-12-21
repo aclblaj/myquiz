@@ -30,7 +30,7 @@ public class ExportService {
             String xmlQ;
             for (Question question : questions) {
                 xmlQ = convertToXml(question);
-                writer.write("\t<!-- question: " + question.getInitiale() + "  -->");
+                writer.write("\t<!-- question: " + question.getAuthor().getInitials() + "  -->");
                 writer.newLine(); // Write a new line
                 writer.write(xmlQ);
                 writer.newLine(); // Write a new line
@@ -46,7 +46,7 @@ public class ExportService {
     private String convertToXml(Question question) {
         String xml = "";
         xml += "<question type=\"multichoice\"><name><text>";
-        xml += question.getInitiale() + "-" + question.getTitle();
+        xml += question.getAuthor().getInitials() + "-" + question.getTitle();
         xml += "</text></name><questiontext format=\"html\"><text><![CDATA[";
         xml += question.getText();
         xml += "]]></text></questiontext><generalfeedback format=\"html\"><text></text></generalfeedback><defaultgrade>1.0000000</defaultgrade><penalty>0.3333333</penalty><hidden>0</hidden><idnumber></idnumber><single>false</single><shuffleanswers>true</shuffleanswers><answernumbering>abc</answernumbering><showstandardinstruction>1</showstandardinstruction><correctfeedback format=\"html\"><text>Your answer is correct.</text></correctfeedback><partiallycorrectfeedback format=\"html\"><text>Your answer is partially correct.</text></partiallycorrectfeedback><incorrectfeedback format=\"html\"><text>Your answer is incorrect.</text></incorrectfeedback><shownumcorrect/><answer fraction=\"";
