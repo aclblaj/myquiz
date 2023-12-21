@@ -10,7 +10,9 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
@@ -19,13 +21,14 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 @Service
 public class QuestionService {
 
 
-    Logger logger = Logger.getLogger(QuestionService.class.getName());
+    Logger logger = org.slf4j.LoggerFactory.getLogger(QuestionService.class);
 
     @Autowired
     AuthorService authorService;
@@ -38,6 +41,10 @@ public class QuestionService {
 
     @Autowired
     EncodingSevice encodingSevice;
+
+    @Autowired
+    @Qualifier("readAndParseFileTaskExecutor")
+    private Executor readAndParseFileThreadPool;
 
     Author author;
     String initials;
@@ -60,21 +67,37 @@ public class QuestionService {
             author.setInitials(initials);
             author = authorService.saveAuthor(author);
 
-            readAndParseFirstSheetFromExcelFile(folder.getAbsolutePath());
+            // read and process files in parallel
+            CompletableFuture<String> message = CompletableFuture.supplyAsync(
+                    () -> this.readAndParseFirstSheetFromExcelFile(folder.getAbsolutePath()),
+                    readAndParseFileThreadPool
+            );
+
+            String msg;
+            try {
+                msg = message.get();
+                logger.info("File {} processed with result: {}", folder.getAbsolutePath(), msg);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                logger.info("Thread interrupted {}", e.getMessage());
+            } catch (Exception e) {
+                logger.error("Exception {}", e.getMessage());
+            }
             noFiles++;
         } else {
-            logger.info("Not readable target file: " + folder.getAbsolutePath());
+            logger.info("Not readable target file: {}", folder.getAbsolutePath());
             Question question = new Question();
             question.setAuthor(author.getName());
             question.setInitiale(author.getInitials());
             question.setCrtNo(-1);
-            authorErrorService.addAuthorError(author, question, "eroare template - fisierul nu are tipul cerut (excel)");
+            authorErrorService.addAuthorError(author, question, MyUtil.ERROR_WRONG_FILE_TYPE);
         }
         return noFiles;
     }
 
-    private void readAndParseFirstSheetFromExcelFile(String filePath) {
-        logger.info("Parse excel file: " + filePath);
+    private String readAndParseFirstSheetFromExcelFile(String filePath) {
+        String result = "ready";
+        logger.info("Start parse excel file: {}", filePath);
 
         try (FileInputStream fileInputStream = new FileInputStream(filePath);Workbook workbook = new XSSFWorkbook(fileInputStream)) {
 
@@ -88,7 +111,7 @@ public class QuestionService {
             if (sheet.getLastRowNum() < 15) {
                 authorErrorService.addAuthorError(author, question, MyUtil.INCOMPLETE_ASSIGNMENT_LESS_THAN_15_QUESTIONS);
                 logger.info(MyUtil.INCOMPLETE_ASSIGNMENT_LESS_THAN_15_QUESTIONS);
-                return;
+                return "error parsing file";
             }
 
             // Iterate over rows
@@ -132,6 +155,7 @@ public class QuestionService {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        return "ready";
     }
 
     private void saveQuestion(Question question) {
