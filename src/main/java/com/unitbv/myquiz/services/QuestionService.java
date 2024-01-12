@@ -439,4 +439,12 @@ public class QuestionService {
         return allAnswers;
     }
 
+    /**
+     * return all author questions
+     * @param authorId
+     * @return List<Question>
+     */
+    public List<Question> getQuestionsForAuthorId(Long authorId) {
+        return questionRepository.findAllByAuthorId(authorId);
+    }
 }
