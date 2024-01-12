@@ -33,7 +33,7 @@ public class Question {
     @Column(length = 1024)
     String response4;
 
-    @ManyToOne(cascade = {CascadeType.MERGE})
+    @ManyToOne(cascade = CascadeType.MERGE)
     @JoinColumn(name = "author_id")
     Author author;
 
