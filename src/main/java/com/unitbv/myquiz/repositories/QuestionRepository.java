@@ -18,4 +18,5 @@ public interface QuestionRepository extends PagingAndSortingRepository<Question,
     @Query(value = "SHOW server_encoding", nativeQuery = true)
     String getEncoding();
 
+    List<Question> findAllByAuthor_NameContainsIgnoreCase(String authorName);
 }

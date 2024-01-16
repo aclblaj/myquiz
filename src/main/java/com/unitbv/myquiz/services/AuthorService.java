@@ -2,11 +2,18 @@ package com.unitbv.myquiz.services;
 
 import com.unitbv.myquiz.entities.Author;
 import com.unitbv.myquiz.repositories.AuthorRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
+import java.util.List;
+
 @Service
 public class AuthorService {
+
+    Logger log = LoggerFactory.getLogger(AuthorService.class.getName());
 
     @Autowired
     AuthorRepository authorRepository;
@@ -31,6 +38,20 @@ public class AuthorService {
     }
 
     public Author saveAuthor(Author author) {
+        Author authorDb = authorRepository.findByName(author.getName()).orElse(null);
+        if (authorDb != null) {
+            log.info("Author '{}' already exists in the database", author.getName());
+            return authorDb;
+        }
         return authorRepository.save(author);
+    }
+
+    public List<Author> getAllAuthors() {
+        try {
+            return authorRepository.findAll();
+        } catch (Exception e) {
+            log.error("Error getting authors: {}", e.getMessage());
+            return Collections.emptyList();
+        }
     }
 }
