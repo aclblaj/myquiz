@@ -7,6 +7,8 @@ import com.unitbv.myquiz.repositories.AuthorErrorRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 @Service
 public class AuthorErrorService {
 
@@ -18,5 +20,13 @@ public class AuthorErrorService {
         authorError.setRowNumber(question.getCrtNo());
         authorError.setAuthor(author);
         authorErrorRepository.save(authorError);
+    }
+
+    public List<AuthorError> getErrorsForAuthorName(String authorName) {
+        return authorErrorRepository.findAllByAuthor_NameContainsIgnoreCase(authorName);
+    }
+
+    public List<AuthorError> getErrors() {
+        return authorErrorRepository.findAllByOrderByAuthor_NameAsc();
     }
 }

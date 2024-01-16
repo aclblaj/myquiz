@@ -87,6 +87,6 @@ public class ExportService {
         } else if (number <= -25) {
             return "-25";
         }
-        return "";
+        return "0";
     }
 }

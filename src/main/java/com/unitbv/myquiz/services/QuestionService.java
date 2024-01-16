@@ -55,17 +55,13 @@ public class QuestionService {
         if (folder.exists() && folder.isDirectory()) {
             File[] files = folder.listFiles();
             if (files != null) {
+
                 for (File file : files) {
                     noFiles = parseExcelFilesFromFolder(file, noFiles);
                 }
             }
         } else if (folder.isFile() && folder.getName().endsWith(".xlsx")) {
-            String authorName = authorService.getAuthorName(folder.getAbsolutePath());
-            initials = authorService.extractInitials(authorName);
-            author = new Author();
-            author.setName(authorName);
-            author.setInitials(initials);
-            author = authorService.saveAuthor(author);
+            saveAuthorName(folder);
 
             // read and process files in parallel
             CompletableFuture<String> message = CompletableFuture.supplyAsync(
@@ -86,12 +82,22 @@ public class QuestionService {
             noFiles++;
         } else {
             logger.info("Not readable target file: {}", folder.getAbsolutePath());
+            saveAuthorName(folder);
             Question question = new Question();
             question.setAuthor(author);
             question.setCrtNo(-1);
             authorErrorService.addAuthorError(author, question, MyUtil.ERROR_WRONG_FILE_TYPE);
         }
         return noFiles;
+    }
+
+    private void saveAuthorName(File folder) {
+        String authorName = authorService.getAuthorName(folder.getAbsolutePath());
+        initials = authorService.extractInitials(authorName);
+        author = new Author();
+        author.setName(authorName);
+        author.setInitials(initials);
+        author = authorService.saveAuthor(author);
     }
 
     private String readAndParseFirstSheetFromExcelFile(String filePath) {
@@ -152,7 +158,7 @@ public class QuestionService {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return "ready";
+        return result;
     }
 
     private void saveQuestion(Question question) {
@@ -203,7 +209,7 @@ public class QuestionService {
                 question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
             } else if (cellText.getCellType() == CellType.STRING) {
                 questionText = cellText.getStringCellValue();
-                if (questionText.length() == 0) {
+                if (questionText.isEmpty()) {
                     authorErrorService.addAuthorError(author, question, MyUtil.EMPTY_QUESTION_TEXT);
                     question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
                 }
@@ -446,5 +452,9 @@ public class QuestionService {
      */
     public List<Question> getQuestionsForAuthorId(Long authorId) {
         return questionRepository.findAllByAuthorId(authorId);
+    }
+
+    public List<Question> getQuestionsForAuthorName(String authorName) {
+        return questionRepository.findAllByAuthor_NameContainsIgnoreCase(authorName);
     }
 }

@@ -1,0 +1,36 @@
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="ISO-8859-1">
+    <title>Errors</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+
+<div th:insert="~{fragments::menu}"></div>
+
+<h2>All detected errors (order by author name)</h2>
+
+<table class="styled-table">
+    <thead>
+    <tr>
+        <th>Id</th>
+        <th>Row</th>
+        <th>Description</th>
+        <th>Author</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="err : ${errors}" class="data-row">
+        <td th:text="${err.id}"></td>
+        <td th:text="${err.row}"></td>
+        <td th:text="${err.description}"></td>
+        <td th:text="${err.authorName}"></td>
+    </tr>
+    <tr th:if="${#lists.isEmpty(errors)}" class="empty-row">
+        <td colspan="3">No errors</td>
+    </tr>
+    </tbody>
+</table>
+
+</body>
+</html>

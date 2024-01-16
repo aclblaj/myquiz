@@ -81,4 +81,34 @@ class QuestionServiceTest {
         result.forEach(question -> logger.info("Question: {}", question));
         assertNotNull(result);
     }
+
+    @Test
+    void getAuthorQuestionsByName() {
+        Author author = new Author("Erika Mustermann", "EM");
+
+        Set<Question> questions = new HashSet<>();
+
+        Question question1 = new Question();
+        question1.setAuthor(author);
+        question1.setCrtNo(1);
+        question1.setTitle("Title 1");
+        question1.setText("Text 1");
+        questions.add(question1);
+
+        Question question2 = new Question();
+        question2.setAuthor(author);
+        question2.setCrtNo(2);
+        question2.setTitle("Title 2");
+        question2.setText("Text 2");
+        questions.add(question2);
+
+        author.setQuestions(questions);
+        author = authorRepository.save(author);
+        logger.info("Author: {}", author);
+
+        List<Question> result = questionService.getQuestionsForAuthorName("Diana");
+        logger.info("Number of questions: {}", result.size());
+        result.forEach(question -> logger.info("Question: {}", question));
+        assertNotNull(result);
+    }
 }
