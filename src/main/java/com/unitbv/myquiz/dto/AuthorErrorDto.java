@@ -7,14 +7,16 @@ public class AuthorErrorDto {
     private Long id;
     private Integer row;
     private String description;
-
     private String authorName;
 
-    public AuthorErrorDto(Long id, Integer row, String description, String authorName) {
+    private String source;
+
+    public AuthorErrorDto(Long id, Integer row, String description, String authorName, String source) {
         this.id = id;
         this.row = row;
         this.description = description;
         this.authorName = authorName;
+        this.source = source;
     }
 
     public AuthorErrorDto(AuthorError error) {
@@ -22,6 +24,7 @@ public class AuthorErrorDto {
         this.row = error.getRowNumber();
         this.description = error.getDescription();
         this.authorName = error.getAuthor().getName();
+        this.source = error.getSource();
     }
 
     public Long getId() {
@@ -54,5 +57,13 @@ public class AuthorErrorDto {
 
     public void setAuthorName(String authorName) {
         this.authorName = authorName;
+    }
+
+    public String getSource() {
+        return source;
+    }
+
+    public void setSource(String source) {
+        this.source = source;
     }
 }
