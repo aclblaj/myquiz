@@ -103,6 +103,7 @@ public class QuestionService {
     private String readAndParseFirstSheetFromExcelFile(String filePath) {
         String result = "ready";
         logger.info("Start parse excel file: {}", filePath);
+        authorErrorService.setSource(filePath);
 
         try (FileInputStream fileInputStream = new FileInputStream(filePath);Workbook workbook = new XSSFWorkbook(fileInputStream)) {
 

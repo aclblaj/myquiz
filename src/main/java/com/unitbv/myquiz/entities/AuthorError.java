@@ -16,6 +16,8 @@ public class AuthorError {
     String description;
     Integer rowNumber;
 
+    String source;
+
     public Long getId() {
         return id;
     }
@@ -59,11 +61,20 @@ public class AuthorError {
         this.description = description;
     }
 
+    public String getSource() {
+        return source;
+    }
+
+    public void setSource(String source) {
+        this.source = source;
+    }
+
     @Override
     public String toString() {
         return "AuthorError{" +
                 "author=" + author +
                 ", description='" + description + '\'' +
+                ", source='" + source + '\'' +
                 ", rowNumber=" + rowNumber +
                 ", id=" + id +
                 '}';
