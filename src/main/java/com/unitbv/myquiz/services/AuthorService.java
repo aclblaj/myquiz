@@ -7,6 +7,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 
@@ -18,12 +21,26 @@ public class AuthorService {
     @Autowired
     AuthorRepository authorRepository;
     String authorName;
-    String initials;
 
     public String getAuthorName(String filePath) {
-        String authorPlus = filePath.substring(filePath.indexOf("inpQ1") + 6);
-        String authorName = authorPlus.substring(0, authorPlus.indexOf("_"));
+        authorName = MyUtil.USER_NAME_NOT_DETECTED;
+
+        Path path = Paths.get(filePath);
+        if (path.toFile().exists()) {
+            String lastDirectory = path.getParent().getFileName().toString();
+            int endIndex = lastDirectory.indexOf("_");
+            if (endIndex != -1) {
+                authorName = lastDirectory.substring(0, endIndex);
+            } else {
+                log.error("Directory name '{}' not in the correct format (e.g.: 'John Doe_123'), use default '{}'"
+                        , lastDirectory, authorName);
+            }
+
+        } else {
+            log.error("Directory not found: {}", filePath);
+        }
         return authorName;
+
     }
 
     public String extractInitials(String authorName) {

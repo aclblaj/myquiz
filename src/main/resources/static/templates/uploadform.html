@@ -1,0 +1,19 @@
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="ISO-8859-1">
+    <title>Author statistics</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+
+<div th:insert="~{fragments::menu}"></div>
+
+<h2> Upload and process single file with questions</h2>
+
+<form method="POST" enctype="multipart/form-data" th:action="@{/upload}">
+    <input type="file" name="file" />
+    <input type="text" name="username" placeholder="Enter your username" required/>
+    <input type="submit" value="Submit" />
+</form>
+</body>
+</html>
