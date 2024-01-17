@@ -39,4 +39,8 @@ public class AuthorErrorService {
         String filename = filePath.substring(pos + 1);
         sourceFile = filename;
     }
+
+    public void deleteAll() {
+        authorErrorRepository.deleteAll();
+    }
 }

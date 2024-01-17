@@ -472,4 +472,8 @@ public class QuestionService {
     public List<Question> getQuestionsForAuthorName(String authorName) {
         return questionRepository.findAllByAuthor_NameContainsIgnoreCase(authorName);
     }
+
+    public void deleteAllQuestions() {
+        questionRepository.deleteAll();
+    }
 }

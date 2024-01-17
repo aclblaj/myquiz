@@ -19,4 +19,6 @@ public interface QuestionRepository extends PagingAndSortingRepository<Question,
     String getEncoding();
 
     List<Question> findAllByAuthor_NameContainsIgnoreCase(String authorName);
+
+    void deleteAll();
 }
