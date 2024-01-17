@@ -13,4 +13,6 @@ public interface AuthorRepository extends PagingAndSortingRepository<Author, Lon
     List<Author> findAll();
 
     Optional<Author> findByName(String name);
+
+    void deleteAll();
 }

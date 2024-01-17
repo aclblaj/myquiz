@@ -71,4 +71,8 @@ public class AuthorService {
             return Collections.emptyList();
         }
     }
+
+    public void deleteAll() {
+        authorRepository.deleteAll();
+    }
 }

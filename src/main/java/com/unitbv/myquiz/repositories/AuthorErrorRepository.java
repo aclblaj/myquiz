@@ -12,4 +12,6 @@ public interface AuthorErrorRepository extends PagingAndSortingRepository<Author
     List<AuthorError> findAllByAuthor_NameContainsIgnoreCase(String authorName);
 
     List<AuthorError> findAllByOrderByAuthor_NameAsc();
+
+    void deleteAll();
 }
