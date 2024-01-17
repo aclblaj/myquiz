@@ -86,6 +86,7 @@ public class QuestionService {
             Question question = new Question();
             question.setAuthor(author);
             question.setCrtNo(-1);
+            authorErrorService.setSource(folder.getName());
             authorErrorService.addAuthorError(author, question, MyUtil.ERROR_WRONG_FILE_TYPE);
         }
         return noFiles;
@@ -100,7 +101,11 @@ public class QuestionService {
         author = authorService.saveAuthor(author);
     }
 
-    private String readAndParseFirstSheetFromExcelFile(String filePath) {
+    public void setAuthor(Author author) {
+        this.author = author;
+    }
+
+    public String readAndParseFirstSheetFromExcelFile(String filePath) {
         String result = "ready";
         logger.info("Start parse excel file: {}", filePath);
         authorErrorService.setSource(filePath);
@@ -118,7 +123,7 @@ public class QuestionService {
                 logger.info(MyUtil.INCOMPLETE_ASSIGNMENT_LESS_THAN_15_QUESTIONS);
                 return "error parsing file";
             }
-
+            int consecutiveEmptyRows = 0;
             // Iterate over rows
             for (Row row : sheet) {
                 int currentRowNumber = row.getRowNum();
@@ -138,6 +143,15 @@ public class QuestionService {
                 }
 
                 int noNotNull = countNotNullValues(row);
+                if (noNotNull == 0) {
+                    consecutiveEmptyRows++;
+                    // stop processing when more than 3 consecutive empty rows detected
+                    if (consecutiveEmptyRows > 2) {
+                        break;
+                    } else {
+                        continue;
+                    }
+                }
                 if (noNotNull < 11) {
                     authorErrorService.addAuthorError(author, question, MyUtil.MISSING_VALUES_LESS_THAN_11);
                     if (isHeaderRow) {

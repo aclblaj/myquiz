@@ -18,8 +18,8 @@ class ExportServiceTest {
 
     @Test
     void writeToFileITSecQ1() {
-        String OUTPUT_FILE = "C:\\Temp\\inpQ1-result\\\\inpQ2-MIBD-Q1.xml";
-        String CATEGORY = "2024-MIBD-Q1-001";
+        String CATEGORY = "2024-MIDB-NA-01";
+        String OUTPUT_FILE = "C:\\work\\_mi\\2024-ITSec\\" + CATEGORY + ".xml";
 
         int result = exportService.writeToFile(OUTPUT_FILE, CATEGORY);
         logger.info("Number of exported questions: " + result);
