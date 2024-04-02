@@ -106,74 +106,144 @@ public class QuestionService {
     }
 
     public String readAndParseFirstSheetFromExcelFile(String filePath) {
-        String result = "ready";
+        String message = "ready";
         logger.info("Start parse excel file: {}", filePath);
         authorErrorService.setSource(filePath);
 
         try (FileInputStream fileInputStream = new FileInputStream(filePath);Workbook workbook = new XSSFWorkbook(fileInputStream)) {
 
             Sheet sheet = workbook.getSheetAt(0); // Get the first sheet
-            Question question = new Question();
-            question.setAuthor(author);
-            question.setCrtNo(0);
-            question.setType(QuestionType.MULTICHOICE);
+            message = processMultichoicesSheet(sheet); // first sheet contains the multi choices questions
+            if (message != null) return message;
+            sheet = workbook.getSheetAt(1); // Get the second sheet - true/false questions
+            message = processTruefalseSheet(sheet); // second sheet contains the true/false questions
 
-            if (sheet.getLastRowNum() < 15) {
-                authorErrorService.addAuthorError(author, question, MyUtil.INCOMPLETE_ASSIGNMENT_LESS_THAN_15_QUESTIONS);
-                logger.info(MyUtil.INCOMPLETE_ASSIGNMENT_LESS_THAN_15_QUESTIONS);
-                return "error parsing file";
-            }
-            int consecutiveEmptyRows = 0;
-            // Iterate over rows
-            for (Row row : sheet) {
-                int currentRowNumber = row.getRowNum();
-
-                question = new Question();
-                question.setAuthor(author);
-                question.setCrtNo(currentRowNumber);
-                question.setType(QuestionType.MULTICHOICE);
-
-                boolean isHeaderRow = false;
-
-                if (row.getCell(3) != null) {
-                    if (row.getCell(3).getCellType() == CellType.STRING && (row.getCell(3).getStringCellValue().contains("PR1") || row.getCell(3).getStringCellValue().contains("Punctaj"))) {
-                        isHeaderRow = true;
-                        continue; // skip header line
-                    }
-                }
-
-                int noNotNull = countNotNullValues(row);
-                if (noNotNull == 0) {
-                    consecutiveEmptyRows++;
-                    // stop processing when more than 3 consecutive empty rows detected
-                    if (consecutiveEmptyRows > 2) {
-                        break;
-                    } else {
-                        continue;
-                    }
-                }
-                if (noNotNull < 11) {
-                    authorErrorService.addAuthorError(author, question, MyUtil.MISSING_VALUES_LESS_THAN_11);
-                    if (isHeaderRow) {
-                        break;
-                    } else {
-                        question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
-                    }
-                }
-
-
-                convertRowToQuestion(row, question);
-
-                checkQuestionTotalPoint(question);
-
-                checkQuestionStrings(question);
-
-                saveQuestion(question);
-            }
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return result;
+        return message;
+    }
+
+    private String processTruefalseSheet(Sheet sheet) {
+        Question question = new Question();
+        question.setAuthor(author);
+        question.setCrtNo(0);
+        question.setType(QuestionType.MULTICHOICE);
+
+        if (sheet.getLastRowNum() < 15) {
+            authorErrorService.addAuthorError(author, question, MyUtil.INCOMPLETE_ASSIGNMENT_LESS_THAN_15_QUESTIONS);
+            logger.info(MyUtil.INCOMPLETE_ASSIGNMENT_LESS_THAN_15_QUESTIONS);
+            return "error parsing file";
+        }
+        int consecutiveEmptyRows = 0;
+        // Iterate over rows
+        for (Row row : sheet) {
+            int currentRowNumber = row.getRowNum();
+
+            question = new Question();
+            question.setAuthor(author);
+            question.setCrtNo(currentRowNumber);
+            question.setType(QuestionType.MULTICHOICE);
+
+            boolean isHeaderRow = false;
+
+            if (row.getCell(3) != null) {
+                if (row.getCell(3).getCellType() == CellType.STRING && (row.getCell(3).getStringCellValue().contains("PR1") || row.getCell(3).getStringCellValue().contains("Punctaj"))) {
+                    isHeaderRow = true;
+                    continue; // skip header line
+                }
+            }
+
+            int noNotNull = countNotNullValues(row);
+            if (noNotNull == 0) {
+                consecutiveEmptyRows++;
+                // stop processing when more than 3 consecutive empty rows detected
+                if (consecutiveEmptyRows > 2) {
+                    break;
+                } else {
+                    continue;
+                }
+            }
+            if (noNotNull < 11) {
+                authorErrorService.addAuthorError(author, question, MyUtil.MISSING_VALUES_LESS_THAN_11);
+                if (isHeaderRow) {
+                    break;
+                } else {
+                    question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+                }
+            }
+
+
+            convertRowToQuestion(row, question);
+
+            checkQuestionTotalPoint(question);
+
+            checkQuestionStrings(question);
+
+            saveQuestion(question);
+        }
+        return null;
+    }
+
+    private String processMultichoicesSheet(Sheet sheet) {
+        Question question = new Question();
+        question.setAuthor(author);
+        question.setCrtNo(0);
+        question.setType(QuestionType.MULTICHOICE);
+
+        if (sheet.getLastRowNum() < 15) {
+            authorErrorService.addAuthorError(author, question, MyUtil.INCOMPLETE_ASSIGNMENT_LESS_THAN_15_QUESTIONS);
+            logger.info(MyUtil.INCOMPLETE_ASSIGNMENT_LESS_THAN_15_QUESTIONS);
+            return "error parsing file";
+        }
+        int consecutiveEmptyRows = 0;
+        // Iterate over rows
+        for (Row row : sheet) {
+            int currentRowNumber = row.getRowNum();
+
+            question = new Question();
+            question.setAuthor(author);
+            question.setCrtNo(currentRowNumber);
+            question.setType(QuestionType.MULTICHOICE);
+
+            boolean isHeaderRow = false;
+
+            if (row.getCell(3) != null) {
+                if (row.getCell(3).getCellType() == CellType.STRING && (row.getCell(3).getStringCellValue().contains("PR1") || row.getCell(3).getStringCellValue().contains("Punctaj"))) {
+                    isHeaderRow = true;
+                    continue; // skip header line
+                }
+            }
+
+            int noNotNull = countNotNullValues(row);
+            if (noNotNull == 0) {
+                consecutiveEmptyRows++;
+                // stop processing when more than 3 consecutive empty rows detected
+                if (consecutiveEmptyRows > 2) {
+                    break;
+                } else {
+                    continue;
+                }
+            }
+            if (noNotNull < 11) {
+                authorErrorService.addAuthorError(author, question, MyUtil.MISSING_VALUES_LESS_THAN_11);
+                if (isHeaderRow) {
+                    break;
+                } else {
+                    question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+                }
+            }
+
+
+            convertRowToQuestion(row, question);
+
+            checkQuestionTotalPoint(question);
+
+            checkQuestionStrings(question);
+
+            saveQuestion(question);
+        }
+        return null;
     }
 
     private void saveQuestion(Question question) {

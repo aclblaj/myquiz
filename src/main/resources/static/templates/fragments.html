@@ -9,9 +9,9 @@
     <a th:href="@{'/authors'}" class="menu-item">Authors</a>
     <a th:href="@{'/errors'}" class="menu-item">Errors</a>
     <a th:href="@{'/uploadform'}" class="menu-item">Upload</a>
-    <a th:href="@{'/questions/deleteall'}" class="menu-item">Delete all</a>
-    <!--    <a th:href="@{'/authors/' + ${authorDto.name}}" class="menu-item">Authors</a>-->
-        <a th:href="@{'/about'}" class="menu-item">About</a>
+    <a th:href="@{'/questions/deleteall'}" class="menu-item"
+       th:onclick="return confirm('Are you sure you want to delete all the database records?')">Delete all</a>
+    <a th:href="@{'/about'}" class="menu-item">About</a>
 </div>
 
 </body>

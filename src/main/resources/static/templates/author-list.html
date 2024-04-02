@@ -17,8 +17,8 @@
         <th>Name</th>
         <th>Link</th>
         <th>Initials</th>
-        <th>NumberOfQuestions</th>
-        <th>numberOfErrors</th>
+        <th>Number of questions</th>
+        <th>Number of errors</th>
     </tr>
     </thead>
     <tbody>
@@ -26,7 +26,6 @@
         <td th:text="${authorDto.id}"></td>
         <td th:text="${authorDto.name}"></td>
         <td>
-            <!--            <a th:href="@{/author/questions/{id}(id=${authorDto.id})}">Questions</a>-->
             <a th:href="@{'/questions/author/' + ${authorDto.name}}">view</a>
         </td>
         <td th:text="${authorDto.initials}"></td>
