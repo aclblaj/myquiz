@@ -29,7 +29,10 @@ public class HomeWSController {
     }
 
     @GetMapping(value = "/about")
-    public String about() {
+    public String about(Model model) {
+        String version = System.getProperty("java.runtime.version");
+        String os = System.getProperty("os.name");
+        model.addAttribute("version", version + " on " + os);
         return "about";
     }
 

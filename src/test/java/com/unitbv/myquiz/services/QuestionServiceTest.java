@@ -34,7 +34,7 @@ class QuestionServiceTest {
     void parseExcelFilesFromFolderITSecQ1() {
         long startTime = (int) System.currentTimeMillis();
         if (encodingSevice.checkServerEncoding()) return;
-        final String XLSX_DIR_WITH_FILES = "C:\\work\\_mi\\2024-BD2\\inpQ1\\";
+        final String XLSX_DIR_WITH_FILES = "C:\\work\\_mi\\2024-VDB\\inpQ2\\";
         File folder = new File(XLSX_DIR_WITH_FILES);
         int result = questionService.parseExcelFilesFromFolder(folder, 0);
         logger.info("Number of parsed excel files: {}", result);
