@@ -114,9 +114,9 @@ public class QuestionService {
 
             Sheet sheet = workbook.getSheetAt(0); // Get the first sheet
             message = processMultichoicesSheet(sheet); // first sheet contains the multi choices questions
-            if (message != null) return message;
-            sheet = workbook.getSheetAt(1); // Get the second sheet - true/false questions
-            message = processTruefalseSheet(sheet); // second sheet contains the true/false questions
+//            if (message != null) return message;
+//            sheet = workbook.getSheetAt(1); // Get the second sheet - true/false questions
+//            message = processTruefalseSheet(sheet); // second sheet contains the true/false questions
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -130,11 +130,11 @@ public class QuestionService {
         question.setCrtNo(0);
         question.setType(QuestionType.MULTICHOICE);
 
-        if (sheet.getLastRowNum() < 15) {
-            authorErrorService.addAuthorError(author, question, MyUtil.INCOMPLETE_ASSIGNMENT_LESS_THAN_15_QUESTIONS);
-            logger.info(MyUtil.INCOMPLETE_ASSIGNMENT_LESS_THAN_15_QUESTIONS);
-            return "error parsing file";
-        }
+//        if (sheet.getLastRowNum() < 15) {
+//            authorErrorService.addAuthorError(author, question, MyUtil.INCOMPLETE_ASSIGNMENT_LESS_THAN_15_QUESTIONS);
+//            logger.info(MyUtil.INCOMPLETE_ASSIGNMENT_LESS_THAN_15_QUESTIONS);
+//            return "error parsing file";
+//        }
         int consecutiveEmptyRows = 0;
         // Iterate over rows
         for (Row row : sheet) {
@@ -219,7 +219,7 @@ public class QuestionService {
             if (noNotNull == 0) {
                 consecutiveEmptyRows++;
                 // stop processing when more than 3 consecutive empty rows detected
-                if (consecutiveEmptyRows > 2) {
+                if (consecutiveEmptyRows > 20) {
                     break;
                 } else {
                     continue;
