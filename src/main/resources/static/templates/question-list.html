@@ -12,6 +12,8 @@
 
 <p>Author:<span th:text="${authorName}"></span></p>
 
+<b>Multiple choice questions: </b>
+
 <table class="styled-table">
     <thead>
     <tr>
@@ -45,7 +47,37 @@
         <td th:text="${questionDto.authorName}"></td>
     </tr>
     <tr th:if="${#lists.isEmpty(questions)}" class="empty-row">
-        <td colspan="12">No data</td>
+        <td colspan="12">No multi choice questions</td>
+    </tr>
+    </tbody>
+</table>
+<br>
+<b>True false questions: </b>
+
+<table class="styled-table">
+    <thead>
+    <tr>
+        <th>Id</th>
+        <th>Title</th>
+        <th>Text</th>
+        <th>Weight TRUE</th>
+        <th>Weight FALSE</th>
+        <th>Response</th>
+        <th>Author Name</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="questionDto : ${questionsTF}" class="data-row">
+        <td th:text="${questionDto.id}"></td>
+        <td th:text="${questionDto.title}"></td>
+        <td th:text="${questionDto.text}"></td>
+        <td th:text="${questionDto.weightTrue}"></td>
+        <td th:text="${questionDto.weightFalse}"></td>
+        <td th:text="${questionDto.response1}"></td>
+        <td th:text="${questionDto.authorName}"></td>
+    </tr>
+    <tr th:if="${#lists.isEmpty(questionsTF)}" class="empty-row">
+        <td colspan="12">No true false questions</td>
     </tr>
     </tbody>
 </table>

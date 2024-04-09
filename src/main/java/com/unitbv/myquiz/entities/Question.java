@@ -33,6 +33,25 @@ public class Question {
     @Column(length = 1024)
     String response4;
 
+    Double weightTrue;
+    Double weightFalse;
+
+    public Double getWeightTrue() {
+        return weightTrue;
+    }
+
+    public void setWeightTrue(Double weightTrue) {
+        this.weightTrue = weightTrue;
+    }
+
+    public Double getWeightFalse() {
+        return weightFalse;
+    }
+
+    public void setWeightFalse(Double weightFalse) {
+        this.weightFalse = weightFalse;
+    }
+
     @ManyToOne(cascade = CascadeType.MERGE)
     @JoinColumn(name = "author_id")
     Author author;

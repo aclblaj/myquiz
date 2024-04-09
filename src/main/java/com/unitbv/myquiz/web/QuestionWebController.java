@@ -2,6 +2,8 @@ package com.unitbv.myquiz.web;
 
 import com.unitbv.myquiz.dto.AuthorErrorDto;
 import com.unitbv.myquiz.dto.QuestionDto;
+import com.unitbv.myquiz.entities.Question;
+import com.unitbv.myquiz.entities.QuestionType;
 import com.unitbv.myquiz.services.AuthorErrorService;
 import com.unitbv.myquiz.services.AuthorService;
 import com.unitbv.myquiz.services.QuestionService;
@@ -46,8 +48,19 @@ public class QuestionWebController {
     @GetMapping("/author/{authorName}")
     public String getQuestions(Model model, @PathVariable String authorName) {
         List<QuestionDto> questionDtos = new ArrayList<>();
-        questionService.getQuestionsForAuthorName(authorName).forEach(question -> questionDtos.add(new QuestionDto(question)));
+        List<QuestionDto> questionDtosTF = new ArrayList<>();
+        List<Question> allQ = questionService.getQuestionsForAuthorName(authorName);
+        allQ.forEach(question -> {
+            if (question.getType() == QuestionType.MULTICHOICE) {
+                questionDtos.add(new QuestionDto(question));
+            } else if (question.getType() == QuestionType.TRUEFALSE) {
+                questionDtosTF.add(new QuestionDto(question));
+            }
+        });
+
+
         model.addAttribute("questions", questionDtos);
+        model.addAttribute("questionsTF", questionDtosTF);
         model.addAttribute("authorName", authorName);
 
         List<AuthorErrorDto> authorErrorDtos = new ArrayList<>();

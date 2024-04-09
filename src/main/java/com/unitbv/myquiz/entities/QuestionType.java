@@ -2,8 +2,8 @@ package com.unitbv.myquiz.entities;
 
 public enum QuestionType {
     UNKNOWN(0),
-    MULTICHOICE(1);
-
+    MULTICHOICE(1),
+    TRUEFALSE(2);
     final int value;
 
     QuestionType(int value) {
