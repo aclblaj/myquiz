@@ -14,6 +14,8 @@ public class QuestionDto {
     private Double weightResponse2;
     private Double weightResponse3;
     private Double weightResponse4;
+    private Double weightTrue;
+    private Double weightFalse;
 
     private String authorName;
 
@@ -50,6 +52,8 @@ public class QuestionDto {
         this.weightResponse2 = question.getWeightResponse2();
         this.weightResponse3 = question.getWeightResponse3();
         this.weightResponse4 = question.getWeightResponse4();
+        this.weightTrue = question.getWeightTrue();
+        this.weightFalse = question.getWeightFalse();
         this.authorName = question.getAuthor().getName();
     }
 
@@ -141,6 +145,22 @@ public class QuestionDto {
         this.weightResponse4 = weightResponse4;
     }
 
+    public Double getWeightTrue() {
+        return weightTrue;
+    }
+
+    public void setWeightTrue(Double weightTrue) {
+        this.weightTrue = weightTrue;
+    }
+
+    public Double getWeightFalse() {
+        return weightFalse;
+    }
+
+    public void setWeightFalse(Double weightFalse) {
+        this.weightFalse = weightFalse;
+    }
+
     public String getAuthorName() {
         return authorName;
     }
@@ -148,6 +168,7 @@ public class QuestionDto {
     public void setAuthorName(String authorName) {
         this.authorName = authorName;
     }
+
 }
 
 

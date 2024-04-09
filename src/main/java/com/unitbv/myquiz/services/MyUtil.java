@@ -20,11 +20,13 @@ public class MyUtil {
     public static final String TEMPLATE_ERROR_2_4_POINTS_WRONG = "Template error - wrong sum for 2/4 points";
     public static final String TEMPLATE_ERROR_3_4_POINTS_WRONG = "Template error - wrong sum for 3/4 points";
     public static final String TEMPLATE_ERROR_4_4_POINTS_WRONG = "Template error - wrong sum for 4/4 points";
+    public static final String TEMPLATE_ERROR_TRUE_FALSE_POINTS_WRONG = "Template error - wrong sum for true false points";
 
     public static final String UNALLOWED_CHARS = "Save error - chars not supported";
     public static final String EMPTY_QUESTION_TEXT = "Empty question text";
     public static final String REMOVE_TEMPLATE_QUESTION = "Template question - to be removed";
     public static final String TITLE_NOT_STRING = "Title not string";
+    public static final String MISSING_VALUES_LESS_THAN_6 = "Missing values - the row with true false question contains less than 6 values";
     public static final String MISSING_VALUES_LESS_THAN_11 = "Missing values - less than 11";
     public static final String INCOMPLETE_ASSIGNMENT_LESS_THAN_15_QUESTIONS = "Incomplete assignment - less than 15 questions";
     public static final String ERROR_WRONG_FILE_TYPE = "Wrong file type";

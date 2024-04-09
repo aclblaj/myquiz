@@ -114,9 +114,9 @@ public class QuestionService {
 
             Sheet sheet = workbook.getSheetAt(0); // Get the first sheet
             message = processMultichoicesSheet(sheet); // first sheet contains the multi choices questions
-//            if (message != null) return message;
-//            sheet = workbook.getSheetAt(1); // Get the second sheet - true/false questions
-//            message = processTruefalseSheet(sheet); // second sheet contains the true/false questions
+            if (message != null) return message;
+            Sheet sheetTF = workbook.getSheetAt(1); // Get the second sheet - true/false questions
+            message = processTruefalseSheet(sheetTF); // second sheet contains the true/false questions
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -128,7 +128,7 @@ public class QuestionService {
         Question question = new Question();
         question.setAuthor(author);
         question.setCrtNo(0);
-        question.setType(QuestionType.MULTICHOICE);
+        question.setType(QuestionType.TRUEFALSE);
 
 //        if (sheet.getLastRowNum() < 15) {
 //            authorErrorService.addAuthorError(author, question, MyUtil.INCOMPLETE_ASSIGNMENT_LESS_THAN_15_QUESTIONS);
@@ -143,12 +143,16 @@ public class QuestionService {
             question = new Question();
             question.setAuthor(author);
             question.setCrtNo(currentRowNumber);
-            question.setType(QuestionType.MULTICHOICE);
+            question.setType(QuestionType.TRUEFALSE);
 
             boolean isHeaderRow = false;
 
             if (row.getCell(3) != null) {
-                if (row.getCell(3).getCellType() == CellType.STRING && (row.getCell(3).getStringCellValue().contains("PR1") || row.getCell(3).getStringCellValue().contains("Punctaj"))) {
+                if ((row.getCell(3).getCellType() == CellType.STRING &&
+                        (row.getCell(3).getStringCellValue().contains("PR1")
+                                || row.getCell(3).getStringCellValue().contains("Punctaj")
+                                || row.getCell(3).getStringCellValue().contains("TRUE")))
+                    || (row.getCell(3).getCellType() == CellType.BOOLEAN)) {
                     isHeaderRow = true;
                     continue; // skip header line
                 }
@@ -164,8 +168,8 @@ public class QuestionService {
                     continue;
                 }
             }
-            if (noNotNull < 11) {
-                authorErrorService.addAuthorError(author, question, MyUtil.MISSING_VALUES_LESS_THAN_11);
+            if (noNotNull < 6) {
+                authorErrorService.addAuthorError(author, question, MyUtil.MISSING_VALUES_LESS_THAN_6);
                 if (isHeaderRow) {
                     break;
                 } else {
@@ -174,11 +178,12 @@ public class QuestionService {
             }
 
 
-            convertRowToQuestion(row, question);
+//            convertRowToQuestion(row, question);
+            convertRowToTrueFalseQuestion(row, question);
 
-            checkQuestionTotalPoint(question);
+            checkTrueFalseQuestionTotalPoint(question);
 
-            checkQuestionStrings(question);
+//            checkQuestionStrings(question);
 
             saveQuestion(question);
         }
@@ -327,6 +332,64 @@ public class QuestionService {
         question.setResponse4(cleanAndConvert(getValueAsString(cellResponse4, question)));
     }
 
+    private void convertRowToTrueFalseQuestion(Row row, Question question) {
+        double cellNrCrtDouble = 0.0;
+
+        Cell cellNrCrt = row.getCell(0);
+        cellNrCrtDouble = convertCellToDouble(cellNrCrt, question);
+
+        Cell cellTitlu = row.getCell(1);
+        if (cellTitlu == null) {
+            authorErrorService.addAuthorError(author, question, MyUtil.MISSING_TITLE);
+            question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+        } else {
+            if (cellTitlu.getCellType() == CellType.NUMERIC) {
+                authorErrorService.addAuthorError(author, question, MyUtil.TITLE_NOT_STRING);
+                question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+            } else if (cellTitlu.getCellType() == CellType.STRING) {
+                question.setTitle(cellTitlu.getStringCellValue());
+                if (question.getTitle().length() < 2) {
+                    authorErrorService.addAuthorError(author, question, MyUtil.MISSING_TITLE);
+                    question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+                } else {
+                    if (MyUtil.forbiddenTitles.contains(question.getTitle())) {
+                        authorErrorService.addAuthorError(author, question, MyUtil.REMOVE_TEMPLATE_QUESTION + question.getTitle());
+                        question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+                    }
+                }
+            }
+        }
+        question.setTitle(cleanAndConvert(question.getTitle()));
+
+        String questionText = "";
+        Cell cellText = row.getCell(2);
+        if (cellText == null) {
+            authorErrorService.addAuthorError(author, question, MyUtil.EMPTY_QUESTION_TEXT);
+            question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+        } else {
+            if (cellText.getCellType() == CellType.NUMERIC) {
+                authorErrorService.addAuthorError(author, question, MyUtil.DATATYPE_ERROR);
+                question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+            } else if (cellText.getCellType() == CellType.STRING) {
+                questionText = cellText.getStringCellValue();
+                if (questionText.isEmpty()) {
+                    authorErrorService.addAuthorError(author, question, MyUtil.EMPTY_QUESTION_TEXT);
+                    question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+                }
+            }
+        }
+        question.setText(cleanAndConvert(questionText));
+
+        Cell cellPRTrue = row.getCell(3);
+        question.setWeightTrue(convertCellToDouble(cellPRTrue, question));
+
+        Cell cellPRFalse = row.getCell(4);
+        question.setWeightFalse(convertCellToDouble(cellPRFalse, question));
+
+        Cell cellResponse1 = row.getCell(5);
+        question.setResponse1(cleanAndConvert(getValueAsString(cellResponse1, question)));
+    }
+
     private void checkQuestionTotalPoint(Question question) {
         double total = question.getWeightResponse1() + question.getWeightResponse2() + question.getWeightResponse3() + question.getWeightResponse4();
         if (question.getWeightResponse1() == 25 && total != 100) {
@@ -346,6 +409,14 @@ public class QuestionService {
                 authorErrorService.addAuthorError(author, question, MyUtil.TEMPLATE_ERROR_1_4_POINTS_WRONG);
                 question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
             }
+        }
+    }
+
+    private void checkTrueFalseQuestionTotalPoint(Question question) {
+        double total = question.getWeightFalse() + question.getWeightTrue();
+        if ((question.getWeightTrue() == 100 && total != 100) || (question.getWeightFalse() == 100 && total != 100)) {
+            authorErrorService.addAuthorError(author, question, MyUtil.TEMPLATE_ERROR_TRUE_FALSE_POINTS_WRONG);
+            question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
         }
     }
 
