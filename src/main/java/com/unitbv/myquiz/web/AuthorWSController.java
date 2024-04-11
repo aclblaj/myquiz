@@ -1,11 +1,17 @@
 package com.unitbv.myquiz.web;
 
 import com.unitbv.myquiz.dto.AuthorDto;
+import com.unitbv.myquiz.entities.Author;
 import com.unitbv.myquiz.services.AuthorService;
+import com.unitbv.myquiz.services.AuthorServiceImpl;
+import com.unitbv.myquiz.services.MyUtil;
+import org.apache.commons.collections4.Bag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.util.ArrayList;
@@ -22,10 +28,30 @@ public class AuthorWSController {
         this.authorService = authorService;
     }
 
-    @GetMapping()
-    public String listAuthors(Model model) {
+    @GetMapping(value="/")
+    public String home(Model model) {
         List<AuthorDto> authorDtos = new ArrayList<>();
-        authorService.getAllAuthors().forEach(author -> authorDtos.add(new AuthorDto(author)));
+        int pageNo = 1;
+        Page<Author> page =  authorService.findPaginated(pageNo, MyUtil.PAGE_SIZE, "name", "desc");
+        page.stream().forEach(author -> authorDtos.add(authorService.getAuthorDTO(author)));
+        model.addAttribute("currentPage", pageNo);
+        model.addAttribute("totalPages", page.getTotalPages());
+        model.addAttribute("totalItems", page.getTotalElements());
+        model.addAttribute("authors", authorDtos);
+        return "author-list";
+    }
+
+    @GetMapping("/{pageNo}")
+    public String listAuthors(@PathVariable(value = "pageNo", required = false) Integer pageNo, Model model) {
+        List<AuthorDto> authorDtos = new ArrayList<>();
+        if (null == pageNo || pageNo < 1) {
+            pageNo = 1;
+        }
+        Page<Author> page =  authorService.findPaginated(pageNo, MyUtil.PAGE_SIZE, "name", "asc");
+        page.stream().forEach(author -> authorDtos.add(authorService.getAuthorDTO(author)));
+        model.addAttribute("currentPage", pageNo);
+        model.addAttribute("totalPages", page.getTotalPages());
+        model.addAttribute("totalItems", page.getTotalElements());
         model.addAttribute("authors", authorDtos);
         return "author-list";
     }

@@ -3,6 +3,7 @@ package com.unitbv.myquiz.services;
 import com.unitbv.myquiz.entities.Author;
 import com.unitbv.myquiz.entities.Question;
 import com.unitbv.myquiz.repositories.AuthorRepository;
+import com.unitbv.myquiz.util.TemplateType;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,11 +32,12 @@ class QuestionServiceTest {
     AuthorRepository authorRepository;
 
     @Test
-    void parseExcelFilesFromFolderITSecQ1() {
+    void parseExcelFilesFromFolder() {
         long startTime = (int) System.currentTimeMillis();
         if (encodingSevice.checkServerEncoding()) return;
-        final String XLSX_DIR_WITH_FILES = "C:\\work\\_mi\\2024-VDB\\inpQ2\\";
+        final String XLSX_DIR_WITH_FILES = "c:\\work\\inpQ1\\";
         File folder = new File(XLSX_DIR_WITH_FILES);
+        questionService.setTemplateType(TemplateType.Template2023);
         int result = questionService.parseExcelFilesFromFolder(folder, 0);
         logger.info("Number of parsed excel files: {}", result);
         long endTime = (int) System.currentTimeMillis();

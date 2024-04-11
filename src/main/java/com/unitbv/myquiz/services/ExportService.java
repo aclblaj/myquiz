@@ -1,6 +1,7 @@
 package com.unitbv.myquiz.services;
 
 import com.unitbv.myquiz.entities.Question;
+import com.unitbv.myquiz.entities.QuestionType;
 import com.unitbv.myquiz.repositories.QuestionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
@@ -17,10 +18,15 @@ public class ExportService {
 
     Logger logger = Logger.getLogger(ExportService.class.getName());
 
-    @Autowired
     QuestionRepository questionRepository;
+    @Autowired
+    public ExportService(QuestionRepository questionRepository) {
+        this.questionRepository = questionRepository;
+    }
     public int writeToFile(String filePath, String category) {
         int noOfQuestions = 0;
+        int cntMC = 0;
+        int cntTF = 0;
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
             writer.write(
                     "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" + "<quiz>\n" + "\t<!-- question: 0  -->\n" + "\t<question type=\"category\">\n" + "\t\t<category>\n" + "\t\t\t<text>" + category + "</text>\n" + "\t\t</category>\n" + "\t\t<info format=\"moodle_auto_format\">\n" + "\t\t\t<text>" + category + "</text>\n" + "\t\t</info>\n" + "\t\t<idnumber/>\n" + "\t</question>");
@@ -29,24 +35,35 @@ public class ExportService {
             List<Question> questions = questionRepository.findAll(Pageable.unpaged()).getContent();
             String xmlQ;
             for (Question question : questions) {
-                xmlQ = convertToXml(question);
-                writer.write("\t<!-- question: " + question.getAuthor().getInitials() + "  -->");
-                writer.newLine(); // Write a new line
-                writer.write(xmlQ);
-                writer.newLine(); // Write a new line
+                if (question.getType() == QuestionType.MULTICHOICE) {
+                    xmlQ = convertToXml(question);
+                    writer.write("\t<!-- question: " + question.getAuthor().getInitials() + "  -->");
+                    writer.newLine(); // Write a new line
+                    writer.write(xmlQ);
+                    writer.newLine(); // Write a new line
+                    cntMC++;
+                }
+                if (question.getType() == QuestionType.TRUEFALSE) {
+                    cntTF++;
+                }
             }
             writer.write("</quiz>");
             noOfQuestions = questions.size();
         } catch (IOException e) {
             e.printStackTrace();
         }
+        logger.info("Number of exported questions: " + noOfQuestions + " (MC: " + cntMC + ", TF: " + cntTF + ")");
         return noOfQuestions;
     }
 
     private String convertToXml(Question question) {
         String xml = "";
+        String xmlQTitle = question.getAuthor().getInitials() + "-" + question.getTitle();
+        if (null != question.getCourse()) {
+            xmlQTitle = question.getCourse() + "-" + xmlQTitle;
+        }
         xml += "<question type=\"multichoice\"><name><text>";
-        xml += question.getAuthor().getInitials() + "-" + question.getTitle();
+        xml += xmlQTitle;
         xml += "</text></name><questiontext format=\"html\"><text><![CDATA[";
         xml += question.getText();
         xml += "]]></text></questiontext><generalfeedback format=\"html\"><text></text></generalfeedback><defaultgrade>1.0000000</defaultgrade><penalty>0.3333333</penalty><hidden>0</hidden><idnumber></idnumber><single>false</single><shuffleanswers>true</shuffleanswers><answernumbering>abc</answernumbering><showstandardinstruction>1</showstandardinstruction><correctfeedback format=\"html\"><text>Your answer is correct.</text></correctfeedback><partiallycorrectfeedback format=\"html\"><text>Your answer is partially correct.</text></partiallycorrectfeedback><incorrectfeedback format=\"html\"><text>Your answer is incorrect.</text></incorrectfeedback><shownumcorrect/><answer fraction=\"";

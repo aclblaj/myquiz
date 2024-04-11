@@ -2,7 +2,7 @@ package com.unitbv.myquiz.endpoint;
 
 import com.unitbv.myquiz.dto.QuestionDto;
 import com.unitbv.myquiz.entities.Question;
-import com.unitbv.myquiz.services.QuestionService;
+import com.unitbv.myquiz.services.QuestionServiceImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,11 +20,11 @@ public class QuestionController {
 
     Logger logger = LoggerFactory.getLogger(QuestionController.class.getName());
 
-    QuestionService questionService;
+    QuestionServiceImpl questionServiceImpl;
 
     @Autowired
-    public QuestionController(QuestionService questionService) {
-        this.questionService = questionService;
+    public QuestionController(QuestionServiceImpl questionServiceImpl) {
+        this.questionServiceImpl = questionServiceImpl;
     }
 
     @GetMapping("/hello")
@@ -38,7 +38,7 @@ public class QuestionController {
         List<Question> questions;
         List<QuestionDto> questionDtos = new ArrayList<>();
         if (null !=authorId) {
-            questions = questionService.getQuestionsForAuthorId(authorId);
+            questions = questionServiceImpl.getQuestionsForAuthorId(authorId);
             for (Question question : questions) {
                 questionDtos.add(new QuestionDto(question));
             }
@@ -52,7 +52,7 @@ public class QuestionController {
         List<Question> questions;
         List<QuestionDto> questionDtos = new ArrayList<>();
         if (null !=authorName) {
-            questions = questionService.getQuestionsForAuthorName(authorName);
+            questions = questionServiceImpl.getQuestionsForAuthorName(authorName);
             for (Question question : questions) {
                 questionDtos.add(new QuestionDto(question));
             }

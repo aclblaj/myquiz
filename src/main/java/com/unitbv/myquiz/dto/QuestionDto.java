@@ -4,6 +4,7 @@ import com.unitbv.myquiz.entities.Question;
 
 public class QuestionDto {
     private Long id;
+    private String course;
     private String title;
     private String text;
     private String response1;
@@ -42,6 +43,7 @@ public class QuestionDto {
 
     public QuestionDto(Question question) {
         this.id = question.getId();
+        this.course = question.getCourse();
         this.title = question.getTitle();
         this.text = question.getText();
         this.response1 = question.getResponse1();
@@ -63,6 +65,14 @@ public class QuestionDto {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public String getCourse() {
+        return course;
+    }
+
+    public void setCourse(String course) {
+        this.course = course;
     }
 
     public String getTitle() {

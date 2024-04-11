@@ -18,8 +18,8 @@ class ExportServiceTest {
 
     @Test
     void writeToFileITSecQ1() {
-        String CATEGORY = "2024-IAG3-VDB-02";
-        String OUTPUT_FILE = "C:\\work\\_mi\\2024-ITSec\\" + CATEGORY + ".xml";
+        String CATEGORY = "2024-01";
+        String OUTPUT_FILE = "c:\\work\\" + CATEGORY + ".xml";
 
         int result = exportService.writeToFile(OUTPUT_FILE, CATEGORY);
         logger.info("Number of exported questions: " + result);
