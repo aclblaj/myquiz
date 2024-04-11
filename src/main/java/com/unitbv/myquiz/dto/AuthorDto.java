@@ -7,8 +7,9 @@ public class AuthorDto {
     private Long id;
     private String name;
     private String initials;
-
     private Integer numberOfQuestions;
+    private Long numberOfMultipleChoiceQuestions;
+    private Long numberOfTrueFalseQuestions;
     private Integer numberOfErrors;
     public AuthorDto(Author author) {
         this.id = author.getId();
@@ -65,4 +66,21 @@ public class AuthorDto {
     public void setNumberOfErrors(Integer numberOfErrors) {
         this.numberOfErrors = numberOfErrors;
     }
+
+    public Long getNumberOfMultipleChoiceQuestions() {
+        return numberOfMultipleChoiceQuestions;
+    }
+
+    public void setNumberOfMultipleChoiceQuestions(Long numberOfMultipleChoiceQuestions) {
+        this.numberOfMultipleChoiceQuestions = numberOfMultipleChoiceQuestions;
+    }
+
+    public Long getNumberOfTrueFalseQuestions() {
+        return numberOfTrueFalseQuestions;
+    }
+
+    public void setNumberOfTrueFalseQuestions(Long numberOfTrueFalseQuestions) {
+        this.numberOfTrueFalseQuestions = numberOfTrueFalseQuestions;
+    }
+
 }

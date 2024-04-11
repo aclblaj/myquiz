@@ -17,8 +17,10 @@
         <th>Name</th>
         <th>Link</th>
         <th>Initials</th>
-        <th>Number of questions</th>
-        <th>Number of errors</th>
+        <th>Total questions</th>
+        <th>Multichoice</th>
+        <th>True-False</th>
+        <th>Errors</th>
     </tr>
     </thead>
     <tbody>
@@ -30,10 +32,23 @@
         </td>
         <td th:text="${authorDto.initials}"></td>
         <td th:text="${authorDto.numberOfQuestions}"></td>
+        <td th:text="${authorDto.numberOfMultipleChoiceQuestions}"></td>
+        <td th:text="${authorDto.numberOfTrueFalseQuestions}"></td>
         <td th:text="${authorDto.numberOfErrors}"></td>
     </tr>
     <tr th:if="${#lists.isEmpty(authors)}" class="empty-row">
         <td colspan="12">No authors found</td>
+    </tr>
+    <tr>
+        <td colspan="12">
+            Total Rows: [[${totalItems}]] | Page [[${currentPage}]] of [[${totalPages}]] |
+            <span th:each="i: ${#numbers.sequence(1, totalPages)}">
+      <a th:if="${currentPage != i}" th:href="@{'/authors/' + ${i}}">[[${i}]]</a>
+      <span th:unless="${currentPage != i}">[[${i}]]</span> &nbsp; &nbsp;
+                    </span> |
+            <a th:if="${currentPage < totalPages}" th:href="@{'/authors/' + ${currentPage + 1}}">Next</a> |
+            <a th:if="${currentPage < totalPages}" th:href="@{'/authors/' + ${totalPages}}">Last</a>
+        </td>
     </tr>
     </tbody>
 </table>

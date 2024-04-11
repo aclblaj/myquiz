@@ -1,5 +1,8 @@
 package com.unitbv.myquiz.services;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 
 public class MyUtil {
@@ -20,6 +23,7 @@ public class MyUtil {
     public static final String TEMPLATE_ERROR_2_4_POINTS_WRONG = "Template error - wrong sum for 2/4 points";
     public static final String TEMPLATE_ERROR_3_4_POINTS_WRONG = "Template error - wrong sum for 3/4 points";
     public static final String TEMPLATE_ERROR_4_4_POINTS_WRONG = "Template error - wrong sum for 4/4 points";
+    public static final String TEMPLATE_ERROR_POINTS_WRONG = "Template error - cannot check question points";
     public static final String TEMPLATE_ERROR_TRUE_FALSE_POINTS_WRONG = "Template error - wrong sum for true false points";
 
     public static final String UNALLOWED_CHARS = "Save error - chars not supported";
@@ -32,4 +36,9 @@ public class MyUtil {
     public static final String ERROR_WRONG_FILE_TYPE = "Wrong file type";
 
     public static final String USER_NAME_NOT_DETECTED = "Max Mustermann";
+
+    public static final int PAGE_SIZE = 75;
+    public static Pageable getPageable(int pageNo, int pageSize, String sortField, String sortDirection) {
+        return PageRequest.of(pageNo - 1, pageSize);
+    }
 }

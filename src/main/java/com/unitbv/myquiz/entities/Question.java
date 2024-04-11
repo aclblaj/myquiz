@@ -15,6 +15,7 @@ import jakarta.persistence.SequenceGenerator;
 @Entity
 public class Question {
     int crtNo;
+    String course;
     String title;
     @Column(length = 1024)
     String text;
@@ -94,6 +95,14 @@ public class Question {
 
     public void setCrtNo(int crtNo) {
         this.crtNo = crtNo;
+    }
+
+    public String getCourse() {
+        return course;
+    }
+
+    public void setCourse(String course) {
+        this.course = course;
     }
 
     public String getTitle() {
