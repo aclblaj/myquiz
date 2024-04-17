@@ -2,11 +2,15 @@ package com.unitbv.myquiz.services;
 
 import com.unitbv.myquiz.dto.AuthorDto;
 import com.unitbv.myquiz.entities.Author;
+import com.unitbv.myquiz.entities.Question;
 import com.unitbv.myquiz.entities.QuestionType;
+import com.unitbv.myquiz.repositories.AuthorErrorRepository;
 import com.unitbv.myquiz.repositories.AuthorRepository;
+import com.unitbv.myquiz.repositories.QuestionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -14,6 +18,7 @@ import org.springframework.stereotype.Service;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -21,11 +26,21 @@ import java.util.List;
 public class AuthorServiceImpl implements AuthorService{
     Logger log = LoggerFactory.getLogger(AuthorServiceImpl.class.getName());
     AuthorRepository authorRepository;
+    AuthorErrorRepository authorErrorRepository;
+    QuestionRepository questionRepository;
+    QuestionService questionService;
     String authorName;
+    private ArrayList<Author> authors;
 
+    @Lazy
     @Autowired
-    public AuthorServiceImpl(AuthorRepository authorRepository) {
+    public AuthorServiceImpl(
+            AuthorRepository authorRepository,
+            AuthorErrorRepository authorErrorRepository,
+            QuestionService questionService) {
         this.authorRepository = authorRepository;
+        this.authorErrorRepository = authorErrorRepository;
+        this.questionService = questionService;
     }
 
     public String extractAuthorNameFromPath(String filePath) {
@@ -101,5 +116,30 @@ public class AuthorServiceImpl implements AuthorService{
     public Page<Author> findPaginated(int pageNo, int pageSize, String sortField, String sortDirection) {
         Pageable paging = MyUtil.getPageable(pageNo, pageSize, sortField, sortDirection);
         return authorRepository.findAll(paging);
+    }
+
+    @Override
+    public void setAuthorsList(ArrayList<Author> authors) {
+        this.authors = authors;
+    }
+
+    @Override
+    public ArrayList<Author> getAuthorsList() {
+        return authors;
+    }
+
+    @Override
+    public void addAuthorToList(Author author) {
+        authors.add(author);
+    }
+
+    @Override
+    public void deleteAuthorById(long id) {
+        Author author = authorRepository.findById(id).orElse(null);
+        if (author != null) {
+            authorRepository.deleteById(id);
+        } else {
+            log.error("Author with id '{}' not found", id);
+        }
     }
 }

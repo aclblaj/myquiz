@@ -13,6 +13,7 @@
 <table class="styled-table">
     <thead>
     <tr>
+        <th>Ops</th>
         <th>Id</th>
         <th>Name</th>
         <th>Link</th>
@@ -25,6 +26,10 @@
     </thead>
     <tbody>
     <tr th:each="authorDto : ${authors}" class="data-row">
+        <td>
+<!--            <a th:href="@{'/authors/' + ${authorDto.id}}">edit</a>-->
+            <a th:href="@{'/authors/' + ${authorDto.id} + '/delete'}">delete</a>
+        </td>
         <td th:text="${authorDto.id}"></td>
         <td th:text="${authorDto.name}"></td>
         <td>

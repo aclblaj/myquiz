@@ -4,6 +4,7 @@ import com.unitbv.myquiz.dto.AuthorDto;
 import com.unitbv.myquiz.entities.Author;
 import org.springframework.data.domain.Page;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public interface AuthorService {
@@ -14,4 +15,8 @@ public interface AuthorService {
     void deleteAll();
     AuthorDto getAuthorDTO(Author author);
     Page<Author> findPaginated(int pageNo, int pageSize, String sortField, String sortDirection);
+    void setAuthorsList(ArrayList<Author> authors);
+    ArrayList<Author> getAuthorsList();
+    void addAuthorToList(Author author);
+    void deleteAuthorById(long id);
 }

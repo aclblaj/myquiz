@@ -8,6 +8,7 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 public interface QuestionService {
@@ -40,4 +41,5 @@ public interface QuestionService {
     TemplateType getTemplateType();
     void setTemplateType(TemplateType value);
 
+    void checkDuplicatesQuestionsForAuthors(ArrayList<Author> authorsList);
 }

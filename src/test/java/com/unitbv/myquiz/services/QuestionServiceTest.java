@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -31,17 +32,22 @@ class QuestionServiceTest {
     @Autowired
     AuthorRepository authorRepository;
 
+    @Autowired
+    AuthorService authorService;
     @Test
     void parseExcelFilesFromFolder() {
         long startTime = (int) System.currentTimeMillis();
         if (encodingSevice.checkServerEncoding()) return;
-        final String XLSX_DIR_WITH_FILES = "c:\\work\\inpQ1\\";
+        final String XLSX_DIR_WITH_FILES = "c:\\work\\_mi\\2024-SO\\inpFew\\";
         File folder = new File(XLSX_DIR_WITH_FILES);
-        questionService.setTemplateType(TemplateType.Template2023);
+        questionService.setTemplateType(TemplateType.Template2024);
+        authorService.setAuthorsList(new ArrayList<>());
         int result = questionService.parseExcelFilesFromFolder(folder, 0);
         logger.info("Number of parsed excel files: {}", result);
         long endTime = (int) System.currentTimeMillis();
         logger.info("Execution time: {} ms", (endTime - startTime));
+        logger.atInfo().addArgument(authorService.getAuthorsList()).log("List of imported authors: {}");
+        questionService.checkDuplicatesQuestionsForAuthors(authorService.getAuthorsList());
         assertNotEquals(0, result);
     }
 
