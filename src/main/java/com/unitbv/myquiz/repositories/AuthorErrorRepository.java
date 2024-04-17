@@ -10,8 +10,6 @@ import java.util.List;
 @Repository
 public interface AuthorErrorRepository extends PagingAndSortingRepository<AuthorError, Long>, CrudRepository<AuthorError, Long> {
     List<AuthorError> findAllByAuthor_NameContainsIgnoreCase(String authorName);
-
     List<AuthorError> findAllByOrderByAuthor_NameAsc();
-
     void deleteAll();
 }

@@ -59,6 +59,7 @@ public class QuestionServiceImpl implements QuestionService{
     }
 
     public int parseExcelFilesFromFolder(File folder, int noFilesInput) {
+
         int noFiles = noFilesInput;
         if (folder.exists() && folder.isDirectory()) {
             File[] files = folder.listFiles();
@@ -107,6 +108,7 @@ public class QuestionServiceImpl implements QuestionService{
         author.setName(authorName);
         author.setInitials(initials);
         author = authorService.saveAuthor(author);
+        authorService.addAuthorToList(author);
     }
 
     public void setAuthor(Author author) {
@@ -250,7 +252,7 @@ public class QuestionServiceImpl implements QuestionService{
 
             convertRowToQuestion(row, question);
             checkQuestionTotalPoint(question);
-            checkQuestionStrings(question);
+            //checkQuestionStrings(question);
             saveQuestion(question);
         }
         return "finish parsing multichoice sheet";
@@ -404,13 +406,13 @@ public class QuestionServiceImpl implements QuestionService{
         if (question.getWeightResponse1() == 25 && total != 100) {
             authorErrorService.addAuthorError(author, question, MyUtil.TEMPLATE_ERROR_4_4_POINTS_WRONG);
             question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
-        } else if ((question.getWeightResponse1().intValue() == 33 || question.getWeightResponse2().intValue() == 33 || question.getWeightResponse3().intValue() == 33 || question.getWeightResponse4().intValue() == 33) && total > 1) {
+        } else if (isOneAnswerEqual33(question) && total > 1) {
             authorErrorService.addAuthorError(author, question, MyUtil.TEMPLATE_ERROR_3_4_POINTS_WRONG);
             question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
-        } else if ((question.getWeightResponse1().intValue() == 50 || question.getWeightResponse2().intValue() == 50 || question.getWeightResponse3().intValue() == 50 || question.getWeightResponse4().intValue() == 50) && total != 0) {
+        } else if (isOneAnswerEqual50(question) && total != 0) {
             authorErrorService.addAuthorError(author, question, MyUtil.TEMPLATE_ERROR_2_4_POINTS_WRONG);
             question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
-        } else if (total == 0) {
+        } else if (total == 0 && !isOneAnswerEqual33(question) && !isOneAnswerEqual50(question)) {
             authorErrorService.addAuthorError(author, question, MyUtil.MISSING_POINTS);
             question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
         } else if (question.getWeightResponse1().intValue() == 100 || question.getWeightResponse2().intValue() == 100 || question.getWeightResponse3().intValue() == 100 || question.getWeightResponse4().intValue() == 100) {
@@ -418,10 +420,21 @@ public class QuestionServiceImpl implements QuestionService{
                 authorErrorService.addAuthorError(author, question, MyUtil.TEMPLATE_ERROR_1_4_POINTS_WRONG);
                 question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
             }
-        } else {
-            authorErrorService.addAuthorError(author, question, MyUtil.TEMPLATE_ERROR_POINTS_WRONG);
-            question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
         }
+//        else {
+//            authorErrorService.addAuthorError(author, question, MyUtil.TEMPLATE_ERROR_POINTS_WRONG);
+//            question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+//        }
+    }
+
+    private static boolean isOneAnswerEqual33(Question question) {
+        return question.getWeightResponse1().intValue() == 33 || question.getWeightResponse2().intValue() == 33 || question.getWeightResponse3().intValue() == 33 || question.getWeightResponse4()
+                                                                                                                                                                             .intValue() == 33;
+    }
+
+    private static boolean isOneAnswerEqual50(Question question) {
+        return question.getWeightResponse1().intValue() == 50 || question.getWeightResponse2().intValue() == 50 || question.getWeightResponse3().intValue() == 50 || question.getWeightResponse4()
+                                                                                                                                                                             .intValue() == 50;
     }
 
     public void checkTrueFalseQuestionTotalPoint(Question question) {
@@ -433,7 +446,7 @@ public class QuestionServiceImpl implements QuestionService{
     }
 
     public void checkQuestionStrings(Question question) {
-        if (question.getResponse1() != null && question.getResponse2() != null && question.getResponse3() != null && question.getResponse4() != null) {
+        if (hasAllAnswers(question)) {
             if (checkAllAnswersForDuplicates(question)) {
                 authorErrorService.addAuthorError(author, question, MyUtil.REFORMULATE_QUESTION_ANSWER_ALREADY_EXISTS);
                 question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
@@ -445,6 +458,10 @@ public class QuestionServiceImpl implements QuestionService{
             authorErrorService.addAuthorError(author, question, MyUtil.MISSING_ANSWER);
             question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
         }
+    }
+
+    private static boolean hasAllAnswers(Question question) {
+        return question.getResponse1() != null && question.getResponse2() != null && question.getResponse3() != null && question.getResponse4() != null;
     }
 
     public String removeSpecialChars(String text) {
@@ -630,5 +647,15 @@ public class QuestionServiceImpl implements QuestionService{
 
     public void setTemplateType(TemplateType value) {
         this.templateType = value;
+    }
+
+    @Override
+    public void checkDuplicatesQuestionsForAuthors(ArrayList<Author> authors) {
+        for (Author author : authors) {
+            List<Question> questions = getQuestionsForAuthorId(author.getId());
+            questions.stream().forEach(question -> {
+                checkQuestionStrings(question);
+            });
+        }
     }
 }
