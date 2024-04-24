@@ -2,9 +2,7 @@ package com.unitbv.myquiz.web;
 
 import com.unitbv.myquiz.dto.AuthorDto;
 import com.unitbv.myquiz.entities.Author;
-import com.unitbv.myquiz.entities.QuestionType;
 import com.unitbv.myquiz.services.AuthorService;
-import com.unitbv.myquiz.services.AuthorServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;

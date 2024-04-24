@@ -3,6 +3,7 @@ package com.unitbv.myquiz.services;
 import com.unitbv.myquiz.entities.Question;
 import com.unitbv.myquiz.entities.QuestionType;
 import com.unitbv.myquiz.repositories.QuestionRepository;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -11,12 +12,11 @@ import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
-import java.util.logging.Logger;
-
+import org.slf4j.Logger;
 @Service
 public class ExportService {
 
-    Logger logger = Logger.getLogger(ExportService.class.getName());
+    Logger logger = LoggerFactory.getLogger(ExportService.class.getName());
 
     QuestionRepository questionRepository;
     @Autowired
@@ -52,7 +52,8 @@ public class ExportService {
         } catch (IOException e) {
             e.printStackTrace();
         }
-        logger.info("Number of exported questions: " + noOfQuestions + " (MC: " + cntMC + ", TF: " + cntTF + ")");
+        logger.atInfo().addArgument(noOfQuestions).addArgument(cntMC).addArgument(cntTF)
+              .log("Number of exported questions: {} (MC: {}, TF: {})");
         return noOfQuestions;
     }
 

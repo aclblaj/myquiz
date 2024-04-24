@@ -19,4 +19,8 @@ public interface AuthorService {
     ArrayList<Author> getAuthorsList();
     void addAuthorToList(Author author);
     void deleteAuthorById(long id);
+
+    boolean authorNameExists(String name);
+
+    Author getAuthorByName(String name);
 }

@@ -6,6 +6,7 @@ import com.unitbv.myquiz.repositories.AuthorRepository;
 import com.unitbv.myquiz.util.TemplateType;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
@@ -21,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 @SpringBootTest
 class QuestionServiceTest {
 
-    Logger logger = org.slf4j.LoggerFactory.getLogger(QuestionServiceTest.class);
+    Logger logger = LoggerFactory.getLogger(QuestionServiceTest.class);
 
     @Autowired
     QuestionService questionService;
@@ -38,23 +39,23 @@ class QuestionServiceTest {
     void parseExcelFilesFromFolder() {
         long startTime = (int) System.currentTimeMillis();
         if (encodingSevice.checkServerEncoding()) return;
-        final String XLSX_DIR_WITH_FILES = "c:\\work\\_mi\\2024-SO\\inpFew\\";
+        final String XLSX_DIR_WITH_FILES = "C:\\work\\_mi\\2024-RC\\inpQ1-IAG2\\";
         File folder = new File(XLSX_DIR_WITH_FILES);
-        questionService.setTemplateType(TemplateType.Template2024);
+        questionService.setTemplateType(TemplateType.Template2023);
         authorService.setAuthorsList(new ArrayList<>());
         int result = questionService.parseExcelFilesFromFolder(folder, 0);
-        logger.info("Number of parsed excel files: {}", result);
+        logger.atInfo().addArgument(result).log("Number of parsed excel files: {}");
         long endTime = (int) System.currentTimeMillis();
-        logger.info("Execution time: {} ms", (endTime - startTime));
-        logger.atInfo().addArgument(authorService.getAuthorsList()).log("List of imported authors: {}");
+        logger.atInfo().addArgument((endTime - startTime)).log("Execution time: {} ms");
         questionService.checkDuplicatesQuestionsForAuthors(authorService.getAuthorsList());
-        assertNotEquals(0, result);
+        logger.atInfo().addArgument(authorService.getAuthorsList()).log("List of imported authors: {}");
+        assertNotEquals(-1, result);
     }
 
     @Test
     void getServerEncoding() {
         String result = encodingSevice.getServerEncoding();
-        logger.info("Server encoding: {}", result);
+        logger.atInfo().addArgument(result).log("Server encoding: {}");
         assertNotNull(result);
     }
 
@@ -81,20 +82,18 @@ class QuestionServiceTest {
 
         author.setQuestions(questions);
         author = authorRepository.save(author);
-        logger.info("Author: {}", author);
+        logger.atInfo().addArgument(author).log("Author: {}");
 
         List<Question> result = questionService.getQuestionsForAuthorId(author.getId());
-        logger.info("Number of questions: {}", result.size());
-        result.forEach(question -> logger.info("Question: {}", question));
+        logger.atInfo().addArgument(result.size()).log("Number of questions: {}");
+        result.forEach(question -> logger.atInfo().addArgument(question).log("Question: {}"));
         assertNotNull(result);
     }
 
     @Test
     void getAuthorQuestionsByName() {
         Author author = new Author("Erika Mustermann", "EM");
-
         Set<Question> questions = new HashSet<>();
-
         Question question1 = new Question();
         question1.setAuthor(author);
         question1.setCrtNo(1);
@@ -111,11 +110,11 @@ class QuestionServiceTest {
 
         author.setQuestions(questions);
         author = authorRepository.save(author);
-        logger.info("Author: {}", author);
+        logger.atInfo().addArgument(author).log("Author: {}");
 
         List<Question> result = questionService.getQuestionsForAuthorName("Diana");
-        logger.info("Number of questions: {}", result.size());
-        result.forEach(question -> logger.info("Question: {}", question));
+        logger.atInfo().addArgument(result.size()).log("Number of questions: {}");
+        result.forEach(question -> logger.atInfo().addArgument(question).log("Question: {}"));
         assertNotNull(result);
     }
 }

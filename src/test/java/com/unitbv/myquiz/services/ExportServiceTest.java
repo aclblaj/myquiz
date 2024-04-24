@@ -1,17 +1,17 @@
 package com.unitbv.myquiz.services;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-
-import java.util.logging.Logger;
 
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 @SpringBootTest
 class ExportServiceTest {
 
-    Logger logger = Logger.getLogger(ExportServiceTest.class.getName());
+    Logger logger = LoggerFactory.getLogger(ExportServiceTest.class);
 
     @Autowired
     ExportService exportService;
@@ -22,7 +22,8 @@ class ExportServiceTest {
         String OUTPUT_FILE = "c:\\work\\" + CATEGORY + ".xml";
 
         int result = exportService.writeToFile(OUTPUT_FILE, CATEGORY);
-        logger.info("Number of exported questions: " + result);
+        logger.atInfo().addArgument(result)
+              .log("Number of exported questions: ");
         assertNotEquals(0, result);
     }
 }

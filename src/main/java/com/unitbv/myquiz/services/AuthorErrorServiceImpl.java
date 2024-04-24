@@ -4,6 +4,8 @@ import com.unitbv.myquiz.entities.Author;
 import com.unitbv.myquiz.entities.AuthorError;
 import com.unitbv.myquiz.entities.Question;
 import com.unitbv.myquiz.repositories.AuthorErrorRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -13,6 +15,7 @@ import java.util.List;
 @Service
 public class AuthorErrorServiceImpl implements AuthorErrorService {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthorErrorServiceImpl.class);
     AuthorErrorRepository authorErrorRepository;
 
     String sourceFile;
@@ -29,6 +32,7 @@ public class AuthorErrorServiceImpl implements AuthorErrorService {
         authorError.setAuthor(author);
         authorError.setSource(sourceFile);
         authorErrorRepository.save(authorError);
+        log.trace("Author error added: {} author", authorError, authorError.getAuthor());
     }
 
     @Override
