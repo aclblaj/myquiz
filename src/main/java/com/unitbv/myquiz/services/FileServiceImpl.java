@@ -3,7 +3,7 @@ package com.unitbv.myquiz.services;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
-import org.springframework.beans.factory.annotation.Value;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.FileSystemUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -20,7 +20,7 @@ public class FileServiceImpl implements FileService{
     public static final String UPLOAD_FOLDER = "files";
 
     private String uploadDir;
-    Logger logger = org.slf4j.LoggerFactory.getLogger(FileServiceImpl.class);
+    Logger logger = LoggerFactory.getLogger(FileServiceImpl.class);
 
     public String getRootDir() {
         return rootDir;
@@ -51,6 +51,7 @@ public class FileServiceImpl implements FileService{
 
     @Override
     public String uploadFile(MultipartFile file) {
+        initFileServiceImpl();
         String filepath = "not found";
         try {
             filepath = getRootDir() + File.separator + file.getOriginalFilename();

@@ -34,7 +34,8 @@ public class QuestionController {
 
     @GetMapping("/{authorId}")
     public List<QuestionDto> getQuestionByAuthorId(@PathVariable Long authorId) {
-        logger.info("getQuestionByAuthorId: {}", authorId);
+        logger.atInfo().addArgument(authorId)
+              .log("getQuestionByAuthorId: {}");
         List<Question> questions;
         List<QuestionDto> questionDtos = new ArrayList<>();
         if (null !=authorId) {
@@ -48,7 +49,8 @@ public class QuestionController {
 
     @GetMapping("/{authorName}")
     public List<QuestionDto> getQuestionByAuthorName(@PathVariable String authorName) {
-        logger.info("getQuestionByAuthorName: {}", authorName);
+        logger.atInfo().addArgument(authorName)
+              .log("getQuestionByAuthorName: {}");
         List<Question> questions;
         List<QuestionDto> questionDtos = new ArrayList<>();
         if (null !=authorName) {

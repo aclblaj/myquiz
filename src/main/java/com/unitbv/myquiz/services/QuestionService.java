@@ -13,7 +13,7 @@ import java.util.List;
 
 public interface QuestionService {
     int parseExcelFilesFromFolder(File folder, int noFilesInput);
-    void saveAuthorName(File folder);
+    boolean saveAuthorName(File folder);
     void setAuthor(Author author);
     String readAndParseFirstSheetFromExcelFile(String filePath);
     String processTruefalseSheet(Sheet sheet);
@@ -31,10 +31,10 @@ public interface QuestionService {
     int countNotNullValues(Row row);
     String getValueAsString(Cell cell, Question question);
     boolean addQuestion(Question question);
-    boolean checkAllTitlesForDuplicates(String title);
-    List<String> putAllTitlesToList();
+    boolean checkAllTitlesForDuplicates(Question question);
+    List<String> putAllTitlesToListExceptFromAuthor(Long authorId);
     boolean checkAllAnswersForDuplicates(Question question);
-    List<String> putAllQuestionsToList();
+    List<String> putAllQuestionsToListExceptFromAuthor(Long authorId);
     List<Question> getQuestionsForAuthorId(Long authorId);
     List<Question> getQuestionsForAuthorName(String authorName);
     void deleteAllQuestions();

@@ -49,6 +49,10 @@ public class QuestionServiceImpl implements QuestionService{
 
     private InputTemplate inputTemplate;
 
+    List<String> allQuestionsAnswers;
+    List<String> allTitles;
+    List<Question> allQuestionInstances;
+
     @Autowired
     public QuestionServiceImpl(@Qualifier("readAndParseFileTaskExecutor") Executor readAndParseFileThreadPool, AuthorService authorService, AuthorErrorService authorErrorService, QuestionRepository questionRepository, EncodingSevice encodingSevice) {
         this.authorService = authorService;
@@ -70,28 +74,29 @@ public class QuestionServiceImpl implements QuestionService{
                 }
             }
         } else if (folder.isFile() && folder.getName().endsWith(".xlsx")) {
-            saveAuthorName(folder);
+            if (!saveAuthorName(folder)) {
+                // read and process files in parallel
+                CompletableFuture<String> message = CompletableFuture.supplyAsync(
+                        () -> this.readAndParseFirstSheetFromExcelFile(folder.getAbsolutePath()),
+                        readAndParseFileThreadPool
+                );
 
-            // read and process files in parallel
-            CompletableFuture<String> message = CompletableFuture.supplyAsync(
-                    () -> this.readAndParseFirstSheetFromExcelFile(folder.getAbsolutePath()),
-                    readAndParseFileThreadPool
-            );
-
-            String msg;
-            try {
-                msg = message.get();
-                logger.info("File {} processed with result: {}", folder.getAbsolutePath(), msg);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                logger.info("Thread interrupted {}", e.getMessage());
-            } catch (Exception e) {
-                logger.error("Exception {}", e.getMessage());
+                String msg;
+                try {
+                    msg = message.get();
+                    logger.atInfo().addArgument(folder.getAbsolutePath()).addArgument(msg)
+                          .log("File {} processed with result: {}");
+                } catch (Exception e) {
+                    logger.atError().log("Parse file exception ", e);
+                }
+                noFiles++;
             }
-            noFiles++;
         } else {
-            logger.info("Not readable target file: {}", folder.getAbsolutePath());
-            saveAuthorName(folder);
+            logger.atInfo().addArgument(folder.getAbsolutePath())
+                  .log("Not readable target file: {}");
+            if (!saveAuthorName(folder)) {
+                author = authorService.getAuthorByName(author.getName());
+            }
             Question question = new Question();
             question.setAuthor(author);
             question.setCrtNo(-1);
@@ -101,14 +106,28 @@ public class QuestionServiceImpl implements QuestionService{
         return noFiles;
     }
 
-    public void saveAuthorName(File folder) {
+    /**
+     * Save author name in the database - return true if author already exists
+     * @param folder
+     * @return boolean
+     */
+    public boolean saveAuthorName(File folder) {
+        boolean result = false;
         String authorName = authorService.extractAuthorNameFromPath(folder.getAbsolutePath());
         initials = authorService.extractInitials(authorName);
         author = new Author();
         author.setName(authorName);
         author.setInitials(initials);
-        author = authorService.saveAuthor(author);
-        authorService.addAuthorToList(author);
+        if (authorService.authorNameExists(author.getName())) {
+            result = true;
+            logger.atInfo().addArgument(author.getName())
+                  .log("Author {} already exists in the database");
+            author = authorService.getAuthorByName(author.getName());
+        } else {
+            author = authorService.saveAuthor(author);
+            authorService.addAuthorToList(author);
+        }
+        return result;
     }
 
     public void setAuthor(Author author) {
@@ -117,7 +136,8 @@ public class QuestionServiceImpl implements QuestionService{
 
     public String readAndParseFirstSheetFromExcelFile(String filePath) {
         String message = "ready";
-        logger.info("Start parse excel file: {}", filePath);
+        logger.atInfo().addArgument(filePath)
+              .log("Start parse excel file: {}");
         authorErrorService.setSource(filePath);
 
         try (FileInputStream fileInputStream = new FileInputStream(filePath);Workbook workbook = new XSSFWorkbook(fileInputStream)) {
@@ -130,7 +150,7 @@ public class QuestionServiceImpl implements QuestionService{
                 message = processTruefalseSheet(sheetTF); // second sheet contains the true/false questions
                 logger.atInfo().addArgument(message).log("Second sheet processed '{}'");
             } else {
-                logger.info("Single sheet workbook");
+                logger.atInfo().log("Single sheet workbook");
             }
             message = "Finish parsing of the excel sheets";
         } catch (IOException e) {
@@ -202,7 +222,7 @@ public class QuestionServiceImpl implements QuestionService{
 
         if (sheet.getLastRowNum() < 15) {
             authorErrorService.addAuthorError(author, question, MyUtil.INCOMPLETE_ASSIGNMENT_LESS_THAN_15_QUESTIONS);
-            logger.info(MyUtil.INCOMPLETE_ASSIGNMENT_LESS_THAN_15_QUESTIONS);
+            logger.atInfo().log(MyUtil.INCOMPLETE_ASSIGNMENT_LESS_THAN_15_QUESTIONS);
             return "error parsing file";
         }
 
@@ -210,9 +230,10 @@ public class QuestionServiceImpl implements QuestionService{
         inputTemplate = new InputTemplate(templateType);
 
         int consecutiveEmptyRows = 0;
+        int currentRowNumber = 0;
         // Iterate over rows
         for (Row row : sheet) {
-            int currentRowNumber = row.getRowNum();
+            currentRowNumber = row.getRowNum();
 
             question = new Question();
             question.setAuthor(author);
@@ -255,6 +276,10 @@ public class QuestionServiceImpl implements QuestionService{
             //checkQuestionStrings(question);
             saveQuestion(question);
         }
+        logger.atInfo()
+              .addArgument(author.getName())
+              .addArgument(currentRowNumber)
+              .log("Finish parsing multi choice sheet for '{}' with {} rows");
         return "finish parsing multichoice sheet";
     }
 
@@ -446,22 +471,37 @@ public class QuestionServiceImpl implements QuestionService{
     }
 
     public void checkQuestionStrings(Question question) {
-        if (hasAllAnswers(question)) {
-            if (checkAllAnswersForDuplicates(question)) {
-                authorErrorService.addAuthorError(author, question, MyUtil.REFORMULATE_QUESTION_ANSWER_ALREADY_EXISTS);
-                question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
-            } else if (checkAllTitlesForDuplicates(question.getTitle())) {
-                authorErrorService.addAuthorError(author, question, MyUtil.REFORMULATE_QUESTION_TITLE_ALREADY_EXISTS);
-                question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
-            }
-        } else {
-            authorErrorService.addAuthorError(author, question, MyUtil.MISSING_ANSWER);
-            question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+        switch (question.getType()) {
+            case MULTICHOICE:
+                if (hasAllAnswers(question)) {
+                    if (checkAllAnswersForDuplicates(question)) {
+                        authorErrorService.addAuthorError(question.getAuthor(), question, MyUtil.REFORMULATE_QUESTION_ANSWER_ALREADY_EXISTS);
+                        question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+                    } else if (checkAllTitlesForDuplicates(question)) {
+                        authorErrorService.addAuthorError(question.getAuthor(), question, MyUtil.REFORMULATE_QUESTION_TITLE_ALREADY_EXISTS);
+                        question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+                    }
+                } else {
+                    authorErrorService.addAuthorError(question.getAuthor(), question, MyUtil.MISSING_ANSWER);
+                    question.setTitle(MyUtil.SKIPPED_DUE_TO_ERROR);
+                }
+                break;
+            case TRUEFALSE:
+                logger.atDebug().addArgument(question)
+                      .log("True false question: {} not checked");
+                break;
+            default:
+                logger.atDebug().addArgument(question)
+                      .log("Question type not recognized: {}");
+                break;
         }
     }
 
     private static boolean hasAllAnswers(Question question) {
-        return question.getResponse1() != null && question.getResponse2() != null && question.getResponse3() != null && question.getResponse4() != null;
+        return question.getResponse1() != null &&
+                question.getResponse2() != null &&
+                question.getResponse3() != null &&
+                question.getResponse4() != null;
     }
 
     public String removeSpecialChars(String text) {
@@ -584,44 +624,54 @@ public class QuestionServiceImpl implements QuestionService{
         }
     }
 
-    public boolean checkAllTitlesForDuplicates(String title) {
-        List<String> allTitles = putAllTitlesToList();
-        return title != null && allTitles.contains(title.toLowerCase());
+    public boolean checkAllTitlesForDuplicates(Question question) {
+        return question.getTitle() != null && allTitles.contains(question.getTitle().toLowerCase());
     }
 
-    public List<String> putAllTitlesToList() {
-        List<String> allTitles = new ArrayList<>();
-        List<Question> allQuestionInstances = questionRepository.findAll(Pageable.unpaged()).getContent();
+    public List<String> putAllTitlesToListExceptFromAuthor(Long authorId) {
+        List<String> allTitlesExceptAuthor = new ArrayList<>();
         for (Question question : allQuestionInstances) {
-            allTitles.add(question.getTitle().toLowerCase());
+            if (!question.getAuthor().getId().equals(authorId))
+                allTitlesExceptAuthor.add(question.getTitle().toLowerCase());
         }
-        return allTitles;
+        return allTitlesExceptAuthor;
     }
 
     public boolean checkAllAnswersForDuplicates(Question question) {
-        List<String> allQuestionsAnswers = putAllQuestionsToList();
+        boolean result = false;
+        logger.atTrace().addArgument(question).addArgument(question.getAuthor())
+              .log("Check all answers for duplicates for question: {}, author {}");
         if (question.getResponse1() != null && allQuestionsAnswers.contains(question.getResponse1().toLowerCase())) {
-            return true;
+            result = true;
+        } else if (question.getResponse2() != null && allQuestionsAnswers.contains(question.getResponse2().toLowerCase())) {
+            result = true;
+        } else if (question.getResponse3() != null && allQuestionsAnswers.contains(question.getResponse3().toLowerCase())) {
+            result = true;
+        } else if (question.getResponse4() != null && allQuestionsAnswers.contains(question.getResponse4().toLowerCase())) {
+            result = true;
         }
-        if (question.getResponse2() != null && allQuestionsAnswers.contains(question.getResponse2().toLowerCase())) {
-            return true;
-        }
-        if (question.getResponse3() != null && allQuestionsAnswers.contains(question.getResponse3().toLowerCase())) {
-            return true;
-        }
-        return question.getResponse4() != null && allQuestionsAnswers.contains(question.getResponse4().toLowerCase());
+        return result;
     }
 
-    public List<String> putAllQuestionsToList() {
-        List<String> allAnswers = new ArrayList<>();
-        List<Question> allQuestionInstances = questionRepository.findAll(Pageable.unpaged()).getContent();
+    public List<String> putAllQuestionsToListExceptFromAuthor(Long authorId) {
+        List<String> allAnswersExceptFromAuthor = new ArrayList<>();
         for (Question question : allQuestionInstances) {
-            if (question.getResponse1() != null) allAnswers.add(question.getResponse1().toLowerCase());
-            if (question.getResponse2() != null) allAnswers.add(question.getResponse2().toLowerCase());
-            if (question.getResponse3() != null) allAnswers.add(question.getResponse3().toLowerCase());
-            if (question.getResponse4() != null) allAnswers.add(question.getResponse4().toLowerCase());
+            if (!question.getAuthor().getId().equals(authorId)) {
+                if (question.getResponse1() != null)
+                    allAnswersExceptFromAuthor.add(question.getResponse1().toLowerCase());
+                if (question.getResponse2() != null)
+                    allAnswersExceptFromAuthor.add(question.getResponse2().toLowerCase());
+                if (question.getResponse3() != null)
+                    allAnswersExceptFromAuthor.add(question.getResponse3().toLowerCase());
+                if (question.getResponse4() != null)
+                    allAnswersExceptFromAuthor.add(question.getResponse4().toLowerCase());
+            }
         }
-        return allAnswers;
+        return allAnswersExceptFromAuthor;
+    }
+
+    public void findAllQuestions() {
+        allQuestionInstances = questionRepository.findAll(Pageable.unpaged()).getContent();
     }
 
     /**
@@ -651,11 +701,30 @@ public class QuestionServiceImpl implements QuestionService{
 
     @Override
     public void checkDuplicatesQuestionsForAuthors(ArrayList<Author> authors) {
-        for (Author author : authors) {
+        authors.forEach(author -> {
             List<Question> questions = getQuestionsForAuthorId(author.getId());
-            questions.stream().forEach(question -> {
-                checkQuestionStrings(question);
-            });
-        }
+            findAllQuestions();
+            setAllQuestionsAnswers(putAllQuestionsToListExceptFromAuthor(author.getId()));
+            setAllTitles(putAllTitlesToListExceptFromAuthor(author.getId()));
+            questions.stream().forEach(this::checkQuestionStrings);
+            logger.atInfo().addArgument(author.getName()).addArgument(questions.size())
+                  .log("Author: {} - Number of questions: {}");
+        });
+    }
+
+    public List<String> getAllQuestionsAnswers() {
+        return allQuestionsAnswers;
+    }
+
+    public void setAllQuestionsAnswers(List<String> allQuestionsAnswers) {
+        this.allQuestionsAnswers = allQuestionsAnswers;
+    }
+
+    public List<String> getAllTitles() {
+        return allTitles;
+    }
+
+    public void setAllTitles(List<String> allTitles) {
+        this.allTitles = allTitles;
     }
 }

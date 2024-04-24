@@ -1,18 +1,22 @@
 package com.unitbv.myquiz.services;
 
 import com.unitbv.myquiz.repositories.QuestionRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.logging.Logger;
 
 @Service
 public class EncodingSeviceImpl implements EncodingSevice {
 
-    Logger logger = Logger.getLogger(EncodingSeviceImpl.class.getName());
+    public static final String UTF_8 = "UTF-8";
+    public static final String UTF_16 = "UTF-16";
+    public static final String ISO_8859_1 = "ISO-8859-1";
+    Logger logger = LoggerFactory.getLogger(EncodingSeviceImpl.class.getName());
 
     @Autowired
     QuestionRepository questionRepository;
@@ -26,9 +30,10 @@ public class EncodingSeviceImpl implements EncodingSevice {
     @Override
     public boolean checkServerEncoding() {
         String result = getServerEncoding();
-        logger.info("Server encoding: " + result);
+        logger.atInfo().addArgument(result).log("Server encoding: {}");
         if (!result.equals("UTF8")) {
-            logger.info("Please switch your server encoding to UTF8. \n" +
+            logger.atInfo()
+                  .log("Please switch your server encoding to UTF8. \n" +
                                 "For example, after connecting to an SQL console, \n" +
                                 "-- set encoding to UTF8\n" +
                                 "SET client_encoding = 'UTF8';\n" +
@@ -45,9 +50,9 @@ public class EncodingSeviceImpl implements EncodingSevice {
     @Override
     public String convertToUTF8(String value) {
         String enc = this.detectEncoding(value);
-        if (enc.equals("ISO-8859-1")) {
+        if (enc.equals(ISO_8859_1)) {
             value = new String(value.getBytes(StandardCharsets.ISO_8859_1), StandardCharsets.UTF_8);
-            System.out.println(">>> text converted to UTF_8: " + value);
+            logger.atInfo().addArgument(value).log("Text converted to UTF_8: {}");
         }
         return value;
     }
@@ -62,18 +67,17 @@ public class EncodingSeviceImpl implements EncodingSevice {
         }
 
         try {
-            Charset charset = Charset.forName("UTF-8");
-            if (Charset.forName("UTF-8").newDecoder().decode(ByteBuffer.wrap(bytes)).toString().equals(input)) {
-                result = "UTF-8";
-            } else if (Charset.forName("UTF-16").newDecoder().decode(ByteBuffer.wrap(bytes)).toString().equals(input)) {
-                result = "UTF-16";
-            } else if (Charset.forName("ISO-8859-1").newDecoder().decode(ByteBuffer.wrap(bytes)).toString().equals(input)) {
-                result = "ISO-8859-1";
+            if (Charset.forName(UTF_8).newDecoder().decode(ByteBuffer.wrap(bytes)).toString().equals(input)) {
+                result = UTF_8;
+            } else if (Charset.forName(UTF_16).newDecoder().decode(ByteBuffer.wrap(bytes)).toString().equals(input)) {
+                result = UTF_16;
+            } else if (Charset.forName(ISO_8859_1).newDecoder().decode(ByteBuffer.wrap(bytes)).toString().equals(input)) {
+                result = ISO_8859_1;
             } else {
-                System.out.println("Cannot detect encoding of string: " + input);
+                logger.atInfo().addArgument(input).log("Cannot detect encoding of string: {}");
             }
         } catch (Exception exception) {
-            System.out.println("Exception when detecting encoding of string: " + input);
+            logger.atError().addArgument(input).log("Exception when detecting encoding of string: {}", exception);
         }
         return result;
     }
