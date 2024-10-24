@@ -586,7 +586,7 @@ public class QuestionServiceImpl implements QuestionService{
 
     public boolean checkAllTitlesForDuplicates(String title) {
         List<String> allTitles = putAllTitlesToList();
-        return title != null && allTitles.contains(title.toLowerCase());
+        return title != null && allTitles.stream().filter(s -> s.equals(title.toLowerCase())).count() > 1;
     }
 
     public List<String> putAllTitlesToList() {
@@ -600,16 +600,19 @@ public class QuestionServiceImpl implements QuestionService{
 
     public boolean checkAllAnswersForDuplicates(Question question) {
         List<String> allQuestionsAnswers = putAllQuestionsToList();
-        if (question.getResponse1() != null && allQuestionsAnswers.contains(question.getResponse1().toLowerCase())) {
+        if (question.getResponse1() != null && allQuestionsAnswers.stream().filter(responseText -> responseText.equals(question.getResponse1().toLowerCase())).count() > 1 ) {
             return true;
         }
-        if (question.getResponse2() != null && allQuestionsAnswers.contains(question.getResponse2().toLowerCase())) {
+        if (question.getResponse2() != null && allQuestionsAnswers.stream().filter(responseText -> responseText.equals(question.getResponse2().toLowerCase())).count() > 1 ) {
             return true;
         }
-        if (question.getResponse3() != null && allQuestionsAnswers.contains(question.getResponse3().toLowerCase())) {
+        if (question.getResponse3() != null && allQuestionsAnswers.stream().filter(responseText -> responseText.equals(question.getResponse3().toLowerCase())).count() > 1 ) {
             return true;
         }
-        return question.getResponse4() != null && allQuestionsAnswers.contains(question.getResponse4().toLowerCase());
+        if (question.getResponse4() != null && allQuestionsAnswers.stream().filter(responseText -> responseText.equals(question.getResponse4().toLowerCase())).count() > 1 ) {
+            return true;
+        }
+        return false;
     }
 
     public List<String> putAllQuestionsToList() {
