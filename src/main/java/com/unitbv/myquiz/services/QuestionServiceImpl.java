@@ -624,50 +624,47 @@ public class QuestionServiceImpl implements QuestionService{
         }
     }
 
-    public boolean checkAllTitlesForDuplicates(Question question) {
-        return question.getTitle() != null && allTitles.contains(question.getTitle().toLowerCase());
+    public boolean checkAllTitlesForDuplicates(String title) {
+        List<String> allTitles = putAllTitlesToList();
+        return title != null && allTitles.stream().filter(s -> s.equals(title.toLowerCase())).count() > 1;
     }
 
-    public List<String> putAllTitlesToListExceptFromAuthor(Long authorId) {
-        List<String> allTitlesExceptAuthor = new ArrayList<>();
+    public List<String> putAllTitlesToList() {
+        List<String> allTitles = new ArrayList<>();
+        List<Question> allQuestionInstances = questionRepository.findAll(Pageable.unpaged()).getContent();
         for (Question question : allQuestionInstances) {
-            if (!question.getAuthor().getId().equals(authorId))
-                allTitlesExceptAuthor.add(question.getTitle().toLowerCase());
+            allTitles.add(question.getTitle().toLowerCase());
         }
-        return allTitlesExceptAuthor;
+        return allTitles;
     }
 
     public boolean checkAllAnswersForDuplicates(Question question) {
-        boolean result = false;
-        logger.atTrace().addArgument(question).addArgument(question.getAuthor())
-              .log("Check all answers for duplicates for question: {}, author {}");
-        if (question.getResponse1() != null && allQuestionsAnswers.contains(question.getResponse1().toLowerCase())) {
-            result = true;
-        } else if (question.getResponse2() != null && allQuestionsAnswers.contains(question.getResponse2().toLowerCase())) {
-            result = true;
-        } else if (question.getResponse3() != null && allQuestionsAnswers.contains(question.getResponse3().toLowerCase())) {
-            result = true;
-        } else if (question.getResponse4() != null && allQuestionsAnswers.contains(question.getResponse4().toLowerCase())) {
-            result = true;
+        List<String> allQuestionsAnswers = putAllQuestionsToList();
+        if (question.getResponse1() != null && allQuestionsAnswers.stream().filter(responseText -> responseText.equals(question.getResponse1().toLowerCase())).count() > 1 ) {
+            return true;
         }
-        return result;
+        if (question.getResponse2() != null && allQuestionsAnswers.stream().filter(responseText -> responseText.equals(question.getResponse2().toLowerCase())).count() > 1 ) {
+            return true;
+        }
+        if (question.getResponse3() != null && allQuestionsAnswers.stream().filter(responseText -> responseText.equals(question.getResponse3().toLowerCase())).count() > 1 ) {
+            return true;
+        }
+        if (question.getResponse4() != null && allQuestionsAnswers.stream().filter(responseText -> responseText.equals(question.getResponse4().toLowerCase())).count() > 1 ) {
+            return true;
+        }
+        return false;
     }
 
-    public List<String> putAllQuestionsToListExceptFromAuthor(Long authorId) {
-        List<String> allAnswersExceptFromAuthor = new ArrayList<>();
+    public List<String> putAllQuestionsToList() {
+        List<String> allAnswers = new ArrayList<>();
+        List<Question> allQuestionInstances = questionRepository.findAll(Pageable.unpaged()).getContent();
         for (Question question : allQuestionInstances) {
-            if (!question.getAuthor().getId().equals(authorId)) {
-                if (question.getResponse1() != null)
-                    allAnswersExceptFromAuthor.add(question.getResponse1().toLowerCase());
-                if (question.getResponse2() != null)
-                    allAnswersExceptFromAuthor.add(question.getResponse2().toLowerCase());
-                if (question.getResponse3() != null)
-                    allAnswersExceptFromAuthor.add(question.getResponse3().toLowerCase());
-                if (question.getResponse4() != null)
-                    allAnswersExceptFromAuthor.add(question.getResponse4().toLowerCase());
-            }
+            if (question.getResponse1() != null) allAnswers.add(question.getResponse1().toLowerCase());
+            if (question.getResponse2() != null) allAnswers.add(question.getResponse2().toLowerCase());
+            if (question.getResponse3() != null) allAnswers.add(question.getResponse3().toLowerCase());
+            if (question.getResponse4() != null) allAnswers.add(question.getResponse4().toLowerCase());
         }
-        return allAnswersExceptFromAuthor;
+        return allAnswers;
     }
 
     public void findAllQuestions() {
