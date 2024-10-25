@@ -2,6 +2,7 @@ package com.unitbv.myquiz.services;
 
 import com.unitbv.myquiz.dto.AuthorDto;
 import com.unitbv.myquiz.entities.Author;
+import com.unitbv.myquiz.entities.QuizAuthor;
 import org.springframework.data.domain.Page;
 
 import java.util.ArrayList;
@@ -23,4 +24,8 @@ public interface AuthorService {
     boolean authorNameExists(String name);
 
     Author getAuthorByName(String name);
+
+    List<QuizAuthor> getQuizAuthorsForAuthorId(Long authorId);
+
+    void deleteQuizAuthorsByIds(List<Long> idsQA);
 }

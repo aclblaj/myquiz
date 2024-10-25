@@ -2,6 +2,7 @@ package com.unitbv.myquiz.web;
 
 import com.unitbv.myquiz.dto.AuthorDto;
 import com.unitbv.myquiz.entities.Author;
+import com.unitbv.myquiz.entities.QuizAuthor;
 import com.unitbv.myquiz.services.AuthorService;
 import com.unitbv.myquiz.services.MyUtil;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -57,6 +58,11 @@ public class AuthorWSController {
 
     @GetMapping("/{author-id}/delete")
     public String deleteAuthor(@PathVariable(value = "author-id") Long id, RedirectAttributes redirectAttributes) {
+        List<QuizAuthor> quizAuthors = authorService.getQuizAuthorsForAuthorId(id);
+        if (quizAuthors.size() > 0) {
+            List<Long> idsQA = quizAuthors.stream().map(QuizAuthor::getId).toList();
+            authorService.deleteQuizAuthorsByIds(idsQA);
+        }
         authorService.deleteAuthorById(id);
         redirectAttributes.addFlashAttribute("message", "Autor successfully deleted: " + id);
         return "redirect:/success";

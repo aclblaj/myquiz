@@ -1,19 +1,23 @@
 package com.unitbv.myquiz.services;
 
-import com.unitbv.myquiz.entities.Author;
-import com.unitbv.myquiz.entities.AuthorError;
+import com.unitbv.myquiz.entities.QuizAuthor;
+import com.unitbv.myquiz.entities.QuizError;
 import com.unitbv.myquiz.entities.Question;
 
 import java.util.List;
 
 public interface AuthorErrorService {
-    void addAuthorError(Author author, Question question, String description);
+    void addAuthorError(QuizAuthor author, Question question, String description);
 
-    List<AuthorError> getErrorsForAuthorName(String authorName);
+    List<QuizError> getErrorsForAuthorName(String authorName);
 
-    List<AuthorError> getErrors();
+    List<QuizError> getErrors();
 
     void setSource(String filePath);
 
+    String getSourceFile();
+
     void deleteAll();
+
+    void saveAllAuthorErrors(List<QuizError> quizErrors);
 }

@@ -19,7 +19,7 @@ class ExportServiceTest {
     @Test
     void writeToFileITSecQ1() {
         String CATEGORY = "2024-01";
-        String OUTPUT_FILE = "c:\\work\\" + CATEGORY + ".xml";
+        String OUTPUT_FILE = "c:\\work\\" + CATEGORY + "0099.xml";
 
         int result = exportService.writeToFile(OUTPUT_FILE, CATEGORY);
         logger.atInfo().addArgument(result)

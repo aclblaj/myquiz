@@ -91,6 +91,13 @@ public class FileServiceImpl implements FileService{
         removeDir(getRootDir());
     }
 
+    @Override
+    public String getFilename(String filepath) {
+        int pos = filepath.lastIndexOf(File.separator);
+        String filename = filepath.substring(pos + 1);
+        return filename;
+    }
+
     public void removeDir(String dirName) {
         FileSystemUtils.deleteRecursively(new File(dirName));
         logger.atInfo().addArgument(getRootDir()).log("Root directory removed: {}");

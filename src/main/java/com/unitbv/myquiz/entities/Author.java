@@ -1,30 +1,26 @@
 package com.unitbv.myquiz.entities;
 
 import jakarta.persistence.CascadeType;
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 
+import java.util.HashSet;
 import java.util.Set;
 
 @Entity
 public class Author {
 
-    String name;
-    String initials;
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
+    String name;
+    String initials;
 
-    @OneToMany(mappedBy = "author", cascade = CascadeType.ALL)
-    Set<AuthorError> authorErrors;
-
-    @OneToMany(mappedBy = "author", cascade = CascadeType.ALL)
-    Set<Question> questions;
+    @OneToMany(mappedBy = "author")
+    Set<QuizAuthor> quizAuthors = new HashSet<>();
 
     public Author() {
     }
@@ -34,20 +30,20 @@ public class Author {
         this.initials = initials;
     }
 
-    public Set<Question> getQuestions() {
-        return questions;
+    public String getName() {
+        return name;
     }
 
-    public void setQuestions(Set<Question> questions) {
-        this.questions = questions;
+    public void setName(String name) {
+        this.name = name;
     }
 
-    public Set<AuthorError> getAuthorErrors() {
-        return authorErrors;
+    public String getInitials() {
+        return initials;
     }
 
-    public void setAuthorErrors(Set<AuthorError> authorErrors) {
-        this.authorErrors = authorErrors;
+    public void setInitials(String initials) {
+        this.initials = initials;
     }
 
     public Long getId() {
@@ -58,19 +54,12 @@ public class Author {
         this.id = id;
     }
 
-    public void setName(String author) {
-        this.name = author;
+    public Set<QuizAuthor> getQuizAuthors() {
+        return quizAuthors;
     }
 
-    public String getName() {
-        return name;
-    }
-
-    public void setInitials(String initials) {
-        this.initials = initials;
-    }
-    public String getInitials() {
-        return initials;
+    public void setQuizAuthors(Set<QuizAuthor> quizAuthors) {
+        this.quizAuthors = quizAuthors;
     }
 
     @Override
@@ -79,7 +68,7 @@ public class Author {
                 "name='" + name + '\'' +
                 ", initials='" + initials + '\'' +
                 ", id=" + id +
-//                ", authorErrors=" + authorErrors +
+//                ", quizzes=" + quizzes +
                 '}';
     }
 }

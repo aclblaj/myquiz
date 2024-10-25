@@ -8,5 +8,6 @@ public interface FileService {
     public void removeDir(String dirName);
     void removeAllFiles(String dirName);
     void removeUploadRootDir();
+    String getFilename(String filepath);
 
 }

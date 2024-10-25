@@ -1,6 +1,9 @@
 package com.unitbv.myquiz.services;
 
 import com.unitbv.myquiz.entities.Author;
+import com.unitbv.myquiz.entities.Quiz;
+import com.unitbv.myquiz.entities.QuizAuthor;
+import com.unitbv.myquiz.entities.QuizError;
 import com.unitbv.myquiz.entities.Question;
 import com.unitbv.myquiz.util.TemplateType;
 import org.apache.poi.ss.usermodel.Cell;
@@ -12,34 +15,32 @@ import java.util.ArrayList;
 import java.util.List;
 
 public interface QuestionService {
-    int parseExcelFilesFromFolder(File folder, int noFilesInput);
-    boolean saveAuthorName(File folder);
-    void setAuthor(Author author);
-    String readAndParseFirstSheetFromExcelFile(String filePath);
-    String processTruefalseSheet(Sheet sheet);
-    String processMultichoiceSheet(Sheet sheet);
+    int parseExcelFilesFromFolder(Quiz quiz, File folder, int noFilesInput);
+    Author saveAuthorName(File folder);
+    String readAndParseFirstSheetFromExcelFile(Quiz quiz, Author author, String filePath);
+    String processTruefalseSheet(QuizAuthor quizAuthor, Sheet sheet);
+    String processMultichoiceSheet(QuizAuthor quizAuthor, Sheet sheet);
     void saveQuestion(Question question);
-    void convertRowToQuestion(Row row, Question question);
-    void convertRowToTrueFalseQuestion(Row row, Question question);
-    void checkQuestionTotalPoint(Question question);
-    void checkTrueFalseQuestionTotalPoint(Question question);
-    void checkQuestionStrings(Question question);
+    void convertRowToQuestion(QuizAuthor quizAuthor, Row row, Question question);
+    void convertRowToTrueFalseQuestion(QuizAuthor quizAuthor, Row row, Question question);
+    void checkQuestionTotalPoint(QuizAuthor quizAuthor, Question question);
+    void checkTrueFalseQuestionTotalPoint(QuizAuthor quizAuthor, Question question);
+    QuizError checkQuestionStrings(Question question);
     String removeSpecialChars(String text);
     String removeEnumerations(String text);
-    double convertCellToDouble(Cell cell, Question question);
+    double convertCellToDouble(QuizAuthor quizAuthor, Cell cell, Question question);
     String cleanAndConvert(String text);
     int countNotNullValues(Row row);
-    String getValueAsString(Cell cell, Question question);
-    boolean addQuestion(Question question);
+    String getValueAsString(QuizAuthor quizAuthor, Cell cell, Question question);
     boolean checkAllTitlesForDuplicates(Question question);
-    List<String> putAllTitlesToListExceptFromAuthor(Long authorId);
+    List<String> putAllTitlesToList();
     boolean checkAllAnswersForDuplicates(Question question);
-    List<String> putAllQuestionsToListExceptFromAuthor(Long authorId);
+    List<String> putAllQuestionsToList();
     List<Question> getQuestionsForAuthorId(Long authorId);
     List<Question> getQuestionsForAuthorName(String authorName);
     void deleteAllQuestions();
     TemplateType getTemplateType();
     void setTemplateType(TemplateType value);
-
     void checkDuplicatesQuestionsForAuthors(ArrayList<Author> authorsList);
+    Quiz saveQuiz(Quiz quiz);
 }

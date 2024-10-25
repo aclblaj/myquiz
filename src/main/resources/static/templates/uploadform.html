@@ -13,6 +13,14 @@
 <form method="POST" enctype="multipart/form-data" th:action="@{/upload}">
     <input type="file" name="file" />
     <input type="text" name="username" placeholder="Enter your username" required/>
+    <input type="text" name="course" placeholder="IAG2-RC" required/>
+    <input type="text" name="name" placeholder="Q1" required/>
+    <select name="template">
+        <option value="" disabled selected>Select template</option>
+        <option th:each="template:${templates}"
+                th:value="${template}"
+                th:text="${template}"></option>
+    </select>
     <input type="submit" value="Submit" />
 </form>
 </body>
