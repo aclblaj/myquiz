@@ -2,29 +2,30 @@ package com.unitbv.myquiz.dto;
 
 import com.unitbv.myquiz.entities.Author;
 
+@lombok.Data
+@lombok.NoArgsConstructor
+@lombok.AllArgsConstructor
+@lombok.Builder
+@lombok.ToString
 public class AuthorDto {
 
     private Long id;
     private String name;
     private String initials;
-    private Integer numberOfQuestions;
-    private Long numberOfMultipleChoiceQuestions;
-    private Long numberOfTrueFalseQuestions;
-    private Integer numberOfErrors;
+    private Long numberOfQuestions = 0L;
+    private Long numberOfMultipleChoiceQuestions = 0L;
+    private Long numberOfTrueFalseQuestions = 0L;
+    private Long numberOfErrors = 0L;
     public AuthorDto(Author author) {
         this.id = author.getId();
         this.name = author.getName();
         this.initials = author.getInitials();
-        this.numberOfQuestions = author.getQuestions().size();
-        this.numberOfErrors = author.getAuthorErrors().size();
     }
 
-    public AuthorDto(Long id, String name, String initials, Integer numberOfQuestions, Integer numberOfErrors) {
+    public AuthorDto(Long id, String name, String initials) {
         this.id = id;
         this.name = name;
         this.initials = initials;
-        this.numberOfQuestions = numberOfQuestions;
-        this.numberOfErrors = numberOfErrors;
     }
 
     public Long getId() {
@@ -51,19 +52,19 @@ public class AuthorDto {
         this.initials = initials;
     }
 
-    public Integer getNumberOfQuestions() {
+    public Long getNumberOfQuestions() {
         return numberOfQuestions;
     }
 
-    public void setNumberOfQuestions(Integer numberOfQuestions) {
+    public void setNumberOfQuestions(Long numberOfQuestions) {
         this.numberOfQuestions = numberOfQuestions;
     }
 
-    public Integer getNumberOfErrors() {
+    public Long getNumberOfErrors() {
         return numberOfErrors;
     }
 
-    public void setNumberOfErrors(Integer numberOfErrors) {
+    public void setNumberOfErrors(Long numberOfErrors) {
         this.numberOfErrors = numberOfErrors;
     }
 

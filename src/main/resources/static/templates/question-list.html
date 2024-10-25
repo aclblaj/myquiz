@@ -10,7 +10,7 @@
 
 <h2>Questions loaded</h2>
 
-<p>Author:<span th:text="${authorName}"></span></p>
+<p>Author:<B><span th:text="${author.name}"></B></span>  - File: <B></B></p>
 
 <b>Multiple choice questions: </b>
 
@@ -92,7 +92,6 @@
         <th>Row</th>
         <th>Description</th>
         <th>Author</th>
-        <th>Source</th>
     </tr>
     </thead>
     <tbody>
@@ -101,7 +100,6 @@
         <td th:text="${err.row}"></td>
         <td th:text="${err.description}"></td>
         <td th:text="${err.authorName}"></td>
-        <td th:text="${err.source}"></td>
     </tr>
     <tr th:if="${#lists.isEmpty(errors)}" class="empty-row">
         <td colspan="5">No errors</td>

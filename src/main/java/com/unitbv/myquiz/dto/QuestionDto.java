@@ -56,7 +56,7 @@ public class QuestionDto {
         this.weightResponse4 = question.getWeightResponse4();
         this.weightTrue = question.getWeightTrue();
         this.weightFalse = question.getWeightFalse();
-        this.authorName = question.getAuthor().getName();
+        this.authorName = question.getQuizAuthor().getAuthor().getName();
     }
 
     public Long getId() {

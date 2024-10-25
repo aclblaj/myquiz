@@ -1,6 +1,7 @@
 package com.unitbv.myquiz.web;
 
 import com.unitbv.myquiz.dto.AuthorErrorDto;
+import com.unitbv.myquiz.entities.QuizError;
 import com.unitbv.myquiz.services.AuthorErrorService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -25,7 +26,9 @@ public class AuthorErrorWSController {
     @GetMapping
     public String error(Model model) {
         List<AuthorErrorDto> authorErrorDtos = new ArrayList<>();
-        authorErrorService.getErrors().forEach(error -> authorErrorDtos.add(new AuthorErrorDto(error)));
+        for (QuizError error : authorErrorService.getErrors()) {
+            authorErrorDtos.add(new AuthorErrorDto(error));
+        }
         model.addAttribute("errors", authorErrorDtos);
         return "error-list";
     }

@@ -53,9 +53,9 @@ public class Question {
         this.weightFalse = weightFalse;
     }
 
-    @ManyToOne(cascade = CascadeType.MERGE)
-    @JoinColumn(name = "author_id")
-    Author author;
+    @ManyToOne
+    @JoinColumn(name = "quiz_author_id")
+    QuizAuthor quizAuthor;
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "question_gen")
@@ -63,30 +63,15 @@ public class Question {
     @Column(name = "id", nullable = false)
     private Long id;
 
+    public QuizAuthor getQuizAuthor() {
+        return quizAuthor;
+    }
+
+    public void setQuizAuthor(QuizAuthor quizAuthor) {
+        this.quizAuthor = quizAuthor;
+    }
+
     public Question() {
-    }
-
-    public Author getAuthor() {
-        return author;
-    }
-
-    public void setAuthor(Author author) {
-        this.author = author;
-    }
-    public QuestionType getType() {
-        return type;
-    }
-
-    public void setType(QuestionType type) {
-        this.type = type;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
     }
 
     public int getCrtNo() {
@@ -119,6 +104,14 @@ public class Question {
 
     public void setText(String text) {
         this.text = text;
+    }
+
+    public QuestionType getType() {
+        return type;
+    }
+
+    public void setType(QuestionType type) {
+        this.type = type;
     }
 
     public Double getWeightResponse1() {
@@ -183,6 +176,14 @@ public class Question {
 
     public void setResponse4(String response4) {
         this.response4 = response4;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
     }
 
     @Override

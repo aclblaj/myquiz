@@ -2,6 +2,8 @@ package com.unitbv.myquiz.repositories;
 
 import com.unitbv.myquiz.entities.Author;
 import com.unitbv.myquiz.entities.Question;
+import com.unitbv.myquiz.entities.Quiz;
+import com.unitbv.myquiz.entities.QuizAuthor;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -18,6 +20,8 @@ class QuestionRepositoryTest {
 
     @Autowired
     QuestionRepository questionRepository;
+    @Autowired
+    private QuizAuthorRepository quizAuthorRepository;
 
     @Test
     void findById() {
@@ -38,10 +42,21 @@ class QuestionRepositoryTest {
         question.setTitle("Test question");
 
         Author author = new Author();
-        author.setName("Test author");
-        author.setInitials("TA");
+        author.setName("Max Mustermann");
+        author.setInitials("MM");
 
-        question.setAuthor(author);
+        Quiz quiz = new Quiz();
+        quiz.setName("Q1");
+        quiz.setCourse("RC");
+
+        QuizAuthor quizAuthor = new QuizAuthor();
+        quizAuthor.setAuthor(author);
+        quizAuthor.setQuiz(quiz);
+        quizAuthor.setSource("file.xlsx");
+
+        quizAuthor = quizAuthorRepository.save(quizAuthor);
+
+        question.setQuizAuthor(quizAuthor);
 
         question = questionRepository.save(question);
         return question.getId();
