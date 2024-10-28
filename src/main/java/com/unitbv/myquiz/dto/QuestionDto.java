@@ -5,6 +5,7 @@ import com.unitbv.myquiz.entities.Question;
 public class QuestionDto {
     private Long id;
     private String course;
+    private Integer row;
     private String title;
     private String text;
     private String response1;
@@ -23,12 +24,13 @@ public class QuestionDto {
     public QuestionDto() {
     }
 
-    public QuestionDto(Long id, String title, String text,
+    public QuestionDto(Long id, String title, Integer row, String text,
                        String response1, String response2, String response3, String response4,
                        Double weightResponse1, Double weightResponse2, Double weightResponse3, Double weightResponse4,
                        String authorName) {
         this.id = id;
         this.title = title;
+        this.row = row;
         this.text = text;
         this.response1 = response1;
         this.response2 = response2;
@@ -45,6 +47,7 @@ public class QuestionDto {
         this.id = question.getId();
         this.course = question.getCourse();
         this.title = question.getTitle();
+        this.row = question.getCrtNo();
         this.text = question.getText();
         this.response1 = question.getResponse1();
         this.response2 = question.getResponse2();
@@ -179,6 +182,13 @@ public class QuestionDto {
         this.authorName = authorName;
     }
 
+    public Integer getRow() {
+        return row;
+    }
+
+    public void setRow(Integer row) {
+        this.row = row;
+    }
 }
 
 

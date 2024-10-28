@@ -19,6 +19,7 @@
     <tr>
         <th>Id</th>
         <th>Course</th>
+        <th>Row</th>
         <th>Title</th>
         <th>Text</th>
         <th>Response 1</th>
@@ -36,6 +37,7 @@
     <tr th:each="questionDto : ${questions}" class="data-row">
         <td th:text="${questionDto.id}"></td>
         <td th:text="${questionDto.course}"></td>
+        <td th:text="${questionDto.row}"></td>
         <td th:text="${questionDto.title}"></td>
         <td th:text="${questionDto.text}"></td>
         <td th:text="${questionDto.response1}"></td>
@@ -61,6 +63,7 @@
     <tr>
         <th>Id</th>
         <th>Title</th>
+        <th>Row</th>
         <th>Text</th>
         <th>Weight TRUE</th>
         <th>Weight FALSE</th>
@@ -72,6 +75,7 @@
     <tr th:each="questionDto : ${questionsTF}" class="data-row">
         <td th:text="${questionDto.id}"></td>
         <td th:text="${questionDto.title}"></td>
+        <td th:text="${questionDto.row}"></td>
         <td th:text="${questionDto.text}"></td>
         <td th:text="${questionDto.weightTrue}"></td>
         <td th:text="${questionDto.weightFalse}"></td>
