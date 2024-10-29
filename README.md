@@ -7,7 +7,7 @@ The first sheet of the input file is read and its header contains the next struc
 | No | Title | Text | PR1 | Response 1 | PR2 | Response 2 | PR3 | Response 3 | PR4 | Response 4 |
 
 
-The application is written in Java 17 and uses Spring Boot 3.1.5 and Maven 3.8.2.
+The application is written in Java 21 and uses Spring Boot 3.3.5 and Maven 3.8.2.
 
 ## Remarks
 - Download with: git clone https://github.com/aclblaj/myquiz.git
@@ -26,3 +26,6 @@ SELECT datname, pg_encoding_to_char(encoding) AS encoding FROM pg_database WHERE
 ```
 - Adapt the connection string inside the application.properties file (e.g switch to: spring.datasource.url=jdbc:postgresql://localhost:5432/myQuiz)
 - Change path to files and run the unit test parseExcelFilesFromFolder from the QuestionServiceTest test class
+
+## GUI 
+- start the spring boot application and access http://localhost:8080
