@@ -537,10 +537,13 @@ import static org.springframework.util.StringUtils.getFilename;
     private static QuizError getAuthorError(Question question, String description) {
         QuizError quizError;
         quizError = new QuizError();
-//        quizError.setAuthor(question.getAuthor());
         quizError.setRowNumber(question.getCrtNo());
-        quizError.setDescription(description);
+        quizError.setDescription(getDescriptionWithTitle(question, description));
         return quizError;
+    }
+
+    public static String getDescriptionWithTitle(Question question, String description) {
+        return description + " (" + question.getTitle() + ")";
     }
 
     private static boolean hasAllAnswers(Question question) {

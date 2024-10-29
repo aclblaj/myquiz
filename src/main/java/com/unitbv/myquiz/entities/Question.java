@@ -53,7 +53,7 @@ public class Question {
         this.weightFalse = weightFalse;
     }
 
-    @ManyToOne
+    @ManyToOne(cascade = CascadeType.ALL)
     @JoinColumn(name = "quiz_author_id")
     QuizAuthor quizAuthor;
 
