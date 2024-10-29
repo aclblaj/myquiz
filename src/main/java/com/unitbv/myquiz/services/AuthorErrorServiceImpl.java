@@ -12,6 +12,8 @@ import org.springframework.stereotype.Service;
 import java.io.File;
 import java.util.List;
 
+import static com.unitbv.myquiz.services.QuestionServiceImpl.getDescriptionWithTitle;
+
 @Service
 public class AuthorErrorServiceImpl implements AuthorErrorService {
 
@@ -27,7 +29,7 @@ public class AuthorErrorServiceImpl implements AuthorErrorService {
     @Override
     public void addAuthorError(QuizAuthor quizAuthor, Question question, String description) {
         QuizError quizError = new QuizError();
-        quizError.setDescription(description);
+        quizError.setDescription(getDescriptionWithTitle(question, description));
         quizError.setRowNumber(question.getCrtNo());
         quizError.setQuizAuthor(quizAuthor);
         quizAuthor.getQuizErrors().add(quizError);
