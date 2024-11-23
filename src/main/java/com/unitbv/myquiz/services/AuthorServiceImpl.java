@@ -8,6 +8,7 @@ import com.unitbv.myquiz.repositories.AuthorErrorRepository;
 import com.unitbv.myquiz.repositories.AuthorRepository;
 import com.unitbv.myquiz.repositories.QuestionRepository;
 import com.unitbv.myquiz.repositories.QuizAuthorRepository;
+import com.unitbv.myquiz.util.TemplateType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -113,17 +114,17 @@ public class AuthorServiceImpl implements AuthorService{
             authorDto.setNumberOfTrueFalseQuestions(authorDto.getNumberOfTrueFalseQuestions()+noTF);
             authorDto.setNumberOfErrors(authorDto.getNumberOfErrors()+quizAuthor.getQuizErrors().size());
             authorDto.setNumberOfQuestions(authorDto.getNumberOfQuestions() + noMC + noTF);
+            authorDto.setQuizName(quizAuthor.getQuiz().getName());
+            if (authorDto.getQuizName() == null) {
+                int stop = 1;
+            }
+            if (quizAuthor.getTemplateType() != null) {
+                authorDto.setTemplateType(quizAuthor.getTemplateType());
+            } else {
+                authorDto.setTemplateType(TemplateType.Other);
+            }
+            authorDto.setCourse(quizAuthor.getQuiz().getCourse());
         });
-//        authorDto.setNumberOfMultipleChoiceQuestions(
-//                author.getQuestions().stream()
-//                      .filter(q -> q.getType().equals(QuestionType.MULTICHOICE))
-//                      .count()
-//        );
-//        authorDto.setNumberOfTrueFalseQuestions(
-//                author.getQuestions().stream()
-//                      .filter(q -> q.getType().equals(QuestionType.TRUEFALSE))
-//                      .count()
-//        );
         return authorDto;
     }
 

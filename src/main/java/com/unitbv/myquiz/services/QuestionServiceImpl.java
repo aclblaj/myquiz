@@ -92,10 +92,6 @@ import static org.springframework.util.StringUtils.getFilename;
                 }
             }
         } else if (folder.isFile() && folder.getName().endsWith(".xlsx")) {
-            if (folder.getAbsolutePath().contains("Boieriu")) {
-                logger.atInfo().addArgument(folder.getAbsolutePath())
-                      .log("Process file: {}");
-            }
             Author author = saveAuthorName(folder);
             if (author!=null) {
                 // read and process files in parallel
@@ -125,6 +121,7 @@ import static org.springframework.util.StringUtils.getFilename;
             QuizAuthor quizAuthor = new QuizAuthor();
             quizAuthor.setAuthor(author);
             quizAuthor.setQuiz(quiz);
+            quizAuthorRepository.save(quizAuthor);
             authorErrorService.addAuthorError(quizAuthor, question, MyUtil.ERROR_WRONG_FILE_TYPE);
         }
         return noFiles;
@@ -261,7 +258,12 @@ import static org.springframework.util.StringUtils.getFilename;
             return "error parsing file";
         }
 
-        templateType = sheet.getRow(0).getPhysicalNumberOfCells() == 11 ? TemplateType.Template2023 : TemplateType.Template2024;
+        templateType = detectTemplateType(sheet);
+        if (templateType != null) {
+            quizAuthor.setTemplateType(templateType);
+        } else {
+            quizAuthor.setTemplateType(TemplateType.Other);
+        }
         inputTemplate = new InputTemplate(templateType);
 
         int consecutiveEmptyRows = 0;
@@ -301,6 +303,7 @@ import static org.springframework.util.StringUtils.getFilename;
                 QuizError quizErrorMissingValue = new QuizError();
                 quizErrorMissingValue.setDescription(MyUtil.MISSING_VALUES_LESS_THAN_11);
                 quizErrorMissingValue.setQuizAuthor(quizAuthor);
+                quizErrorMissingValue.setRowNumber(currentRowNumber);
                 quizAuthor.getQuizErrors().add(quizErrorMissingValue);
 
                 if (isHeaderRow) {
@@ -311,6 +314,7 @@ import static org.springframework.util.StringUtils.getFilename;
             }
 
             convertRowToQuestion(quizAuthor, row, question);
+            repairQuestionPoints(question);
             checkQuestionTotalPoint(quizAuthor, question);
             if (!question.getTitle().equals(MyUtil.SKIPPED_DUE_TO_ERROR)) {
                 quizAuthor.getQuestions().add(question);
@@ -323,6 +327,61 @@ import static org.springframework.util.StringUtils.getFilename;
               .addArgument(currentRowNumber)
               .log("Finish parsing multi choice sheet for '{}' with {} rows");
         return "finish parsing multichoice sheet";
+    }
+
+    private TemplateType detectTemplateType(Sheet sheet) {
+        TemplateType type = null;
+        for (Row row : sheet) {
+            int notNulls = countNotNullValues(row);
+            if (notNulls==0) {
+                continue; // skip empty lines
+            } else {
+                type = (notNulls == 11) ? TemplateType.Template2023 : TemplateType.Template2024;
+                break;
+            }
+        }
+        return type;
+    }
+
+    private void repairQuestionPoints(Question question) {
+        int wR1 = question.getWeightResponse1().intValue();
+        if (wR1 > 30 && wR1 < 35) {
+            question.setWeightResponse1(33.33333);
+            return;
+        }
+        int wR2 = question.getWeightResponse2().intValue();
+        if (wR2 > 30 && wR2 < 35) {
+            question.setWeightResponse2(33.33333);
+            return;
+        }
+        int wR3 = question.getWeightResponse3().intValue();
+        if (wR3 > 30 && wR3 < 35) {
+            question.setWeightResponse3(33.33333);
+            return;
+        }
+        int wR4 = question.getWeightResponse4().intValue();
+        if (wR4 > 30 && wR4 < 35) {
+            question.setWeightResponse4(33.33333);
+            return;
+        }
+
+        if (wR1 == 100) {
+            question.setWeightResponse2(-100.0);
+            question.setWeightResponse3(-100.0);
+            question.setWeightResponse4(-100.0);
+        } else if (wR2 == 100) {
+            question.setWeightResponse1(-100.0);
+            question.setWeightResponse3(-100.0);
+            question.setWeightResponse4(-100.0);
+        } else if (wR3 == 100) {
+            question.setWeightResponse1(-100.0);
+            question.setWeightResponse2(-100.0);
+            question.setWeightResponse4(-100.0);
+        } else if (wR4 == 100) {
+            question.setWeightResponse1(-100.0);
+            question.setWeightResponse2(-100.0);
+            question.setWeightResponse3(-100.0);
+        }
     }
 
     @Override
@@ -598,7 +657,7 @@ import static org.springframework.util.StringUtils.getFilename;
             }
         } catch (Exception e) {
             authorErrorService.addAuthorError(quizAuthor, question, MyUtil.DATATYPE_ERROR);
-            String logMsg = e.getMessage();
+            String logMsg = getExceptionClassName(e) + " " + e.getMessage();
             if (logMsg.length() > 512) {
                 logMsg = logMsg.substring(0, 512);
             }
@@ -606,6 +665,11 @@ import static org.springframework.util.StringUtils.getFilename;
         }
         return result;
     }
+
+    public String getExceptionClassName(Exception e) {
+        return e.getClass().getName().replaceAll(".*\\.", "");
+    }
+
     public String cleanAndConvert(String text) {
         if (text == null) {
             return "";
@@ -650,7 +714,7 @@ import static org.springframework.util.StringUtils.getFilename;
             }
         } catch (Exception e) {
             authorErrorService.addAuthorError(quizAuthor, question, MyUtil.DATATYPE_ERROR);
-            String logMsg = e.getMessage();
+            String logMsg = getExceptionClassName(e) + " " + e.getMessage();
             if (logMsg.length() > 512) {
                 logMsg = logMsg.substring(0, 512);
             }
@@ -680,16 +744,19 @@ import static org.springframework.util.StringUtils.getFilename;
 
     public boolean checkAllAnswersForDuplicates(Question question) {
         List<String> allQuestionsAnswers = putAllQuestionsToList();
-        if (question.getResponse1() != null && allQuestionsAnswers.stream().filter(responseText -> responseText.equals(question.getResponse1().toLowerCase())).count() > 1 ) {
-            return true;
-        }
-        if (question.getResponse2() != null && allQuestionsAnswers.stream().filter(responseText -> responseText.equals(question.getResponse2().toLowerCase())).count() > 1 ) {
-            return true;
-        }
-        if (question.getResponse3() != null && allQuestionsAnswers.stream().filter(responseText -> responseText.equals(question.getResponse3().toLowerCase())).count() > 1 ) {
-            return true;
-        }
-        if (question.getResponse4() != null && allQuestionsAnswers.stream().filter(responseText -> responseText.equals(question.getResponse4().toLowerCase())).count() > 1 ) {
+        if (isAnswerDuplicated(question.getResponse1(), allQuestionsAnswers)) return true;
+        if (isAnswerDuplicated(question.getResponse2(), allQuestionsAnswers)) return true;
+        if (isAnswerDuplicated(question.getResponse3(), allQuestionsAnswers)) return true;
+        if (isAnswerDuplicated(question.getResponse4(), allQuestionsAnswers)) return true;
+        return false;
+    }
+
+    private static boolean isAnswerDuplicated(String question, List<String> allQuestionsAnswers) {
+        if (question != null && allQuestionsAnswers
+                .stream()
+                .filter(responseText -> responseText.equals(question.toLowerCase()))
+                .count() > 1
+        ) {
             return true;
         }
         return false;
@@ -749,7 +816,7 @@ import static org.springframework.util.StringUtils.getFilename;
             setAllTitles(allTitlesOfAuthor);
             detectAuthorErrors(questions);
             logger.atInfo().addArgument(author.getName()).addArgument(questions.get().size())
-                  .log("Author: {} - Number of questions: {}");
+                  .log("{} - No. questions: {}");
         });
     }
 

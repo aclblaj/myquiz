@@ -9,6 +9,44 @@
 <div th:insert="~{fragments::menu}"></div>
 
 <h2>All detected errors (order by author name)</h2>
+<div>
+    <span th:each="entry : ${errorsByAuthor}">
+        <a th:href="${'#' + entry.key.replace(' ', '_')}" th:text="${entry.key}" name="${entry.key}"></a>
+        <span> | </span>
+    </span>
+    <span> <a href="#all_errors" text="All errors">All errors</a></span>
+    <span th:if="${#lists.isEmpty(errorsByAuthor)}">No authors found</span>
+
+</div>
+
+<div th:each="entry : ${errorsByAuthor}">
+    <div th:id="@{${entry.key.replace(' ', '_')}}">
+        <h4 th:text="${entry.key}">Author Name</h4>
+        <table class="styled-table">
+            <thead>
+            <tr>
+                <th>Id</th>
+                <th>Row</th>
+                <th>Description</th>
+                <th>Source</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="err : ${entry.value}" class="data-row">
+                <td th:text="${err.id}"></td>
+                <td th:text="${err.row}"></td>
+                <td th:text="${err.description}"></td>
+                <td th:text="${err.source}"></td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(entry.value)}" class="empty-row">
+                <td colspan="4">No errors for this author</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<h2 id="all_errors">All detected errors </h2>
 
 <table class="styled-table">
     <thead>

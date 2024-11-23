@@ -2,7 +2,8 @@ package com.unitbv.myquiz.util;
 
 public enum TemplateType {
     Template2023("template2023", 2023L),
-    Template2024("template2024", 2024L);
+    Template2024("template2024", 2024L),
+    Other("other", 0L);
 
     private final String type;
     private final Long year;

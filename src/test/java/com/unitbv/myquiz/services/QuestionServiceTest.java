@@ -45,13 +45,19 @@ class QuestionServiceTest {
     @Autowired
     QuizService quizService;
 
+    @Autowired
+    QuizAuthorService quizAuthorService;
+
+    @Autowired
+    AuthorErrorService authorErrorService;
+
     @Test
     void parseExcelFilesFromFolder() {
         long startTime = (int) System.currentTimeMillis();
         if (encodingSevice.checkServerEncoding()) return;
-        final String XLSX_DIR_WITH_FILES = "c:\\work\\_mi\\2024-RC\\inpQ1-IE\\";
+        final String XLSX_DIR_WITH_FILES = "C:\\work\\_mi\\2025-BD\\inpQ1\\";
         File folder = new File(XLSX_DIR_WITH_FILES);
-        Quiz quiz = quizService.createQuizz("IE2-RC", "Q1", 2024L);
+        Quiz quiz = quizService.createQuizz("INFO2-BD", "Q1", 2024L);
         questionService.setTemplateType(TemplateType.Template2023);
         authorService.setAuthorsList(new ArrayList<>());
         int result = questionService.parseExcelFilesFromFolder(quiz, folder, 0);
@@ -86,6 +92,15 @@ class QuestionServiceTest {
         logger.atInfo().addArgument(result.size()).log("Number of questions: {}");
         result.forEach(question -> logger.atInfo().addArgument(question).log("Question: {}"));
         assertNotNull(result);
+    }
+
+    @Test
+    void delete() {
+        quizAuthorService.deleteAll();
+        quizService.deleteAll();
+        authorErrorService.deleteAll();
+        questionService.deleteAllQuestions();
+        authorService.deleteAll();
     }
 
 

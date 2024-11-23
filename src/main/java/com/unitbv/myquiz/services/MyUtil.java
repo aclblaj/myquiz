@@ -37,7 +37,7 @@ public class MyUtil {
 
     public static final String USER_NAME_NOT_DETECTED = "Max Mustermann";
 
-    public static final int PAGE_SIZE = 75;
+    public static final int PAGE_SIZE = 200;
     public static Pageable getPageable(int pageNo, int pageSize, String sortField, String sortDirection) {
         return PageRequest.of(pageNo - 1, pageSize);
     }
