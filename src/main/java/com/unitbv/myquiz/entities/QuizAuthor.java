@@ -1,7 +1,10 @@
 package com.unitbv.myquiz.entities;
 
+import com.unitbv.myquiz.util.TemplateType;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -9,6 +12,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 
+import java.util.HashSet;
 import java.util.Set;
 
 @Entity
@@ -27,8 +31,11 @@ public class QuizAuthor {
 
     private String source;
 
+    @Enumerated(EnumType.STRING)
+    private TemplateType templateType;
+
     @OneToMany(mappedBy = "quizAuthor", cascade = CascadeType.ALL)
-    Set<QuizError> quizErrors;
+    Set<QuizError> quizErrors = new HashSet<>();
 
     @OneToMany(mappedBy = "quizAuthor", cascade = CascadeType.ALL)
     Set<Question> questions;
@@ -78,5 +85,13 @@ public class QuizAuthor {
 
     public void setQuestions(Set<Question> questions) {
         this.questions = questions;
+    }
+
+    public TemplateType getTemplateType() {
+        return templateType;
+    }
+
+    public void setTemplateType(TemplateType templateType) {
+        this.templateType = templateType;
     }
 }

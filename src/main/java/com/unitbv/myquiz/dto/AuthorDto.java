@@ -1,6 +1,7 @@
 package com.unitbv.myquiz.dto;
 
 import com.unitbv.myquiz.entities.Author;
+import com.unitbv.myquiz.util.TemplateType;
 
 @lombok.Data
 @lombok.NoArgsConstructor
@@ -16,6 +17,10 @@ public class AuthorDto {
     private Long numberOfMultipleChoiceQuestions = 0L;
     private Long numberOfTrueFalseQuestions = 0L;
     private Long numberOfErrors = 0L;
+    private String quiz;
+    private String template;
+    private String course;
+
     public AuthorDto(Author author) {
         this.id = author.getId();
         this.name = author.getName();
@@ -84,4 +89,27 @@ public class AuthorDto {
         this.numberOfTrueFalseQuestions = numberOfTrueFalseQuestions;
     }
 
+    public void setQuizName(String quiz) {
+        this.quiz = quiz;
+    }
+
+    public String getQuizName() {
+        return quiz;
+    }
+
+    public void setTemplateType(TemplateType templateType) {
+        this.template = templateType.getType();
+    }
+
+    public String getTemplateType() {
+        return template;
+    }
+
+    public void setCourse(String course) {
+        this.course = course;
+    }
+
+    public String getCourse() {
+        return course;
+    }
 }

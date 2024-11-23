@@ -10,7 +10,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Controller
 @RequestMapping(value="/errors")
@@ -29,7 +31,15 @@ public class AuthorErrorWSController {
         for (QuizError error : authorErrorService.getErrors()) {
             authorErrorDtos.add(new AuthorErrorDto(error));
         }
+
+        Map<String, List<AuthorErrorDto>> errorsByAuthor = new HashMap<>();
+        for (AuthorErrorDto error : authorErrorDtos) {
+            errorsByAuthor.computeIfAbsent(error.getAuthorName(), k -> new ArrayList<>()).add(error);
+        }
+
+        model.addAttribute("errorsByAuthor", errorsByAuthor);
         model.addAttribute("errors", authorErrorDtos);
+
         return "error-list";
     }
 }

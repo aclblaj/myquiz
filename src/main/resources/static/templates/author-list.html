@@ -18,6 +18,9 @@
         <th>Name</th>
         <th>Link</th>
         <th>Initials</th>
+        <th>Course</th>
+        <th>Quiz</th>
+        <th>Template</th>
         <th>Total questions</th>
         <th>Multichoice</th>
         <th>True-False</th>
@@ -36,6 +39,9 @@
             <a th:href="@{'/questions/author/' + ${authorDto.name}}">view</a>
         </td>
         <td th:text="${authorDto.initials}"></td>
+        <td th:text="${authorDto.course}"></td>
+        <td th:text="${authorDto.quiz}"></td>
+        <td th:text="${authorDto.template}"></td>
         <td th:text="${authorDto.numberOfQuestions}"></td>
         <td th:text="${authorDto.numberOfMultipleChoiceQuestions}"></td>
         <td th:text="${authorDto.numberOfTrueFalseQuestions}"></td>
