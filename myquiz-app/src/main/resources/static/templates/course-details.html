@@ -1,0 +1,31 @@
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="ISO-8859-1">
+    <title>Course Details</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+<div th:insert="~{fragments::menu}"></div>
+<div style="clear:both; margin-bottom:20px;"></div>
+<h4>Courses Management</h4>
+<div class="main-content">
+    <div th:if="${course != null}">
+        <table class="styled-table">
+            <tr><th>Id</th><td th:text="${course.id}"></td></tr>
+            <tr><th>Course Name</th><td th:text="${course.course}"></td></tr>
+            <tr><th>Description</th><td th:text="${course.description}"></td></tr>
+            <tr><th>University Year</th><td th:text="${course.universityYear}"></td></tr>
+            <tr><th>Semester</th><td th:text="${course.semester}"></td></tr>
+            <tr><th>Study Year</th><td th:text="${course.study_year}"></td></tr>
+        </table>
+        <div style="margin-top:20px;">
+            <a th:href="@{'/courses'}" class="btn btn-edit">Back to List</a>
+            <a th:href="@{'/courses/edit/' + ${course.id}}" class="btn btn-edit">Edit</a>
+        </div>
+    </div>
+    <div th:if="${course == null}">
+        <p>Course not found.</p>
+    </div>
+</div>
+</body>
+</html>

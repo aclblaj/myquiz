@@ -1,0 +1,23 @@
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="ISO-8859-1">
+    <title>Delete operations</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+
+<div th:insert="~{fragments::menu}"></div>
+<div style="clear:both; margin-bottom:20px;"></div>
+
+Aici vom adauga operatii de stergere...
+
+<br>
+<div th:insert = "~{fragments::deletecourse}"></div>
+<br>
+
+
+    <a th:href="@{'/questions/deleteall'}" class="menu-item"
+       th:onclick="return confirm('Are you sure you want to delete all the database records?')">Delete all</a>
+
+</body>
+</html>

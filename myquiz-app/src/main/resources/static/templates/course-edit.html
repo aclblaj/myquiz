@@ -1,0 +1,40 @@
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="ISO-8859-1">
+    <title>Edit Course</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+<div th:insert="~{fragments::menu}"></div>
+<div style="clear:both; margin-bottom:20px;"></div>
+<h4 th:text="${course.id != null ? 'Edit Course: ' + course.course : 'Create New Course'}">Courses Management</h4>
+<form th:action="${course.id} != null ? @{'/edit/' + ${course.id}} : @{/new}" th:object="${course}" method="post">
+    <input type="hidden" th:field="*{id}" />
+
+    <div style="margin: 20px 0;">
+        <label for="course">Course Name:</label><br>
+        <input type="text" id="course" th:field="*{course}" required style="width: 300px; padding: 8px;" />
+    </div>
+    <div style="margin: 20px 0;">
+        <label for="description">Description:</label><br>
+        <input type="text" id="description" th:field="*{description}" style="width: 400px; padding: 8px;" />
+    </div>
+    <div style="margin: 20px 0;">
+        <label for="universityYear">University Year:</label><br>
+        <input type="text" id="universityYear" th:field="*{universityYear}" style="width: 150px; padding: 8px;" />
+    </div>
+    <div style="margin: 20px 0;">
+        <label for="semester">Semester:</label><br>
+        <input type="text" id="semester" th:field="*{semester}" style="width: 150px; padding: 8px;" />
+    </div>
+    <div style="margin: 20px 0;">
+        <label for="study_year">Study Year:</label><br>
+        <input type="text" id="study_year" th:field="*{study_year}" style="width: 150px; padding: 8px;" />
+    </div>
+    <div class="action-buttons" style="margin: 30px 0;">
+        <button type="submit" class="btn btn-add">Save</button>
+        <a th:href="@{'/'}" class="btn btn-edit">Back to List</a>
+    </div>
+</form>
+</body>
+</html>

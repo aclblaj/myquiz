@@ -1,0 +1,34 @@
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="ISO-8859-1">
+    <title>Quizzes for Course</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+<div th:insert="~{fragments::menu}"></div>
+<div style="clear:both; margin-bottom:20px;"></div>
+<h4 th:text="'Quizzes for course: ' + ${courseName}"></h4>
+<div th:if="${quizzes != null and #lists.size(quizzes) > 0}">
+    <table class="styled-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Year</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="quiz : ${quizzes}">
+                <td th:text="${quiz.id}"></td>
+                <td th:text="${quiz.name}"></td>
+                <td th:text="${quiz.year}"></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+<div th:if="${quizzes == null or #lists.size(quizzes) == 0}">
+    <p>No quizzes found for this course.</p>
+</div>
+</body>
+</html>
+

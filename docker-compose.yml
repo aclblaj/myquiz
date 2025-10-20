@@ -1,0 +1,157 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:latest
+    container_name: myquiz-postgres
+    environment:
+      POSTGRES_DB: myquiz
+      POSTGRES_USER: myquiz_user
+      POSTGRES_PASSWORD: myquiz_password
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # - ./myquiz.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./data/myquiz_clean_dump.sql:/docker-entrypoint-initdb.d/02-data.sql:ro
+    ports:
+      - "5433:5432"
+    networks:
+      - myquiz-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U myquiz_user -d myquiz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MyQuiz Application
+  myquiz-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    container_name: myquiz-application
+    environment:
+      # Database configuration
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/myquiz
+      SPRING_DATASOURCE_USERNAME: myquiz_user
+      SPRING_DATASOURCE_PASSWORD: myquiz_password
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+
+      # JPA/Hibernate configuration
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: false
+      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
+
+      # Application configuration
+      SPRING_PROFILES_ACTIVE: docker
+      SERVER_PORT: 8080
+
+      # Logging
+      LOGGING_LEVEL_COM_UNITBV_MYQUIZ: INFO
+      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK: WARN
+
+      # File upload
+      SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE: 10MB
+      SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE: 10MB
+    ports:
+      - "8080:8080"
+    volumes:
+      - app_logs:/app/logs
+      - uploaded_files:/app/uploads
+    networks:
+      - myquiz-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/system/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    profiles:
+      - dev
+
+  # Development tools - Adminer for database management
+  adminer:
+    image: adminer:4.8.1
+    container_name: myquiz-adminer
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+      ADMINER_DESIGN: dracula
+    ports:
+      - "8081:8080"
+    networks:
+      - myquiz-network
+    depends_on:
+      - postgres
+    profiles:
+      - dev
+
+  # Ollama for AI features (optional)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: myquiz-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - myquiz-network
+    profiles:
+      - ai
+    restart: unless-stopped
+
+  # Nginx reverse proxy for production
+  nginx:
+    image: nginx:alpine
+    container_name: myquiz-nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - myquiz-network
+    depends_on:
+      - postgres  # Changed from myquiz-app since it's disabled
+    profiles:
+      - production
+    restart: unless-stopped
+
+  # Test runner for integration/unit tests
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: myquiz-test-runner
+    networks:
+      - myquiz-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/myquiz
+      SPRING_DATASOURCE_USERNAME: myquiz_user
+      SPRING_DATASOURCE_PASSWORD: myquiz_password
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+    profiles:
+      - test
+
+volumes:
+  postgres_data:
+    driver: local
+  app_logs:
+    driver: local
+  uploaded_files:
+    driver: local
+  ollama_data:
+    driver: local
+
+networks:
+  myquiz-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

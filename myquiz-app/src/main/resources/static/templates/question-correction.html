@@ -1,0 +1,790 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Question Correction Tool</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+
+<div th:insert="~{fragments::menu}"></div>
+<div style="clear:both; margin-bottom:20px;"></div>
+
+<div class="container">
+    <h2>🤖 AI Question Correction Tool</h2>
+    <p>Paste your question below and get AI-powered corrections and improvements.</p>
+
+    <!-- Ollama Connection Status -->
+    <div id="ollama-status" class="status-indicator">
+        <span id="status-text">Checking Ollama connection...</span>
+    </div>
+
+    <!-- Question Input Form -->
+    <div class="correction-form">
+        <div class="form-section">
+            <label for="question-title">Question Title:</label>
+            <input type="text" id="question-title" placeholder="Enter question title..." class="form-input">
+        </div>
+
+        <div class="form-section">
+            <label for="question-text">Question Text:</label>
+            <textarea id="question-text" rows="4" placeholder="Enter the question text..." class="form-textarea"></textarea>
+        </div>
+
+        <div class="form-section">
+            <label for="answer-options">Answer Options (one per line):</label>
+            <textarea id="answer-options" rows="6" placeholder="A) Option 1&#10;B) Option 2&#10;C) Option 3&#10;D) Option 4" class="form-textarea"></textarea>
+        </div>
+
+        <div class="form-section">
+            <label for="language-select">Language:</label>
+            <select id="language-select" class="form-select">
+                <option value="ro">Romanian</option>
+                <option value="en">English</option>
+            </select>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="button-group">
+            <button onclick="correctGrammar()" class="btn btn-primary" id="grammar-btn">
+                ✍️ Correct Grammar
+            </button>
+            <button onclick="improveQuestion()" class="btn btn-success" id="improve-btn">
+                🚀 Improve Question
+            </button>
+            <button onclick="generateAlternatives()" class="btn btn-info" id="alternatives-btn">
+                🎯 Generate Alternatives
+            </button>
+            <button onclick="explainAnswer()" class="btn btn-warning" id="explain-btn">
+                📖 Explain Correct Answer
+            </button>
+            <button onclick="clearAll()" class="btn btn-secondary">
+                🗑️ Clear All
+            </button>
+        </div>
+    </div>
+
+    <!-- Results Section -->
+    <div class="results-section">
+        <h3>Results:</h3>
+        <div id="results-container">
+            <div class="result-placeholder">
+                Results will appear here after processing...
+            </div>
+        </div>
+    </div>
+
+    <!-- Sample Questions for Testing -->
+    <div class="samples-section">
+        <h3>Sample Questions for Testing:</h3>
+        <div class="sample-buttons">
+            <button onclick="loadSample(1)" class="btn btn-outline">Load Romanian Sample</button>
+            <button onclick="loadSample(2)" class="btn btn-outline">Load English Sample</button>
+            <button onclick="loadSample(3)" class="btn btn-outline">Load Grammar Error Sample</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let isOllamaConnected = false;
+
+// Sample questions for testing
+const samples = {
+    1: {
+        title: "Capitala Frantei",
+        text: "Care este capitala Frantei?",
+        options: "A) Paris\nB) London\nC) Berlin\nD) Madrid",
+        language: "ro"
+    },
+    2: {
+        title: "Programming Languages",
+        text: "Which programming language is primarily used for web development?",
+        options: "A) JavaScript\nB) Assembly\nC) COBOL\nD) Fortran",
+        language: "en"
+    },
+    3: {
+        title: "Capitala Frantei cu erori",
+        text: "Care este capitala tarii Franta si cati locuitori are aceasta oras?",
+        options: "A) Paris - aproximativ 2 milioane\nB) London - aproximativ 9 milioane\nC) Berlin - aproximativ 4 milioane\nD) Madrid - aproximativ 3 milioane",
+        language: "ro"
+    }
+};
+
+// Load sample questions
+function loadSample(sampleId) {
+    const sample = samples[sampleId];
+    if (sample) {
+        document.getElementById('question-title').value = sample.title;
+        document.getElementById('question-text').value = sample.text;
+        document.getElementById('answer-options').value = sample.options;
+        document.getElementById('language-select').value = sample.language;
+
+        showMessage('Sample question loaded!', 'success');
+    }
+}
+
+// Check Ollama health status
+async function checkOllamaHealth() {
+    try {
+        const response = await fetch('/api/ollama/health');
+        const result = await response.json();
+
+        isOllamaConnected = result.ollama_connected;
+        const statusElement = document.getElementById('status-text');
+
+        if (isOllamaConnected) {
+            statusElement.innerHTML = '🟢 Ollama Connected - Ready to process';
+            document.getElementById('ollama-status').className = 'status-indicator connected';
+        } else {
+            statusElement.innerHTML = '🔴 Ollama Disconnected - AI features unavailable';
+            document.getElementById('ollama-status').className = 'status-indicator disconnected';
+        }
+
+        // Enable/disable buttons based on connection
+        const buttons = document.querySelectorAll('.btn:not(.btn-secondary):not(.btn-outline)');
+        buttons.forEach(btn => {
+            btn.disabled = !isOllamaConnected;
+        });
+
+    } catch (error) {
+        console.error('Error checking Ollama health:', error);
+        document.getElementById('status-text').innerHTML = '❌ Error checking Ollama status';
+        document.getElementById('ollama-status').className = 'status-indicator error';
+        isOllamaConnected = false;
+    }
+}
+
+// Show loading state for button
+function setButtonLoading(buttonId, isLoading) {
+    const button = document.getElementById(buttonId);
+    if (isLoading) {
+        button.disabled = true;
+        button.dataset.originalText = button.innerHTML;
+        button.innerHTML = '⏳ Processing...';
+    } else {
+        button.disabled = !isOllamaConnected;
+        button.innerHTML = button.dataset.originalText || button.innerHTML.replace('⏳ Processing...', '');
+    }
+}
+
+// Show message to user
+function showMessage(message, type = 'info') {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${type}`;
+    messageDiv.innerHTML = message;
+
+    // Insert at top of results container
+    const resultsContainer = document.getElementById('results-container');
+    resultsContainer.insertBefore(messageDiv, resultsContainer.firstChild);
+
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (messageDiv.parentNode) {
+            messageDiv.parentNode.removeChild(messageDiv);
+        }
+    }, 5000);
+}
+
+// Add result to results container
+function addResult(title, content, type = 'info') {
+    const resultDiv = document.createElement('div');
+    resultDiv.className = `result-item ${type}`;
+
+    resultDiv.innerHTML = `
+        <div class="result-header">
+            <h4>${title}</h4>
+            <button onclick="copyToClipboard(this)" class="copy-btn">📋 Copy</button>
+        </div>
+        <div class="result-content">${content}</div>
+    `;
+
+    const resultsContainer = document.getElementById('results-container');
+    const placeholder = resultsContainer.querySelector('.result-placeholder');
+    if (placeholder) {
+        placeholder.remove();
+    }
+
+    resultsContainer.appendChild(resultDiv);
+}
+
+// Copy result content to clipboard
+function copyToClipboard(button) {
+    const content = button.parentElement.nextElementSibling.innerText;
+    navigator.clipboard.writeText(content).then(() => {
+        const originalText = button.innerHTML;
+        button.innerHTML = '✅ Copied!';
+        setTimeout(() => {
+            button.innerHTML = originalText;
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy: ', err);
+        showMessage('Failed to copy to clipboard', 'error');
+    });
+}
+
+// Correct grammar
+async function correctGrammar() {
+    if (!isOllamaConnected) {
+        showMessage('Ollama is not connected', 'error');
+        return;
+    }
+
+    const title = document.getElementById('question-title').value;
+    const text = document.getElementById('question-text').value;
+    const language = document.getElementById('language-select').value;
+
+    if (!title && !text) {
+        showMessage('Please enter at least a title or question text', 'error');
+        return;
+    }
+
+    setButtonLoading('grammar-btn', true);
+
+    try {
+        const fullText = `${title}\n${text}`.trim();
+
+        const response = await fetch('/api/ollama/correct-text', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: fullText,
+                language: language
+            })
+        });
+
+        if (!response.ok) throw new Error('Failed to correct text');
+
+        const result = await response.json();
+
+        addResult(
+            '✍️ Grammar Correction',
+            `<div class="comparison">
+                <div class="original">
+                    <strong>Original:</strong><br>
+                    <em>${result.original}</em>
+                </div>
+                <div class="corrected">
+                    <strong>Corrected:</strong><br>
+                    <em>${result.corrected}</em>
+                </div>
+            </div>`,
+            'success'
+        );
+
+        showMessage('Grammar correction completed!', 'success');
+
+    } catch (error) {
+        console.error('Error correcting grammar:', error);
+        showMessage('Error correcting grammar: ' + error.message, 'error');
+    } finally {
+        setButtonLoading('grammar-btn', false);
+    }
+}
+
+// Improve question
+async function improveQuestion() {
+    if (!isOllamaConnected) {
+        showMessage('Ollama is not connected', 'error');
+        return;
+    }
+
+    const title = document.getElementById('question-title').value;
+    const text = document.getElementById('question-text').value;
+    const options = document.getElementById('answer-options').value;
+
+    if (!title || !text) {
+        showMessage('Please enter both title and question text', 'error');
+        return;
+    }
+
+    setButtonLoading('improve-btn', true);
+
+    try {
+        const prompt = `Improve this quiz question to make it clearer and more precise:
+
+Question Title: ${title}
+Question Text: ${text}
+${options ? `Answer Options:\n${options}` : ''}
+
+Please provide an improved version that is clearer, more accurate, and pedagogically sound.`;
+
+        const response = await fetch('/api/ollama/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'llama3',
+                prompt: prompt
+            })
+        });
+
+        if (!response.ok) throw new Error('Failed to improve question');
+
+        const result = await response.json();
+
+        addResult(
+            '🚀 Improved Question',
+            `<div class="improved-content">
+                <strong>Original Question:</strong><br>
+                <div class="original-question">
+                    <em>Title:</em> ${title}<br>
+                    <em>Text:</em> ${text}<br>
+                    ${options ? `<em>Options:</em><br><pre>${options}</pre>` : ''}
+                </div>
+                <br>
+                <strong>Improved Version:</strong><br>
+                <div class="improved-question">
+                    <pre>${result.response}</pre>
+                </div>
+            </div>`,
+            'success'
+        );
+
+        showMessage('Question improvement completed!', 'success');
+
+    } catch (error) {
+        console.error('Error improving question:', error);
+        showMessage('Error improving question: ' + error.message, 'error');
+    } finally {
+        setButtonLoading('improve-btn', false);
+    }
+}
+
+// Generate alternative answers
+async function generateAlternatives() {
+    if (!isOllamaConnected) {
+        showMessage('Ollama is not connected', 'error');
+        return;
+    }
+
+    const title = document.getElementById('question-title').value;
+    const text = document.getElementById('question-text').value;
+    const options = document.getElementById('answer-options').value;
+
+    if (!title || !text || !options) {
+        showMessage('Please enter title, question text, and current answer options', 'error');
+        return;
+    }
+
+    setButtonLoading('alternatives-btn', true);
+
+    try {
+        const prompt = `For this quiz question, generate 4 alternative plausible but incorrect answers:
+
+Question: ${title}
+Text: ${text}
+
+Current answer options:
+${options}
+
+Generate 4 new alternative answers that are plausible distractors but clearly incorrect. Return only the alternatives, one per line.`;
+
+        const response = await fetch('/api/ollama/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'llama3',
+                prompt: prompt
+            })
+        });
+
+        if (!response.ok) throw new Error('Failed to generate alternatives');
+
+        const result = await response.json();
+
+        addResult(
+            '🎯 Alternative Answers',
+            `<div class="alternatives-content">
+                <strong>Original Options:</strong><br>
+                <pre>${options}</pre>
+                <br>
+                <strong>Generated Alternatives:</strong><br>
+                <pre>${result.response}</pre>
+            </div>`,
+            'info'
+        );
+
+        showMessage('Alternative answers generated!', 'success');
+
+    } catch (error) {
+        console.error('Error generating alternatives:', error);
+        showMessage('Error generating alternatives: ' + error.message, 'error');
+    } finally {
+        setButtonLoading('alternatives-btn', false);
+    }
+}
+
+// Explain correct answer
+async function explainAnswer() {
+    if (!isOllamaConnected) {
+        showMessage('Ollama is not connected', 'error');
+        return;
+    }
+
+    const title = document.getElementById('question-title').value;
+    const text = document.getElementById('question-text').value;
+    const options = document.getElementById('answer-options').value;
+
+    if (!title || !text || !options) {
+        showMessage('Please enter title, question text, and answer options', 'error');
+        return;
+    }
+
+    setButtonLoading('explain-btn', true);
+
+    try {
+        const prompt = `For this quiz question, provide a detailed explanation of which answer is correct and why the others are incorrect:
+
+Question: ${title}
+Text: ${text}
+
+Answer Options:
+${options}
+
+Provide a clear, educational explanation that helps understand the correct answer and common misconceptions.`;
+
+        const response = await fetch('/api/ollama/generate', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'llama3',
+                prompt: prompt
+            })
+        });
+
+        if (!response.ok) throw new Error('Failed to generate explanation');
+
+        const result = await response.json();
+
+        addResult(
+            '📖 Answer Explanation',
+            `<div class="explanation-content">
+                <strong>Question:</strong> ${title}<br>
+                <em>${text}</em><br><br>
+                <strong>Options:</strong><br>
+                <pre>${options}</pre><br>
+                <strong>Explanation:</strong><br>
+                <div class="explanation-text">${result.response.replace(/\n/g, '<br>')}</div>
+            </div>`,
+            'warning'
+        );
+
+        showMessage('Answer explanation generated!', 'success');
+
+    } catch (error) {
+        console.error('Error generating explanation:', error);
+        showMessage('Error generating explanation: ' + error.message, 'error');
+    } finally {
+        setButtonLoading('explain-btn', false);
+    }
+}
+
+// Clear all inputs and results
+function clearAll() {
+    document.getElementById('question-title').value = '';
+    document.getElementById('question-text').value = '';
+    document.getElementById('answer-options').value = '';
+    document.getElementById('language-select').value = 'ro';
+
+    const resultsContainer = document.getElementById('results-container');
+    resultsContainer.innerHTML = '<div class="result-placeholder">Results will appear here after processing...</div>';
+
+    showMessage('All fields cleared', 'info');
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    checkOllamaHealth();
+
+    // Auto-check Ollama status every 30 seconds
+    setInterval(checkOllamaHealth, 30000);
+});
+</script>
+
+<style>
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.status-indicator {
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.status-indicator.connected {
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+
+.status-indicator.disconnected {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+}
+
+.status-indicator.error {
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    color: #856404;
+}
+
+.correction-form {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 30px;
+}
+
+.form-section {
+    margin-bottom: 15px;
+}
+
+.form-section label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.form-input, .form-textarea, .form-select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.form-textarea {
+    resize: vertical;
+    font-family: monospace;
+}
+
+.button-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+}
+
+.btn {
+    padding: 10px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    transition: opacity 0.2s;
+}
+
+.btn:hover:not(:disabled) {
+    opacity: 0.8;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background: #007bff;
+    color: white;
+}
+
+.btn-success {
+    background: #28a745;
+    color: white;
+}
+
+.btn-info {
+    background: #17a2b8;
+    color: white;
+}
+
+.btn-warning {
+    background: #ffc107;
+    color: #212529;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid #007bff;
+    color: #007bff;
+}
+
+.results-section {
+    margin-top: 30px;
+}
+
+.results-section h3 {
+    margin-bottom: 15px;
+}
+
+#results-container {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    min-height: 100px;
+    background: white;
+}
+
+.result-placeholder {
+    padding: 20px;
+    text-align: center;
+    color: #6c757d;
+    font-style: italic;
+}
+
+.result-item {
+    border-bottom: 1px solid #eee;
+    padding: 15px;
+}
+
+.result-item:last-child {
+    border-bottom: none;
+}
+
+.result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.result-header h4 {
+    margin: 0;
+    color: #333;
+}
+
+.copy-btn {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.copy-btn:hover {
+    background: #e9ecef;
+}
+
+.result-content {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 4px;
+    border-left: 4px solid #007bff;
+}
+
+.result-item.success .result-content {
+    border-left-color: #28a745;
+}
+
+.result-item.warning .result-content {
+    border-left-color: #ffc107;
+}
+
+.result-item.info .result-content {
+    border-left-color: #17a2b8;
+}
+
+.comparison {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.original, .corrected {
+    padding: 10px;
+    border-radius: 4px;
+}
+
+.original {
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+}
+
+.corrected {
+    background: #d4edda;
+    border-left: 4px solid #28a745;
+}
+
+.samples-section {
+    margin-top: 30px;
+    padding: 20px;
+    background: #e9ecef;
+    border-radius: 8px;
+}
+
+.sample-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.message {
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    border-left: 4px solid;
+}
+
+.message.success {
+    background: #d4edda;
+    border-color: #28a745;
+    color: #155724;
+}
+
+.message.error {
+    background: #f8d7da;
+    border-color: #dc3545;
+    color: #721c24;
+}
+
+.message.info {
+    background: #d1ecf1;
+    border-color: #17a2b8;
+    color: #0c5460;
+}
+
+pre {
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+}
+
+@media (max-width: 768px) {
+    .comparison {
+        grid-template-columns: 1fr;
+    }
+
+    .button-group {
+        flex-direction: column;
+    }
+
+    .btn {
+        width: 100%;
+    }
+}
+</style>
+
+</body>
+</html>
