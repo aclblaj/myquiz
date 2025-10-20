@@ -29,3 +29,7 @@ SELECT datname, pg_encoding_to_char(encoding) AS encoding FROM pg_database WHERE
 
 ## GUI 
 - start the spring boot application and access http://localhost:8080
+
+## Docker
+
+docker exec -it myquiz-postgres psql -U postgres -d myquiz
