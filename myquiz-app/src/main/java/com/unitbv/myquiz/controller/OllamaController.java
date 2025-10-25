@@ -240,4 +240,28 @@ public class OllamaController {
                            "error", e.getMessage()));
         }
     }
+
+    @PostMapping("/correct-text")
+    public ResponseEntity<Map<String, Object>> correctText(@RequestBody Map<String, String> request) {
+        String text = request.get("text");
+        String language = request.getOrDefault("language", "ro");
+
+        if (text == null || text.trim().isEmpty()) {
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Bad Request");
+            errorResponse.put("message", "Text is required and cannot be empty");
+            errorResponse.put("timestamp", java.time.LocalDateTime.now());
+            return ResponseEntity.badRequest().body(errorResponse);
+        }
+
+        String corrected = ollamaService.correctQuestionText(text, language);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("original", text);
+        response.put("corrected", corrected);
+        response.put("language", language);
+        response.put("timestamp", java.time.LocalDateTime.now());
+
+        return ResponseEntity.ok(response);
+    }
 }

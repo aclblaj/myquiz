@@ -52,6 +52,11 @@ services:
       # File upload
       SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE: 10MB
       SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE: 10MB
+
+      # Ai features
+      ollama.api.url: http://ollama:11434
+      ollama.default.model: llama3
+      ollama.timeout.seconds: 120
     ports:
       - "8080:8080"
     volumes:
