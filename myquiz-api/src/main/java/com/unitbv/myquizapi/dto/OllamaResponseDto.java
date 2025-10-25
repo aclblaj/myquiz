@@ -1,5 +1,6 @@
 package com.unitbv.myquizapi.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -7,6 +8,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
  * Data Transfer Object for Ollama AI responses.
  */
 @Schema(description = "Ollama response DTO for AI operations")
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class OllamaResponseDto {
 
     @Schema(description = "The generated response from Ollama")

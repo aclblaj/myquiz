@@ -65,6 +65,7 @@ public class OllamaServiceImpl implements OllamaService {
             HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() == 200) {
+                logger.debug("Ollama API responded with data: {}",  response.body());
                 OllamaResponseDto ollamaResponse = objectMapper.readValue(response.body(), OllamaResponseDto.class);
                 logger.info("Received response from Ollama: {}", ollamaResponse.getResponse());
                 return ollamaResponse;
@@ -185,6 +186,7 @@ public class OllamaServiceImpl implements OllamaService {
                     .GET()
                     .build();
 
+            logger.info("Trying to connect to Ollama API at {}:", ollamaApiUrl);
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
             return response.statusCode() == 200;
         } catch (Exception e) {

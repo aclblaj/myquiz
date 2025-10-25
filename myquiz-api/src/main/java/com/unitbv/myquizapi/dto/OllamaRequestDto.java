@@ -29,17 +29,25 @@ public class OllamaRequestDto {
     @JsonProperty("maxTokens")
     private Integer maxTokens;
 
+    @Schema(description = "If true, enables real-time streaming of the model’s output instead of waiting for the full response")
+    @JsonProperty("stream")
+    private boolean stream;
+
     // Default constructor
-    public OllamaRequestDto() {}
+    public OllamaRequestDto() {
+        this.stream = false;
+    }
 
     public OllamaRequestDto(String prompt) {
         this.prompt = prompt;
+        this.stream = false;
     }
 
     // Constructor with model and prompt
     public OllamaRequestDto(String model, String prompt) {
         this.model = model;
         this.prompt = prompt;
+        this.stream = false;
     }
 
     // Getters and setters
@@ -75,6 +83,14 @@ public class OllamaRequestDto {
         this.maxTokens = maxTokens;
     }
 
+    public boolean isStream() {
+        return stream;
+    }
+
+    public void setStream(boolean stream) {
+        this.stream = stream;
+    }
+
     @Override
     public String toString() {
         return "OllamaRequestDto{" +
@@ -82,6 +98,7 @@ public class OllamaRequestDto {
                 ", model='" + model + '\'' +
                 ", temperature=" + temperature +
                 ", maxTokens=" + maxTokens +
+                ", stream=" + stream +
                 '}';
     }
 }

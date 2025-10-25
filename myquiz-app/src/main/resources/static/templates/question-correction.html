@@ -126,10 +126,13 @@ function loadSample(sampleId) {
 // Check Ollama health status
 async function checkOllamaHealth() {
     try {
-        const response = await fetch('/api/ollama/health');
-        const result = await response.json();
+        const response = await fetch('/api/ollama/status');
 
-        isOllamaConnected = result.ollama_connected;
+        if(!response.ok){
+            console.log(response.url + " failed for reason: " + response.statusText);
+        }
+
+        isOllamaConnected = response.ok;
         const statusElement = document.getElementById('status-text');
 
         if (isOllamaConnected) {
@@ -241,7 +244,7 @@ async function correctGrammar() {
     setButtonLoading('grammar-btn', true);
 
     try {
-        const fullText = `${title}\n${text}`.trim();
+        const fullText = `${text}`.trim();
 
         const response = await fetch('/api/ollama/correct-text', {
             method: 'POST',
