@@ -101,6 +101,9 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
+    entrypoint: [ "/bin/sh", "-c" ]
+    command: 
+      - "ollama serve & sleep 1 && ollama pull llama3 && wait"
     networks:
       - myquiz-network
     profiles:
