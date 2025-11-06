@@ -242,6 +242,42 @@ public class OllamaController {
     }
 
     @PostMapping("/correct-text")
+    @Operation(
+        summary = "Correct question text using AI",
+        description = "Corrects the provided question text using an AI model. Optionally specify the language (default: 'ro')."
+    )
+    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+        description = "Request body containing the text to correct and optional language code",
+        required = true,
+        content = @Content(
+            mediaType = "application/json",
+            schema = @Schema(
+                example = "{\"text\": \"Teext cu erori.\", \"language\": \"ro\"}"
+            )
+        )
+    )
+    @ApiResponses(value = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Text corrected successfully",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    example = "{\"original\": \"Teext cu erori.\", \"corrected\": \"Text cu erori.\", \"language\": \"ro\", \"timestamp\": \"2024-06-01T12:00:00\"}"
+                )
+            )
+        ),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Bad request - text is missing or empty",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    example = "{\"error\": \"Bad Request\", \"message\": \"Text is required and cannot be empty\", \"timestamp\": \"2024-06-01T12:00:00\"}"
+                )
+            )
+        )
+    })
     public ResponseEntity<Map<String, Object>> correctText(@RequestBody Map<String, String> request) {
         String text = request.get("text");
         String language = request.getOrDefault("language", "ro");
