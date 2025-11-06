@@ -254,14 +254,23 @@ public class OllamaController {
             return ResponseEntity.badRequest().body(errorResponse);
         }
 
-        String corrected = ollamaService.correctQuestionText(text, language);
+        try {
+            String corrected = ollamaService.correctQuestionText(text, language);
 
-        Map<String, Object> response = new HashMap<>();
-        response.put("original", text);
-        response.put("corrected", corrected);
-        response.put("language", language);
-        response.put("timestamp", java.time.LocalDateTime.now());
+            Map<String, Object> response = new HashMap<>();
+            response.put("original", text);
+            response.put("corrected", corrected);
+            response.put("language", language);
+            response.put("timestamp", java.time.LocalDateTime.now());
 
-        return ResponseEntity.ok(response);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            logger.error("Error correcting text with Ollama AI", e);
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", "AI Service Error");
+            errorResponse.put("message", e.getMessage());
+            errorResponse.put("timestamp", java.time.LocalDateTime.now());
+            return ResponseEntity.status(503).body(errorResponse);
+        }
     }
 }
