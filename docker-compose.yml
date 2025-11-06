@@ -103,7 +103,7 @@ services:
       - ollama_data:/root/.ollama
     entrypoint: [ "/bin/sh", "-c" ]
     command: 
-      - "ollama serve & sleep 1 && ollama pull llama3 && wait"
+      - "ollama serve & sleep 5 && ollama pull llama3 && wait"
     networks:
       - myquiz-network
     profiles:
