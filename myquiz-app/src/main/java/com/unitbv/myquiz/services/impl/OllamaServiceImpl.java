@@ -25,13 +25,13 @@ public class OllamaServiceImpl implements OllamaService {
 
     private static final Logger logger = LoggerFactory.getLogger(OllamaServiceImpl.class);
 
-    @Value("${ollama.api.url:http://localhost:11434}")
+    @Value("${ollama.api.url}")
     private String ollamaApiUrl;
 
-    @Value("${ollama.default.model:llama3}")
+    @Value("${ollama.default.model}")
     private String defaultModel;
 
-    @Value("${ollama.timeout.seconds:60}")
+    @Value("${ollama.timeout.seconds}")
     private int timeoutSeconds;
 
     private final ObjectMapper objectMapper;
