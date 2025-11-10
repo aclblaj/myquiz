@@ -45,4 +45,10 @@ public interface OllamaService {
      * @return explanation text
      */
     String generateExplanation(Question question);
+
+    /**
+     * Check agent status
+     * @return status of agent
+     */
+    boolean testConnection();
 }
