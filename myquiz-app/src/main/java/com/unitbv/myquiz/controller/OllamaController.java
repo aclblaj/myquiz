@@ -17,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -149,7 +150,7 @@ public class OllamaController {
                 Map<String, Object> errorResponse = new HashMap<>();
                 errorResponse.put("error", "Bad Request");
                 errorResponse.put("message", "Prompt is required and cannot be empty");
-                errorResponse.put("timestamp", java.time.LocalDateTime.now());
+                errorResponse.put("timestamp", OffsetDateTime.now());
                 return ResponseEntity.badRequest().body(errorResponse);
             }
 
@@ -160,7 +161,7 @@ public class OllamaController {
             Map<String, Object> response = new HashMap<>();
             response.put("response", aiResponse.getResponse());
             response.put("model", model);
-            response.put("timestamp", java.time.LocalDateTime.now());
+            response.put("timestamp", OffsetDateTime.now());
 
             return ResponseEntity.ok(response);
 
@@ -169,7 +170,7 @@ public class OllamaController {
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("error", "AI Generation Failed");
             errorResponse.put("message", e.getMessage());
-            errorResponse.put("timestamp", java.time.LocalDateTime.now());
+            errorResponse.put("timestamp", OffsetDateTime.now());
             return ResponseEntity.internalServerError().body(errorResponse);
         }
     }
@@ -197,7 +198,7 @@ public class OllamaController {
             Map<String, Object> response = new HashMap<>();
             response.put("message", "Question improvement process initiated");
             response.put("questionIds", questionIds);
-            response.put("timestamp", java.time.LocalDateTime.now());
+            response.put("timestamp", OffsetDateTime.now());
 
             // Implementation would process questions through AI for improvement
             logger.info("Processing {} questions for AI improvement", questionIds.size());
@@ -226,11 +227,18 @@ public class OllamaController {
     public ResponseEntity<Map<String, Object>> getAIStatus() {
         try {
             Map<String, Object> status = new HashMap<>();
-            status.put("service", "Ollama AI Integration");
-            status.put("status", "operational");
-            status.put("availableModels", List.of("llama3", "codellama", "mistral"));
-            status.put("timestamp", java.time.LocalDateTime.now());
-
+            boolean response = ollamaService.testConnection();
+            if (response) {
+                status.put("service", "Ollama AI Integration");
+                status.put("status", "operational");
+                status.put("availableModels", List.of("llama3", "codellama", "mistral"));
+                status.put("timestamp", OffsetDateTime.now());
+            } else {
+                status.put("service", "Ollama AI Integration");
+                status.put("status", "offline");
+                status.put("timestamp", OffsetDateTime.now());
+                return ResponseEntity.status(503).body(status);
+            }
             return ResponseEntity.ok(status);
         } catch (Exception e) {
             logger.error("Error checking AI service status", e);
@@ -286,7 +294,7 @@ public class OllamaController {
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("error", "Bad Request");
             errorResponse.put("message", "Text is required and cannot be empty");
-            errorResponse.put("timestamp", java.time.LocalDateTime.now());
+            errorResponse.put("timestamp", OffsetDateTime.now());
             return ResponseEntity.badRequest().body(errorResponse);
         }
 
@@ -297,7 +305,7 @@ public class OllamaController {
             response.put("original", text);
             response.put("corrected", corrected);
             response.put("language", language);
-            response.put("timestamp", java.time.LocalDateTime.now());
+            response.put("timestamp", OffsetDateTime.now());
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -305,7 +313,7 @@ public class OllamaController {
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("error", "AI Service Error");
             errorResponse.put("message", e.getMessage());
-            errorResponse.put("timestamp", java.time.LocalDateTime.now());
+            errorResponse.put("timestamp", OffsetDateTime.now());
             return ResponseEntity.status(503).body(errorResponse);
         }
     }

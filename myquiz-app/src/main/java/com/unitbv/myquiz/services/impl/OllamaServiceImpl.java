@@ -48,7 +48,12 @@ public class OllamaServiceImpl implements OllamaService {
     public OllamaResponseDto generateResponse(String model, String prompt) {
         try {
             // Create Ollama request
-            OllamaRequestDto request = new OllamaRequestDto(model != null ? model : defaultModel, prompt);
+            OllamaRequestDto request = OllamaRequestDto.builder()
+                    .model(model != null ? model : defaultModel)
+                    .prompt(prompt)
+                    .stream(false)
+                    .build();
+
             String requestJson = objectMapper.writeValueAsString(request);
 
             logger.info("Sending request to Ollama API: {}", requestJson);
@@ -188,6 +193,7 @@ public class OllamaServiceImpl implements OllamaService {
 
             logger.info("Trying to connect to Ollama API at {}:", ollamaApiUrl);
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            logger.info("Connection status code: {}", response.statusCode());
             return response.statusCode() == 200;
         } catch (Exception e) {
             logger.warn("Cannot connect to Ollama API at {}: {}", ollamaApiUrl, e.getMessage());
