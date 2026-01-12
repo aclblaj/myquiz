@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>AI Question Correction Tool</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+
+<div th:insert="~{fragments::menu}"></div>
+
+<div class="container mt-3">
+    <h2>🤖 AI Question Correction Tool</h2>
+    <p>Edit your question and use AI-powered corrections and improvements. Supports both Multiple Choice and True/False questions.</p>
+
+    <!-- Ollama Connection Status and Model Selection -->
+    <div id="ollama-status" class="status-indicator">
+        <span id="status-text">Checking Ollama connection...</span>
+        <button onclick="checkOllamaHealth()" class="btn btn-sm" style="margin-left: 10px;">🔄 Check Status</button>
+        <span id="model-select-container" style="margin-left: 30px;">
+            <label for="ai-model-select"><strong>AI Model:</strong></label>
+            <select id="ai-model-select" class="form-select" style="width: auto; display: inline-block; margin-left: 8px;">
+                <!-- Dynamically populated -->
+            </select>
+        </span>
+    </div>
+
+    <!-- Hidden field to store question type -->
+    <input type="hidden" id="question-type" th:value="${correctionDto != null && correctionDto.originalQuestion != null && correctionDto.originalQuestion.type != null ? correctionDto.originalQuestion.type : 'MULTICHOICE'}" />
+
+    <!-- Two-Panel Layout: Original and Corrected -->
+    <div class="dual-panel-container">
+        <!-- Left Panel: Original Question -->
+        <div class="panel original-panel">
+            <h3>📝 Original Question</h3>
+            <input type="hidden" id="question-id" th:value="${correctionDto != null && correctionDto.originalQuestion != null ? correctionDto.originalQuestion.id : ''}" />
+
+            <div class="form-group">
+                <label for="original-title" class="form-label">Question Title:</label>
+                <input type="text" id="original-title" placeholder="Enter question title..." class="form-input"
+                       th:value="${correctionDto != null && correctionDto.originalQuestion != null ? correctionDto.originalQuestion.title : ''}">
+            </div>
+
+            <div class="form-group">
+                <label for="original-text" class="form-label">Question Text:</label>
+                <textarea id="original-text" rows="4" placeholder="Enter the question text..." class="form-textarea"
+                          th:text="${correctionDto != null && correctionDto.originalQuestion != null ? correctionDto.originalQuestion.text : ''}"></textarea>
+            </div>
+
+            <div class="form-grid-2col">
+                <div class="form-group">
+                    <label for="original-chapter" class="form-label">Chapter:</label>
+                    <input type="text" id="original-chapter" placeholder="Chapter" class="form-input"
+                           th:value="${correctionDto != null && correctionDto.originalQuestion != null ? correctionDto.originalQuestion.chapter : ''}">
+                </div>
+                <div class="form-group">
+                    <label for="original-author" class="form-label">Author Name:</label>
+                    <input type="text" id="original-author" placeholder="Author" class="form-input"
+                           th:value="${correctionDto != null && correctionDto.originalQuestion != null ? correctionDto.originalQuestion.authorName : ''}">
+                </div>
+            </div>
+
+            <div class="form-grid-2col">
+                <div class="form-group">
+                    <label for="original-course" class="form-label">Course Name:</label>
+                    <input type="text" id="original-course" placeholder="Course" class="form-input"
+                           th:value="${correctionDto != null && correctionDto.originalQuestion != null ? correctionDto.originalQuestion.course : ''}">
+                </div>
+                <div class="form-group">
+                    <label for="original-quiz" class="form-label">Quiz Name:</label>
+                    <input type="text" id="original-quiz" placeholder="Quiz" class="form-input"
+                           th:value="${correctionDto != null && correctionDto.originalQuestion != null ? correctionDto.originalQuestion.quizName : ''}">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="original-language" class="form-label">Language:</label>
+                <select id="original-language" class="form-select">
+                    <option value="ro" th:selected="${correctionDto != null && correctionDto.originalQuestion != null && correctionDto.language == 'ro'}">Romanian</option>
+                    <option value="en" th:selected="${correctionDto != null && correctionDto.originalQuestion != null && correctionDto.language == 'en'}">English</option>
+                </select>
+            </div>
+
+            <fieldset class="form-fieldset">
+                <legend class="form-legend">Response Options & Weights</legend>
+                <div class="answer-weight-row">
+                    <input type="text" id="original-response1" placeholder="Response 1" class="form-input"
+                           th:value="${correctionDto != null && correctionDto.originalQuestion != null ? correctionDto.originalQuestion.response1 : ''}" />
+                    <select id="original-weight1" class="form-select weight-select">
+                        <option value="-100" th:selected="${correctionDto != null && correctionDto.originalQuestion != null && correctionDto.originalQuestion.weightResponse1 == -100}">-100</option>
+                        <option value="-50" th:selected="${correctionDto != null && correctionDto.originalQuestion != null && correctionDto.originalQuestion.weightResponse1 == -50}">-50</option>
+                        <option value="0" th:selected="${correctionDto != null && correctionDto.originalQuestion != null && correctionDto.originalQuestion.weightResponse1 == 0}">0</option>
+                        <option value="25" th:selected="${correctionDto != null && correctionDto.originalQuestion != null && correctionDto.originalQuestion.weightResponse1 == 25}">25</option>
+                        <option value="33.33333" th:selected="${correctionDto != null && correctionDto.originalQuestion != null && correctionDto.originalQuestion.weightResponse1 == 33.33333}">33.33333</option>
+                        <option value="50" th:selected="${correctionDto != null && correctionDto.originalQuestion != null && correctionDto.originalQuestion.weightResponse1 == 50}">50</option>
+                        <option value="100" th:selected="${correctionDto == null || correctionDto.originalQuestion == null || correctionDto.originalQuestion.weightResponse1 == 100}">100</option>
+                    </select>
+                </div>
+                <div class="answer-weight-row">
+                    <input type="text" id="original-response2" placeholder="Response 2" class="form-input"
+                           th:value="${correctionDto != null && correctionDto.originalQuestion != null ? correctionDto.originalQuestion.response2 : ''}" />
+                    <select id="original-weight2" class="form-select weight-select">
+                        <option value="-100" th:selected="${correctionDto != null && correctionDto.originalQuestion != null && correctionDto.originalQuestion.weightResponse2 == -100}">-100</option>
+                        <option value="-50" th:selected="${correctionDto != null && correctionDto.originalQuestion != null && correctionDto.originalQuestion.weightResponse2 == -50}">-50</option>
+                        <option value="0" th:selected="${correctionDto == null || correctionDto.originalQuestion == null || correctionDto.originalQuestion.weightResponse2 == 0}">0</option>
+                        <option value="25" th:selected="${correctionDto != null && correctionDto.originalQuestion != null && correctionDto.originalQuestion.weightResponse2 == 25}">25</option>
+                        <option value="33.33333" th:selected="${correctionDto != null && correctionDto.originalQuestion != null && correctionDto.originalQuestion.weightResponse2 == 33.33333}">33.33333</option>
+                        <option value="50" th:selected="${correctionDto != null && correctionDto.originalQuestion != null && correctionDto.originalQuestion.weightResponse2 == 50}">50</option>
+                        <option value="100" th:selected="${correctionDto != null && correctionDto.originalQuestion != null && correctionDto.originalQuestion.weightResponse2 == 100}">100</option>
+                    </select>
+                </div>
+                <div class="answer-weight-row" data-response-num="3">
+                    <input type="text" id="original-response3" placeholder="Response 3" class="form-input"
+                           th:value="${correctionDto != null && correctionDto.originalQuestion != null ? correctionDto.originalQuestion.response3 : ''}" />
+                    <select id="original-weight3" class="form-select weight-select">
+                        <option value="-100" th:selected="${correctionDto != null && correctionDto.originalQuestion != null && correctionDto.originalQuestion.weightResponse3 == -100}">-100</option>
+                        <option value="-50" th:selected="${correctionDto != null && correctionDto.originalQuestion != null && correctionDto.originalQuestion.weightResponse3 == -50}">-50</option>
+                        <option value="0" th:selected="${correctionDto == null || correctionDto.originalQuestion == null || correctionDto.originalQuestion.weightResponse3 == 0}">0</option>
+                        <option value="25" th:selected="${correctionDto != null && correctionDto.originalQuestion != null && correctionDto.originalQuestion.weightResponse3 == 25}">25</option>
+                        <option value="33.33333" th:selected="${correctionDto != null && correctionDto.originalQuestion != null && correctionDto.originalQuestion.weightResponse3 == 33.33333}">33.33333</option>
+                        <option value="50" th:selected="${correctionDto != null && correctionDto.originalQuestion != null && correctionDto.originalQuestion.weightResponse3 == 50}">50</option>
+                        <option value="100" th:selected="${correctionDto != null && correctionDto.originalQuestion != null && correctionDto.originalQuestion.weightResponse3 == 100}">100</option>
+                    </select>
+                </div>
+                <div class="answer-weight-row" data-response-num="4">
+                    <input type="text" id="original-response4" placeholder="Response 4" class="form-input"
+                           th:value="${correctionDto != null && correctionDto.originalQuestion != null ? correctionDto.originalQuestion.response4 : ''}" />
+                    <select id="original-weight4" class="form-select weight-select">
+                        <option value="-100" th:selected="${correctionDto != null && correctionDto.originalQuestion != null && correctionDto.originalQuestion.weightResponse4 == -100}">-100</option>
+                        <option value="-50" th:selected="${correctionDto != null && correctionDto.originalQuestion != null && correctionDto.originalQuestion.weightResponse4 == -50}">-50</option>
+                        <option value="0" th:selected="${correctionDto == null || correctionDto.originalQuestion == null || correctionDto.originalQuestion.weightResponse4 == 0}">0</option>
+                        <option value="25" th:selected="${correctionDto != null && correctionDto.originalQuestion != null && correctionDto.originalQuestion.weightResponse4 == 25}">25</option>
+                        <option value="33.33333" th:selected="${correctionDto != null && correctionDto.originalQuestion != null && correctionDto.originalQuestion.weightResponse4 == 33.33333}">33.33333</option>
+                        <option value="50" th:selected="${correctionDto != null && correctionDto.originalQuestion != null && correctionDto.originalQuestion.weightResponse4 == 50}">50</option>
+                        <option value="100" th:selected="${correctionDto != null && correctionDto.originalQuestion != null && correctionDto.originalQuestion.weightResponse4 == 100}">100</option>
+                    </select>
+                </div>
+            </fieldset>
+        </div>
+
+        <!-- Right Panel: Corrected Question -->
+        <div class="panel corrected-panel">
+            <h3>✨ Corrected Question</h3>
+
+            <div class="form-group">
+                <label for="corrected-title" class="form-label">Question Title:</label>
+                <input type="text" id="corrected-title" placeholder="Corrected title will appear here..." class="form-input">
+            </div>
+
+            <div class="form-group">
+                <label for="corrected-text" class="form-label">Question Text:</label>
+                <textarea id="corrected-text" rows="4" placeholder="Corrected text will appear here..." class="form-textarea"></textarea>
+            </div>
+
+            <div class="form-grid-2col">
+                <div class="form-group">
+                    <label for="corrected-chapter" class="form-label">Chapter:</label>
+                    <input type="text" id="corrected-chapter" placeholder="Chapter" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label for="corrected-author" class="form-label">Author Name:</label>
+                    <input type="text" id="corrected-author" placeholder="Author" class="form-input">
+                </div>
+            </div>
+
+            <div class="form-grid-2col">
+                <div class="form-group">
+                    <label for="corrected-course" class="form-label">Course Name:</label>
+                    <input type="text" id="corrected-course" placeholder="Course" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label for="corrected-quiz" class="form-label">Quiz Name:</label>
+                    <input type="text" id="corrected-quiz" placeholder="Quiz" class="form-input">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="corrected-language" class="form-label">Language:</label>
+                <select id="corrected-language" class="form-select">
+                    <option value="ro">Romanian</option>
+                    <option value="en">English</option>
+                </select>
+            </div>
+
+            <fieldset class="form-fieldset">
+                <legend class="form-legend">Response Options & Weights</legend>
+                <div class="answer-weight-row">
+                    <input type="text" id="corrected-response1" placeholder="Response 1" class="form-input" />
+                    <select id="corrected-weight1" class="form-select weight-select">
+                        <option value="-100">-100</option>
+                        <option value="-50">-50</option>
+                        <option value="0" selected>0</option>
+                        <option value="25">25</option>
+                        <option value="33.33333">33.33333</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+                <div class="answer-weight-row">
+                    <input type="text" id="corrected-response2" placeholder="Response 2" class="form-input" />
+                    <select id="corrected-weight2" class="form-select weight-select">
+                        <option value="-100">-100</option>
+                        <option value="-50">-50</option>
+                        <option value="0" selected>0</option>
+                        <option value="25">25</option>
+                        <option value="33.33333">33.33333</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+                <div class="answer-weight-row" data-response-num="3">
+                    <input type="text" id="corrected-response3" placeholder="Response 3" class="form-input" />
+                    <select id="corrected-weight3" class="form-select weight-select">
+                        <option value="-100">-100</option>
+                        <option value="-50">-50</option>
+                        <option value="0" selected>0</option>
+                        <option value="25">25</option>
+                        <option value="33.33333">33.33333</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+                <div class="answer-weight-row" data-response-num="4">
+                    <input type="text" id="corrected-response4" placeholder="Response 4" class="form-input" />
+                    <select id="corrected-weight4" class="form-select weight-select">
+                        <option value="-100">-100</option>
+                        <option value="-50">-50</option>
+                        <option value="0" selected>0</option>
+                        <option value="25">25</option>
+                        <option value="33.33333">33.33333</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            </fieldset>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="form-actions centered-actions">
+        <button onclick="correctGrammar()" class="btn btn-save" id="grammar-btn">
+            ✍️ Correct Grammar
+        </button>
+        <button onclick="improveQuestion()" class="btn btn-new" id="improve-btn">
+            🚀 Improve Question
+        </button>
+        <button onclick="generateAlternatives()" class="btn btn-info" id="alternatives-btn">
+            🎯 Generate Alternatives
+        </button>
+        <button onclick="explainAnswer()" class="btn btn-export" id="explain-btn">
+            📖 Explain Correct Answer
+        </button>
+        <button onclick="copyToCorrected()" class="btn btn-outline" id="copy-btn">
+            ➡️ Copy to Corrected
+        </button>
+        <button onclick="saveImprovedQuestion()" class="btn btn-save-improved" id="save-btn">
+            💾 Save Improved Question
+        </button>
+        <button onclick="clearAll()" class="btn btn-delete">
+            🗑️ Clear All
+        </button>
+    </div>
+
+    <!-- Results Section -->
+    <div class="results-section">
+        <h3>Results:</h3>
+        <div id="results-container">
+            <div class="result-placeholder">
+                Results will appear here after processing...
+            </div>
+        </div>
+    </div>
+
+    <!-- Sample Questions for Testing -->
+    <div class="samples-section">
+        <h3>Sample Questions for Testing:</h3>
+        <div class="sample-buttons">
+            <button onclick="loadSample(1)" class="btn btn-outline">🇷🇴 Load Romanian Sample</button>
+            <button onclick="loadSample(2)" class="btn btn-outline">🇺🇸 Load English Sample</button>
+            <button onclick="loadSample(3)" class="btn btn-outline">⚠️ Load Grammar Error Sample</button>
+            <button onclick="loadSample(4)" class="btn btn-outline">✓✗ Load True/False Sample</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let isOllamaConnected = false;
+
+// Sample questions for testing
+const samples = {
+    1: {
+        title: "Capitala Frantei",
+        text: "Care este capitala Frantei?",
+        response1: "Paris",
+        response2: "London",
+        response3: "Berlin",
+        response4: "Madrid",
+        weight1: "100",
+        weight2: "0",
+        weight3: "0",
+        weight4: "0",
+        language: "ro",
+        chapter: "Geografie",
+        author: "Test Author",
+        course: "Geografia Europei",
+        quiz: "Capitale",
+        type: "MULTICHOICE"
+    },
+    2: {
+        title: "Programming Languages",
+        text: "Which programming language is primarily used for web development?",
+        response1: "JavaScript",
+        response2: "Assembly",
+        response3: "COBOL",
+        response4: "Fortran",
+        weight1: "100",
+        weight2: "0",
+        weight3: "0",
+        weight4: "0",
+        language: "en",
+        chapter: "Web Development",
+        author: "Test Author",
+        course: "Computer Science",
+        quiz: "Programming Basics",
+        type: "MULTICHOICE"
+    },
+    3: {
+        title: "Capitala Frantei cu erori",
+        text: "Care este capitala tarii Franta si cati locuitori are aceasta oras?",
+        response1: "Paris - aproximativ 2 milioane",
+        response2: "London - aproximativ 9 milioane",
+        response3: "Berlin - aproximativ 4 milioane",
+        response4: "Madrid - aproximativ 3 milioane",
+        weight1: "100",
+        weight2: "0",
+        weight3: "0",
+        weight4: "0",
+        language: "ro",
+        chapter: "Geografie",
+        author: "Test Author",
+        course: "Geografia Europei",
+        quiz: "Capitale",
+        type: "MULTICHOICE"
+    },
+    4: {
+        title: "Java este un limbaj de programare",
+        text: "Java este un limbaj de programare orientat pe obiecte.",
+        response1: "Adevarat",
+        response2: "Fals",
+        weight1: "100",
+        weight2: "0",
+        language: "ro",
+        chapter: "Programare",
+        author: "Test Author",
+        course: "Informatica",
+        quiz: "Limbaje de Programare",
+        type: "TRUEFALSE"
+    }
+};
+
+// Load sample questions
+function loadSample(sampleId) {
+    const sample = samples[sampleId];
+    if (sample) {
+        // Set question type
+        const questionType = sample.type || 'MULTICHOICE';
+        document.getElementById('question-type').value = questionType;
+
+        // Populate original panel from sample
+        document.getElementById('question-id').value = '';
+        document.getElementById('original-title').value = sample.title || '';
+        document.getElementById('original-text').value = sample.text || '';
+        document.getElementById('original-chapter').value = sample.chapter || '';
+        document.getElementById('original-author').value = sample.author || '';
+        document.getElementById('original-course').value = sample.course || '';
+        document.getElementById('original-quiz').value = sample.quiz || '';
+        document.getElementById('original-language').value = sample.language || 'ro';
+
+        document.getElementById('original-response1').value = sample.response1 || '';
+        document.getElementById('original-response2').value = sample.response2 || '';
+        document.getElementById('original-weight1').value = sample.weight1 || '100';
+        document.getElementById('original-weight2').value = sample.weight2 || '0';
+
+        // Only set response3 and response4 for MULTICHOICE
+        if (questionType === 'MULTICHOICE') {
+            document.getElementById('original-response3').value = sample.response3 || '';
+            document.getElementById('original-response4').value = sample.response4 || '';
+            document.getElementById('original-weight3').value = sample.weight3 || '0';
+            document.getElementById('original-weight4').value = sample.weight4 || '0';
+        }
+
+        // Adjust UI based on question type
+        adjustUIForQuestionType();
+
+        showMessage('Sample question loaded!', 'success');
+    }
+}
+
+// Helper function to build QuestionCorrectionDto from original panel
+function buildQuestionCorrectionDto() {
+    const questionType = document.getElementById('question-type').value || 'MULTICHOICE';
+
+    const originalQuestion = {
+        id: document.getElementById('question-id').value || null,
+        title: document.getElementById('original-title').value,
+        text: document.getElementById('original-text').value,
+        chapter: document.getElementById('original-chapter').value,
+        authorName: document.getElementById('original-author').value,
+        course: document.getElementById('original-course').value,
+        quizName: document.getElementById('original-quiz').value,
+        response1: document.getElementById('original-response1').value,
+        response2: document.getElementById('original-response2').value,
+        weightResponse1: parseFloat(document.getElementById('original-weight1').value),
+        weightResponse2: parseFloat(document.getElementById('original-weight2').value),
+        type: questionType
+    };
+
+    // Only include response3 and response4 for MULTICHOICE questions
+    if (questionType === 'MULTICHOICE') {
+        originalQuestion.response3 = document.getElementById('original-response3').value;
+        originalQuestion.response4 = document.getElementById('original-response4').value;
+        originalQuestion.weightResponse3 = parseFloat(document.getElementById('original-weight3').value);
+        originalQuestion.weightResponse4 = parseFloat(document.getElementById('original-weight4').value);
+    }
+
+    return {
+        originalQuestion: originalQuestion,
+        language: document.getElementById('original-language').value
+    };
+}
+
+// Helper function to populate corrected panel from modifiedQuestion
+function populateCorrectedFromDto(modifiedQuestion) {
+    const questionType = document.getElementById('question-type').value || 'MULTICHOICE';
+
+    document.getElementById('corrected-title').value = modifiedQuestion.title || '';
+    document.getElementById('corrected-text').value = modifiedQuestion.text || '';
+    document.getElementById('corrected-chapter').value = modifiedQuestion.chapter || '';
+    document.getElementById('corrected-author').value = modifiedQuestion.authorName || '';
+    document.getElementById('corrected-course').value = modifiedQuestion.course || '';
+    document.getElementById('corrected-quiz').value = modifiedQuestion.quizName || '';
+    document.getElementById('corrected-response1').value = modifiedQuestion.response1 || '';
+    document.getElementById('corrected-response2').value = modifiedQuestion.response2 || '';
+    document.getElementById('corrected-weight1').value = modifiedQuestion.weightResponse1 || '100';
+    document.getElementById('corrected-weight2').value = modifiedQuestion.weightResponse2 || '0';
+
+    // Only populate response3 and response4 for MULTICHOICE questions
+    if (questionType === 'MULTICHOICE') {
+        document.getElementById('corrected-response3').value = modifiedQuestion.response3 || '';
+        document.getElementById('corrected-response4').value = modifiedQuestion.response4 || '';
+        document.getElementById('corrected-weight3').value = modifiedQuestion.weightResponse3 || '0';
+        document.getElementById('corrected-weight4').value = modifiedQuestion.weightResponse4 || '0';
+    }
+}
+
+// Copy original to corrected panel
+function copyToCorrected() {
+    const questionType = document.getElementById('question-type').value || 'MULTICHOICE';
+
+    document.getElementById('corrected-title').value = document.getElementById('original-title').value;
+    document.getElementById('corrected-text').value = document.getElementById('original-text').value;
+    document.getElementById('corrected-chapter').value = document.getElementById('original-chapter').value;
+    document.getElementById('corrected-author').value = document.getElementById('original-author').value;
+    document.getElementById('corrected-course').value = document.getElementById('original-course').value;
+    document.getElementById('corrected-quiz').value = document.getElementById('original-quiz').value;
+    document.getElementById('corrected-language').value = document.getElementById('original-language').value;
+
+    document.getElementById('corrected-response1').value = document.getElementById('original-response1').value;
+    document.getElementById('corrected-response2').value = document.getElementById('original-response2').value;
+    document.getElementById('corrected-weight1').value = document.getElementById('original-weight1').value;
+    document.getElementById('corrected-weight2').value = document.getElementById('original-weight2').value;
+
+    // Only copy response3 and response4 for MULTICHOICE questions
+    if (questionType === 'MULTICHOICE') {
+        document.getElementById('corrected-response3').value = document.getElementById('original-response3').value;
+        document.getElementById('corrected-response4').value = document.getElementById('original-response4').value;
+        document.getElementById('corrected-weight3').value = document.getElementById('original-weight3').value;
+        document.getElementById('corrected-weight4').value = document.getElementById('original-weight4').value;
+    }
+
+    showMessage('Copied to corrected panel', 'success');
+}
+
+// Get selected AI model
+function getSelectedModel() {
+    return document.getElementById('ai-model-select').value;
+}
+
+// Save improved question
+async function saveImprovedQuestion() {
+    const questionId = document.getElementById('question-id').value;
+
+    if (!questionId) {
+        showMessage('No question ID found. Please load a question first.', 'error');
+        return;
+    }
+
+    const questionType = document.getElementById('question-type').value || 'MULTICHOICE';
+
+    // Build the modified question from the corrected panel
+    const modifiedQuestion = {
+        id: questionId,
+        title: document.getElementById('corrected-title').value,
+        text: document.getElementById('corrected-text').value,
+        chapter: document.getElementById('corrected-chapter').value,
+        authorName: document.getElementById('corrected-author').value,
+        course: document.getElementById('corrected-course').value,
+        quizName: document.getElementById('corrected-quiz').value,
+        response1: document.getElementById('corrected-response1').value,
+        response2: document.getElementById('corrected-response2').value,
+        weightResponse1: parseFloat(document.getElementById('corrected-weight1').value),
+        weightResponse2: parseFloat(document.getElementById('corrected-weight2').value),
+        type: questionType
+    };
+
+    // Only include response3 and response4 for MULTICHOICE questions
+    if (questionType === 'MULTICHOICE') {
+        modifiedQuestion.response3 = document.getElementById('corrected-response3').value;
+        modifiedQuestion.response4 = document.getElementById('corrected-response4').value;
+        modifiedQuestion.weightResponse3 = parseFloat(document.getElementById('corrected-weight3').value);
+        modifiedQuestion.weightResponse4 = parseFloat(document.getElementById('corrected-weight4').value);
+    }
+
+    if (!modifiedQuestion.title || !modifiedQuestion.text) {
+        showMessage('Please fill in at least title and text', 'error');
+        return;
+    }
+
+    // Build QuestionCorrectionDto with original and modified questions
+    const correctionDto = {
+        originalQuestion: buildQuestionCorrectionDto().originalQuestion,
+        modifiedQuestion: modifiedQuestion,
+        language: document.getElementById('original-language').value,
+        model: getSelectedModel()
+    };
+
+    setButtonLoading('save-btn', true);
+
+    try {
+        const url = `/questions/${questionId}/correction/save`;
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(correctionDto)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to save question: ${errorText}`);
+        }
+
+        const savedQuestion = await response.json();
+
+        showMessage(`Question updated successfully! ID: ${savedQuestion.id}`, 'success');
+
+        // Update the original panel with the saved data to reflect changes
+        document.getElementById('original-title').value = savedQuestion.title || '';
+        document.getElementById('original-text').value = savedQuestion.text || '';
+        document.getElementById('original-chapter').value = savedQuestion.chapter || '';
+        document.getElementById('original-author').value = savedQuestion.authorName || '';
+        document.getElementById('original-course').value = savedQuestion.course || '';
+        document.getElementById('original-quiz').value = savedQuestion.quizName || '';
+        document.getElementById('original-response1').value = savedQuestion.response1 || '';
+        document.getElementById('original-response2').value = savedQuestion.response2 || '';
+        document.getElementById('original-weight1').value = savedQuestion.weightResponse1 || '100';
+        document.getElementById('original-weight2').value = savedQuestion.weightResponse2 || '0';
+
+        if (questionType === 'MULTICHOICE') {
+            document.getElementById('original-response3').value = savedQuestion.response3 || '';
+            document.getElementById('original-response4').value = savedQuestion.response4 || '';
+            document.getElementById('original-weight3').value = savedQuestion.weightResponse3 || '0';
+            document.getElementById('original-weight4').value = savedQuestion.weightResponse4 || '0';
+        }
+
+        addResult(
+            '💾 Question Saved',
+            `<div class="saved-content">
+                <strong>Question ID:</strong> ${savedQuestion.id}<br>
+                <strong>Title:</strong> ${savedQuestion.title}<br>
+                <strong>Status:</strong> Successfully updated with improved data
+            </div>`,
+            'success'
+        );
+
+    } catch (error) {
+        console.error('Error saving question:', error);
+        showMessage('Error saving question: ' + error.message, 'error');
+    } finally {
+        setButtonLoading('save-btn', false);
+    }
+}
+
+// Check Ollama health status
+async function checkOllamaHealth() {
+    try {
+        const response = await fetch('/api/ollama/health');
+        const result = await response.json();
+
+        isOllamaConnected = result.ollama_connected;
+        const statusElement = document.getElementById('status-text');
+
+        if (isOllamaConnected) {
+            statusElement.innerHTML = '🟢 Ollama Connected - Ready to process';
+            document.getElementById('ollama-status').className = 'status-indicator connected';
+        } else {
+            statusElement.innerHTML = '🔴 Ollama Disconnected - AI features unavailable';
+            document.getElementById('ollama-status').className = 'status-indicator disconnected';
+        }
+
+        // Enable/disable AI buttons based on connection
+        const aiButtons = ['grammar-btn', 'improve-btn', 'alternatives-btn', 'explain-btn'];
+        aiButtons.forEach(btnId => {
+            document.getElementById(btnId).disabled = !isOllamaConnected;
+        });
+
+    } catch (error) {
+        console.error('Error checking Ollama health:', error);
+        document.getElementById('status-text').innerHTML = '❌ Error checking Ollama status';
+        document.getElementById('ollama-status').className = 'status-indicator error';
+        isOllamaConnected = false;
+    }
+}
+
+// Dynamically populate the model dropdown with installed models from Ollama
+async function populateModelDropdown() {
+    const select = document.getElementById('ai-model-select');
+    select.innerHTML = '<option>Loading...</option>';
+    try {
+        const resp = await fetch('http://localhost:11434/api/tags');
+        if (!resp.ok) throw new Error('Failed to fetch models');
+        const data = await resp.json();
+        select.innerHTML = '';
+        if (data.models && data.models.length > 0) {
+            data.models.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.name;
+                opt.textContent = m.name;
+                select.appendChild(opt);
+            });
+        } else {
+            select.innerHTML = '<option>No models found</option>';
+        }
+    } catch (e) {
+        select.innerHTML = '<option>Error loading models</option>';
+    }
+}
+
+// Show loading state for button
+function setButtonLoading(buttonId, isLoading) {
+    const button = document.getElementById(buttonId);
+    if (isLoading) {
+        button.disabled = true;
+        button.dataset.originalText = button.innerHTML;
+        button.innerHTML = '⏳ Processing...';
+    } else {
+        button.disabled = !isOllamaConnected;
+        button.innerHTML = button.dataset.originalText || button.innerHTML.replace('⏳ Processing...', '');
+    }
+}
+
+// Show message to user
+function showMessage(message, type = 'info') {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${type}`;
+    messageDiv.innerHTML = message;
+
+    // Insert at top of results container
+    const resultsContainer = document.getElementById('results-container');
+    resultsContainer.insertBefore(messageDiv, resultsContainer.firstChild);
+
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (messageDiv.parentNode) {
+            messageDiv.parentNode.removeChild(messageDiv);
+        }
+    }, 5000);
+}
+
+// Add result to results container
+function addResult(title, content, type = 'info') {
+    const resultDiv = document.createElement('div');
+    resultDiv.className = `result-item ${type}`;
+
+    resultDiv.innerHTML = `
+        <div class="result-header">
+            <h4>${title}</h4>
+            <button onclick="copyToClipboard(this)" class="copy-btn">📋 Copy</button>
+        </div>
+        <div class="result-content">${content}</div>
+    `;
+
+    const resultsContainer = document.getElementById('results-container');
+    const placeholder = resultsContainer.querySelector('.result-placeholder');
+    if (placeholder) {
+        placeholder.remove();
+    }
+
+    resultsContainer.appendChild(resultDiv);
+}
+
+// Copy result content to clipboard
+function copyToClipboard(button) {
+    const content = button.parentElement.nextElementSibling.innerText;
+    navigator.clipboard.writeText(content).then(() => {
+        const originalText = button.innerHTML;
+        button.innerHTML = '✅ Copied!';
+        setTimeout(() => {
+            button.innerHTML = originalText;
+        }, 2000);
+    }).catch(err => {
+        console.error('Failed to copy: ', err);
+        showMessage('Failed to copy to clipboard', 'error');
+    });
+}
+
+// Get current question id from hidden field
+function getCurrentQuestionId() {
+    return document.getElementById('question-id').value;
+}
+
+// Correct grammar
+async function correctGrammar() {
+    if (!isOllamaConnected) {
+        showMessage('Ollama is not connected', 'error');
+        return;
+    }
+
+    const title = document.getElementById('original-title').value;
+    const text = document.getElementById('original-text').value;
+
+    if (!title && !text) {
+        showMessage('Please enter at least a title or question text', 'error');
+        return;
+    }
+
+    setButtonLoading('grammar-btn', true);
+
+    try {
+        const correctionDto = buildQuestionCorrectionDto();
+        correctionDto.model = getSelectedModel();
+        const questionId = getCurrentQuestionId();
+        const url = questionId ? `/questions/${questionId}/correction/grammar` : '/questions/0/correction/grammar';
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(correctionDto)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            let errorMessage = `Server error (${response.status})`;
+            try {
+                const errorJson = JSON.parse(errorText);
+                errorMessage = errorJson.message || errorJson.error || errorMessage;
+            } catch (e) {
+                if (errorText) errorMessage += ': ' + errorText.substring(0, 200);
+            }
+            throw new Error(errorMessage);
+        }
+
+        const result = await response.json();
+
+        // Populate corrected panel with modifiedQuestion
+        populateCorrectedFromDto(result.modifiedQuestion);
+
+        showMessage('Grammar correction completed! Check the corrected panel.', 'success');
+        addResult('✍️ Grammar Correction',
+                  `Grammar and spelling corrected using ${result.modelUsed || 'AI'}.<br>${result.correctionNotes || ''}`,
+                  'success');
+
+    } catch (error) {
+        console.error('Error correcting grammar:', error);
+        showMessage('Error correcting grammar: ' + error.message, 'error');
+        addResult('❌ Grammar Correction Failed', error.message, 'error');
+    } finally {
+        setButtonLoading('grammar-btn', false);
+    }
+}
+
+// Improve question
+async function improveQuestion() {
+    if (!isOllamaConnected) {
+        showMessage('Ollama is not connected', 'error');
+        return;
+    }
+
+    const title = document.getElementById('original-title').value;
+    const text = document.getElementById('original-text').value;
+
+    if (!title || !text) {
+        showMessage('Please enter both title and question text', 'error');
+        return;
+    }
+
+    setButtonLoading('improve-btn', true);
+
+    try {
+        const correctionDto = buildQuestionCorrectionDto();
+        correctionDto.model = getSelectedModel();
+        const questionId = getCurrentQuestionId();
+        const url = questionId ? `/questions/${questionId}/correction/improve` : '/questions/0/correction/improve';
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(correctionDto)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            let errorMessage = `Server error (${response.status})`;
+            try {
+                const errorJson = JSON.parse(errorText);
+                errorMessage = errorJson.message || errorJson.error || errorMessage;
+            } catch (e) {
+                if (errorText) errorMessage += ': ' + errorText.substring(0, 200);
+            }
+            throw new Error(errorMessage);
+        }
+
+        const result = await response.json();
+
+        populateCorrectedFromDto(result.modifiedQuestion);
+
+        showMessage('Question improved! Check the corrected panel.', 'success');
+        addResult('🚀 Improved Question',
+                  `Question improved using ${result.modelUsed || 'AI'}.<br>${result.correctionNotes || ''}`,
+                  'success');
+
+    } catch (error) {
+        console.error('Error improving question:', error);
+        showMessage('Error improving question: ' + error.message, 'error');
+        addResult('❌ Question Improvement Failed', error.message, 'error');
+    } finally {
+        setButtonLoading('improve-btn', false);
+    }
+}
+
+// Generate alternative answers
+async function generateAlternatives() {
+    if (!isOllamaConnected) {
+        showMessage('Ollama is not connected', 'error');
+        return;
+    }
+
+    const title = document.getElementById('original-title').value;
+    const text = document.getElementById('original-text').value;
+
+    if (!title || !text) {
+        showMessage('Please enter title and question text', 'error');
+        return;
+    }
+
+    setButtonLoading('alternatives-btn', true);
+
+    try {
+        const correctionDto = buildQuestionCorrectionDto();
+        correctionDto.model = getSelectedModel();
+        const questionId = getCurrentQuestionId();
+        const url = questionId ? `/questions/${questionId}/correction/alternatives` : '/questions/0/correction/alternatives';
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(correctionDto)
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            let errorMessage = `Server error (${response.status})`;
+            try {
+                const errorJson = JSON.parse(errorText);
+                errorMessage = errorJson.message || errorJson.error || errorMessage;
+            } catch (e) {
+                if (errorText) errorMessage += ': ' + errorText.substring(0, 200);
+            }
+            throw new Error(errorMessage);
+        }
+
+        const result = await response.json();
+        addResult('🎯 Alternative Answers', `<pre>${result.alternatives}</pre>`, 'info');
+        showMessage('Alternative answers generated!', 'success');
+
+    } catch (error) {
+        console.error('Error generating alternatives:', error);
+        showMessage('Error generating alternatives: ' + error.message, 'error');
+        addResult('❌ Generate Alternatives Failed', error.message, 'error');
+    } finally {
+        setButtonLoading('alternatives-btn', false);
+    }
+}
+
+// Explain correct answer
+async function explainAnswer() {
+    if (!isOllamaConnected) {
+        showMessage('Ollama is not connected', 'error');
+        return;
+    }
+
+    const title = document.getElementById('original-title').value;
+    const text = document.getElementById('original-text').value;
+
+    if (!title || !text) {
+        showMessage('Please enter title and question text', 'error');
+        return;
+    }
+
+    setButtonLoading('explain-btn', true);
+
+    try {
+        const correctionDto = buildQuestionCorrectionDto();
+        correctionDto.model = getSelectedModel();
+        const questionId = getCurrentQuestionId();
+        const url = questionId ? `/questions/${questionId}/correction/explanation` : '/questions/0/correction/explanation';
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(correctionDto)
+        });
+
+        if (!response.ok) throw new Error('Failed to generate explanation');
+
+        const result = await response.json();
+        addResult('📖 Answer Explanation',
+                  `<div class="explanation-text">${result.explanation.replace(/\n/g, '<br>')}</div>`,
+                  'warning');
+        showMessage('Answer explanation generated!', 'success');
+
+    } catch (error) {
+        console.error('Error generating explanation:', error);
+        showMessage('Error generating explanation: ' + error.message, 'error');
+    } finally {
+        setButtonLoading('explain-btn', false);
+    }
+}
+
+// Clear all inputs and results
+function clearAll() {
+    // Clear original panel
+    document.getElementById('question-id').value = '';
+    document.getElementById('original-title').value = '';
+    document.getElementById('original-text').value = '';
+    document.getElementById('original-chapter').value = '';
+    document.getElementById('original-author').value = '';
+    document.getElementById('original-course').value = '';
+    document.getElementById('original-quiz').value = '';
+    document.getElementById('original-response1').value = '';
+    document.getElementById('original-response2').value = '';
+    document.getElementById('original-response3').value = '';
+    document.getElementById('original-response4').value = '';
+    document.getElementById('original-language').value = 'ro';
+
+    // Clear corrected panel
+    document.getElementById('corrected-title').value = '';
+    document.getElementById('corrected-text').value = '';
+    document.getElementById('corrected-chapter').value = '';
+    document.getElementById('corrected-author').value = '';
+    document.getElementById('corrected-course').value = '';
+    document.getElementById('corrected-quiz').value = '';
+    document.getElementById('corrected-response1').value = '';
+    document.getElementById('corrected-response2').value = '';
+    document.getElementById('corrected-response3').value = '';
+    document.getElementById('corrected-response4').value = '';
+    document.getElementById('corrected-language').value = 'ro';
+
+    const resultsContainer = document.getElementById('results-container');
+    resultsContainer.innerHTML = '<div class="result-placeholder">Results will appear here after processing...</div>';
+
+    showMessage('All fields cleared', 'info');
+}
+
+// Adjust UI based on question type
+function adjustUIForQuestionType() {
+    const questionType = document.getElementById('question-type').value;
+    const isTrueFalse = questionType === 'TRUEFALSE';
+
+    // Hide/show response 3 and 4 fields
+    const response3And4Fields = document.querySelectorAll('[data-response-num="3"], [data-response-num="4"]');
+    response3And4Fields.forEach(field => {
+        if (isTrueFalse) {
+            field.style.display = 'none';
+        } else {
+            field.style.display = '';
+        }
+    });
+
+    log.info('UI adjusted for question type: ' + questionType);
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    populateModelDropdown();
+    checkOllamaHealth();
+    adjustUIForQuestionType();
+
+    // Auto-check Ollama status every 30 seconds
+    setInterval(checkOllamaHealth, 30000);
+});
+</script>
+
+<style>
+/* Additional styles specific to question correction tool */
+.status-indicator {
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.status-indicator.connected {
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    color: #155724;
+}
+
+.status-indicator.disconnected {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
+}
+
+.status-indicator.error {
+    background-color: #fff3cd;
+    border: 1px solid #ffeaa7;
+    color: #856404;
+}
+
+/* Dual Panel Layout */
+.dual-panel-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.panel {
+    border: 2px solid #ddd;
+    border-radius: 12px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.95);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.original-panel {
+    border-color: #ffc107;
+    background: linear-gradient(135deg, #fff9e6 0%, #ffffff 100%);
+}
+
+.original-panel h3 {
+    color: #f57c00;
+    margin-top: 0;
+}
+
+.corrected-panel {
+    border-color: #28a745;
+    background: linear-gradient(135deg, #e8f5e9 0%, #ffffff 100%);
+}
+
+.corrected-panel h3 {
+    color: #28a745;
+    margin-top: 0;
+}
+
+.answer-weight-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.weight-select {
+    width: 120px;
+}
+
+.centered-actions {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 30px 0;
+}
+
+.btn-save-improved {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.3s ease;
+}
+
+.btn-save-improved:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 12px rgba(40, 167, 69, 0.3);
+}
+
+.results-section {
+    margin-top: 30px;
+}
+
+.results-section h3 {
+    margin-bottom: 15px;
+}
+
+#results-container {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    min-height: 100px;
+    background: white;
+}
+
+.result-placeholder {
+    padding: 20px;
+    text-align: center;
+    color: #6c757d;
+    font-style: italic;
+}
+
+.result-item {
+    border-bottom: 1px solid #eee;
+    padding: 15px;
+}
+
+.result-item:last-child {
+    border-bottom: none;
+}
+
+.result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.result-header h4 {
+    margin: 0;
+    color: #333;
+}
+
+.copy-btn {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.copy-btn:hover {
+    background: #e9ecef;
+}
+
+.result-content {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 4px;
+    border-left: 4px solid #007bff;
+}
+
+.result-item.success .result-content {
+    border-left-color: #28a745;
+}
+
+.result-item.warning .result-content {
+    border-left-color: #ffc107;
+}
+
+.result-item.info .result-content {
+    border-left-color: #17a2b8;
+}
+
+.samples-section {
+    margin-top: 30px;
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.sample-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.message {
+    padding: 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    border-left: 4px solid;
+}
+
+.message.success {
+    background: #d4edda;
+    border-color: #28a745;
+    color: #155724;
+}
+
+.message.error {
+    background: #f8d7da;
+    border-color: #dc3545;
+    color: #721c24;
+}
+
+.message.info {
+    background: #d1ecf1;
+    border-color: #17a2b8;
+    color: #0c5460;
+}
+
+pre {
+    background: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+}
+
+.saved-content {
+    padding: 10px;
+    background: #e8f5e9;
+    border-radius: 4px;
+}
+
+@media (max-width: 1200px) {
+    .dual-panel-container {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .sample-buttons {
+        flex-direction: column;
+    }
+
+    .btn {
+        width: 100%;
+    }
+
+    .centered-actions {
+        flex-direction: column;
+    }
+}
+</style>
+
+</body>
+</html>

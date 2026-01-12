@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Question Details</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+<div th:insert="~{fragments::menu}"></div>
+
+<div class="container mt-3">
+    <h2>📝 Question Details</h2>
+
+    <div th:if="${question != null}" class="form-container">
+        <h3>Question Information</h3>
+        <table class="detail-table">
+            <tr><th scope="row">ID</th><td th:text="${question.id}"></td></tr>
+            <tr><th scope="row">Type</th><td th:text="${question.type}"></td></tr>
+            <tr><th scope="row">Title</th><td th:text="${question.title}"></td></tr>
+            <tr><th scope="row">Chapter</th><td th:text="${question.chapter}"></td></tr>
+            <tr><th scope="row">Course</th><td th:text="${question.course}"></td></tr>
+            <tr><th scope="row">Author</th><td th:text="${question.authorName}"></td></tr>
+            <tr><th scope="row">Quiz</th><td th:text="${question.quizName}"></td></tr>
+            <tr><th scope="row">Text</th><td th:text="${question.text}"></td></tr>
+            <tr th:if="${question.type == 'MULTICHOICE'}">
+                <th scope="row">Responses</th>
+                <td>
+                    <ul>
+                        <li th:text="${question.response1}"></li>
+                        <li th:text="${question.response2}"></li>
+                        <li th:text="${question.response3}"></li>
+                        <li th:text="${question.response4}"></li>
+                    </ul>
+                </td>
+            </tr>
+            <tr th:if="${question.type == 'TRUEFALSE'}">
+                <th scope="row">True/False</th>
+                <td th:text="${question.response1}"></td>
+            </tr>
+        </table>
+
+        <div class="form-actions">
+            <a th:href="@{'/questions/' + ${question.id} + '/edit'}" class="btn btn-edit">✏️ Edit Question</a>
+            <form th:action="@{'/questions/' + ${question.id}}" method="post" style="display:inline;">
+                <input type="hidden" name="_method" value="DELETE" />
+                <button type="submit" class="btn btn-delete" onclick="return confirm('Are you sure you want to delete this question?');">🗑️ Delete</button>
+            </form>
+            <a th:href="@{/questions}" class="btn btn-cancel">❌ Back to Questions</a>
+        </div>
+    </div>
+
+    <div th:if="${question == null}" class="alert">
+        <p>No question found.</p>
+        <a th:href="@{/questions}" class="btn btn-cancel">❌ Back to Questions</a>
+    </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Course Details</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+<div th:insert="~{fragments::menu}"></div>
+
+<div class="container mt-3">
+    <h2>📚 Course Details</h2>
+
+    <div th:if="${course != null}" class="form-container">
+        <h3>Course Information</h3>
+        <table class="detail-table">
+            <tr><th scope="row">ID</th><td th:text="${course.id}"></td></tr>
+            <tr><th scope="row">Course Name</th><td th:text="${course.course}"></td></tr>
+            <tr><th scope="row">Description</th><td th:text="${course.description}"></td></tr>
+            <tr><th scope="row">University Year</th><td th:text="${course.universityYear}"></td></tr>
+            <tr><th scope="row">Semester</th><td th:text="${course.semester}"></td></tr>
+            <tr><th scope="row">Study Year</th><td th:text="${course.studyYear}"></td></tr>
+        </table>
+
+        <div class="form-actions">
+            <a th:href="@{'/courses/edit/' + ${course.id}}" class="btn btn-edit">✏️ Edit Course</a>
+            <a th:href="@{'/courses'}" class="btn btn-cancel">❌ Back to Courses</a>
+        </div>
+    </div>
+
+    <div th:if="${course == null}" class="alert">
+        <p>Course not found.</p>
+        <a th:href="@{'/courses'}" class="btn btn-cancel">❌ Back to Courses</a>
+    </div>
+</div>
+
+</body>
+</html>

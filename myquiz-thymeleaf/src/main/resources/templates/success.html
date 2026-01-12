@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Success</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+
+<div th:insert="~{fragments::menu}"></div>
+
+<div class="container mt-3">
+    <h2>✅ Success</h2>
+
+    <div class="form-container">
+        <h3>🎉 Operation Completed Successfully</h3>
+        <div style="background: rgba(16, 185, 129, 0.1); border: 2px solid rgba(16, 185, 129, 0.3); border-radius: 12px; padding: 1.5rem; text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">✅</div>
+            <div style="color: #fff; font-size: 1.1rem; font-weight: 500; line-height: 1.5;">
+                <span th:text="${message}"></span>
+            </div>
+        </div>
+
+        <div class="form-actions" style="justify-content: center; margin-top: 2rem;">
+            <a href="javascript:history.back()" class="btn btn-info">⬅️ Go Back</a>
+            <a th:href="@{/}" class="btn btn-new">🏠 Home</a>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

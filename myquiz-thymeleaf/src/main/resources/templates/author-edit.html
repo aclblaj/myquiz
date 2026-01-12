@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${editMode} ? 'Edit Author' : 'Add New Author'">Add New Author</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+
+<div th:insert="~{fragments::menu}"></div>
+
+<div class="container mt-3">
+    <h2 th:text="${editMode} ? '✏️ Edit Author' : '➕ Add New Author'">Add New Author</h2>
+
+    <div th:if="${message}" class="alert" style="background: rgba(16, 185, 129, 0.1); color: #065f46; border-color: #6ee7b7;" th:text="${message}"></div>
+
+    <div class="form-container">
+        <h3 th:text="${editMode} ? '✏️ Edit Author Details' : '➕ Add New Author'">Author Form</h3>
+        <form method="post" th:action="${editMode} ? '/authors/' + ${author.id} : '/authors'" th:object="${author}">
+            <input th:if="${editMode}" type="hidden" name="_method" value="PUT" />
+            <input th:if="${editMode}" type="hidden" th:field="*{id}" />
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="name" class="form-label">Author Name</label>
+                    <input type="text" id="name" class="form-input" th:field="*{name}" required placeholder="Enter author full name">
+                </div>
+
+                <div class="form-group">
+                    <label for="initials" class="form-label">Initials</label>
+                    <input type="text" id="initials" class="form-input" th:field="*{initials}" required placeholder="Enter author initials">
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-save" th:text="${editMode} ? '💾 Update Author' : '➕ Add Author'">Save</button>
+                <a th:href="@{/authors}" class="btn btn-cancel">❌ Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+</body>
+</html>

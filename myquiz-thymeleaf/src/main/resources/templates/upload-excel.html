@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Upload Questions</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+
+<div th:insert="~{fragments::menu}"></div>
+
+<div class="container mt-3">
+    <h2>📤 Upload Questions</h2>
+
+    <div class="form-container">
+        <h3>📊 Excel File Upload</h3>
+        <form method="POST" enctype="multipart/form-data" th:action="@{/uploads/excel-file}">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="file" class="form-label">Select Excel File:</label>
+                    <input type="file" name="file" id="file" accept=".xlsx,.xls" required class="form-input" />
+                </div>
+                <div class="form-group">
+                    <label for="username" class="form-label">Username:</label>
+                    <input type="text" id="username" name="username" placeholder="Enter your username" required class="form-input"/>
+                </div>
+                <div class="form-grid-2col">
+                    <div class="form-group">
+                        <label for="courseId" class="form-label">Course:</label>
+                        <select id="courseId" name="courseId" required class="form-select">
+                            <option value="" disabled selected>Select a course</option>
+                            <option th:each="course : ${courses}" th:value="${course.id}" th:text="${course.course}"></option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="name" class="form-label">Quiz Short Name:</label>
+                        <input type="text" id="name" name="name" placeholder="Q1" required class="form-input"/>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="template" class="form-label">Template:</label>
+                    <select id="template" name="template" required class="form-select">
+                        <option th:each="template : ${templates}" th:value="${template}" th:text="${template}"></option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-save">📤 Upload File</button>
+                <a th:href="@{/}" class="btn btn-cancel">❌ Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+

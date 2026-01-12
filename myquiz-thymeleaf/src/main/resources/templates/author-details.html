@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Author Details</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+<div th:insert="~{fragments::menu}"></div>
+
+<div class="container mt-3">
+    <h2>👤 Author Details</h2>
+
+    <div th:if="${errorMessage}" class="alert">
+        <p th:text="${errorMessage}">Error message</p>
+    </div>
+
+    <div class="form-container" th:if="${author != null && author.id != null}">
+        <h3>Author Information</h3>
+        <table class="detail-table">
+            <tr><th scope="row">Name</th><td th:text="${author.name}">Author Name</td></tr>
+            <tr><th scope="row">Initials</th><td th:text="${author.initials}">N/A</td></tr>
+            <tr th:if="${author.course}"><th scope="row">Course</th><td th:text="${author.course}">N/A</td></tr>
+        </table>
+
+        <div class="form-actions">
+            <a th:href="@{'/authors/' + ${author.id} + '/edit'}" class="btn btn-edit">✏️ Edit Author</a>
+            <a th:href="@{/authors}" class="btn btn-cancel">❌ Back to Authors</a>
+        </div>
+    </div>
+
+    <!-- Quiz Navigation Links -->
+    <div th:if="${quizzes != null && #lists.size(quizzes) > 0}" class="form-container mt-3">
+        <h3>📚 Quizzes</h3>
+        <div class="quiz-navigation">
+            <span th:each="quiz, iterStat : ${quizzes}">
+                <a th:href="${'#quiz-' + quiz.id}" th:text="${quiz.name}">Quiz Name</a>
+                <span th:if="${!iterStat.last}"> | </span>
+            </span>
+        </div>
+    </div>
+
+    <div th:if="${quizzes != null && #lists.size(quizzes) > 0}">
+        <div th:each="quiz : ${quizzes}" class="form-container mt-4" th:id="${'quiz-' + quiz.id}">
+            <h3 th:text="${quiz.name} + ' - ' + ${quiz.course}">Quiz Name - Course</h3>
+
+            <div th:if="${questionsByQuiz != null && questionsByQuiz[quiz.id] != null}">
+                <h4 class="mt-3 mb-2">Questions</h4>
+                <table class="styled-table">
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Text</th>
+                        <th>Type</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="question : ${questionsByQuiz[quiz.id]}">
+                        <td th:text="${question.id}">1</td>
+                        <td th:text="${question.text}">Question text</td>
+                        <td th:text="${question.type}">Multiple Choice</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div th:if="${errorsByQuiz != null && errorsByQuiz[quiz.id] != null && !errorsByQuiz[quiz.id].isEmpty()}">
+                <h4 class="mt-3 mb-2">⚠️ Validation Errors</h4>
+                <table class="styled-table">
+                    <thead>
+                    <tr>
+                        <th>Error Code</th>
+                        <th>Description</th>
+                        <th>Question ID</th>
+                        <th>Row</th>
+                        <th>Status</th>
+                        <th>Timestamp</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="error : ${errorsByQuiz[quiz.id]}">
+                        <td th:text="${error.errorCode}">ERROR_CODE</td>
+                        <td th:text="${error.description != null ? error.description : error.message}">Error description</td>
+                        <td th:text="${error.questionId != null ? error.questionId : '-'}">-</td>
+                        <td th:text="${error.row != null ? error.row : '-'}">-</td>
+                        <td>
+                            <span th:text="${error.status}"
+                                  th:class="${error.status == 'OPEN' ? 'badge badge-error' : 'badge badge-success'}">
+                                OPEN
+                            </span>
+                        </td>
+                        <td th:text="${error.timestamp != null ? #temporals.format(error.timestamp, 'yyyy-MM-dd HH:mm') : '-'}">2024-01-01 12:00</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div th:if="${quizzes == null || #lists.size(quizzes) == 0}" class="alert mt-3">
+        <p>No quizzes found for this author.</p>
+    </div>
+</div>
+</body>
+</html>

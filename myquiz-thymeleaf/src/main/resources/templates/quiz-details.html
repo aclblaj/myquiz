@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Quiz Details</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+
+<div th:insert="~{fragments::menu}"></div>
+
+<div class="container mt-3">
+    <h2 th:text="'📊 Quiz Details: ' + ${quiz.name}">Quiz Details</h2>
+
+    <div class="form-container">
+        <h3>Quiz Information</h3>
+        <table class="detail-table">
+            <tr><th scope="row">Quiz ID</th><td th:text="${quiz.id}">N/A</td></tr>
+            <tr><th scope="row">Quiz Name</th><td th:text="${quiz.name}">N/A</td></tr>
+            <tr><th scope="row">Course</th><td th:text="${quiz.course}">N/A</td></tr>
+            <tr><th scope="row">Year</th><td th:text="${quiz.year}">N/A</td></tr>
+            <tr><th scope="row">Source File</th><td th:text="${quiz.sourceFile}">N/A</td></tr>
+            <tr><th scope="row">Multiple Choice Questions</th><td th:text="${quiz.questionsMultichoice != null ? quiz.questionsMultichoice.size() : 0}">0</td></tr>
+            <tr><th scope="row">True/False Questions</th><td th:text="${quiz.questionsTruefalse != null ? quiz.questionsTruefalse.size() : 0}">0</td></tr>
+            <tr><th scope="row">Total Questions</th><td th:text="${(quiz.questionsMultichoice != null ? quiz.questionsMultichoice.size() : 0) + (quiz.questionsTruefalse != null ? quiz.questionsTruefalse.size() : 0)}">0</td></tr>
+            <tr><th scope="row">Number of Authors</th><td th:text="${quiz.noAuthors}">0</td></tr>
+        </table>
+
+        <div class="form-actions">
+            <a th:href="@{'/quiz/edit/' + ${quiz.id}}" class="btn btn-edit">✏️ Edit Quiz</a>
+            <a th:href="@{/questions(page=1, course=${quiz.course}, quizId=${quiz.id})}" class="btn btn-info">📝 Questions</a>
+            <a th:href="@{'/authors/course/' + ${quiz.course} + '/page/1'}" class="btn btn-info">👥 Authors</a>
+            <a th:href="@{'/quiz/' + ${quiz.id} + '/export-mc'}" class="btn btn-new" target="_blank">📥 CSV MC</a>
+            <a th:href="@{'/quiz/' + ${quiz.id} + '/export-tf'}" class="btn btn-new" target="_blank">📥 CSV TF</a>
+            <button th:onclick="|deleteQuiz(${quiz.id})|" class="btn btn-delete">🗑️ Delete Quiz</button>
+            <a th:href="@{'/quiz/'}" class="btn btn-cancel">❌ Back to Quizzes</a>
+        </div>
+    </div>
+
+    <div th:if="${quiz.questionsMultichoice != null and quiz.questionsMultichoice.size() > 0}" class="form-container mt-4">
+        <h3>📝 Multiple Choice Questions Preview</h3>
+        <table class="styled-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Question Text</th>
+                    <th>Author</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="question, iterStat : ${quiz.questionsMultichoice}" th:if="${iterStat.index < 5}">
+                    <td th:text="${question.id}">N/A</td>
+                    <td th:text="${#strings.abbreviate(question.question, 100)}">N/A</td>
+                    <td th:text="${question.authorName}">N/A</td>
+                </tr>
+                <tr th:if="${quiz.questionsMultichoice.size() > 5}">
+                    <td colspan="3" class="text-center">
+                        <em>... and <span th:text="${quiz.questionsMultichoice.size() - 5}">0</span> more questions</em>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div th:if="${quiz.questionsTruefalse != null and quiz.questionsTruefalse.size() > 0}" class="form-container mt-4">
+        <h3>✅ True/False Questions Preview</h3>
+        <table class="styled-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Question Text</th>
+                    <th>Author</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="question, iterStat : ${quiz.questionsTruefalse}" th:if="${iterStat.index < 5}">
+                    <td th:text="${question.id}">N/A</td>
+                    <td th:text="${#strings.abbreviate(question.question, 100)}">N/A</td>
+                    <td th:text="${question.authorName}">N/A</td>
+                </tr>
+                <tr th:if="${quiz.questionsTruefalse.size() > 5}">
+                    <td colspan="3" class="text-center">
+                        <em>... and <span th:text="${quiz.questionsTruefalse.size() - 5}">0</span> more questions</em>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</div>
+
+<script>
+function deleteQuiz(quizId) {
+    if (confirm('Are you sure you want to delete this quiz? This will also delete all associated questions. This action cannot be undone.')) {
+        window.location.href = '/quiz/' + quizId + '/delete';
+    }
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Question Editor - True/False</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+<div th:insert="~{fragments::menu}"></div>
+
+<div class="container mt-3">
+    <h2>🔧 True/False Question Editor</h2>
+    <div th:if="${successMessage}" class="alert" style="background: rgba(16, 185, 129, 0.1); color: #065f46; border-color: #6ee7b7;" th:text="${successMessage}"></div>
+    <div th:if="${errorMessage}" class="alert" style="background: rgba(239, 68, 68, 0.1); color: #991b1b; border-color: #fca5a5;" th:text="${errorMessage}"></div>
+    <div class="editor-container">
+        <div class="form-container">
+            <h3>✏️ Edit True/False Question</h3>
+
+            <!-- Error Display Box -->
+            <div th:if="${question.errors != null and !question.errors.isEmpty()}" class="error-box" style="background: #fee2e2; border: 2px solid #ef4444; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                <h4 style="color: #991b1b; margin-top: 0; display: flex; align-items: center;">
+                    <svg style="width: 20px; height: 20px; margin-right: 8px;" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                    </svg>
+                    Validation Errors
+                </h4>
+                <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 4px; overflow: hidden;">
+                    <thead>
+                        <tr style="background: #fecaca;">
+                            <th style="padding: 8px; text-align: left; border-bottom: 2px solid #ef4444; color: #991b1b;">Row</th>
+                            <th style="padding: 8px; text-align: left; border-bottom: 2px solid #ef4444; color: #991b1b;">Error Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="error : ${question.errors}" style="border-bottom: 1px solid #fecaca;">
+                            <td style="padding: 8px; color: #7f1d1d;" th:text="${error.rowNumber}">1</td>
+                            <td style="padding: 8px; color: #7f1d1d;" th:text="${error.description}">Error message</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <form th:action="@{/questions}" method="post" th:object="${question}">
+                <input type="hidden" th:field="*{id}" />
+                <input type="hidden" name="questionType" value="TRUEFALSE" />
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="tf-title" class="form-label">Question Title:</label>
+                        <input type="text" id="tf-title" th:field="*{title}" placeholder="Enter question title" class="form-input" />
+                    </div>
+                    <div class="form-group">
+                        <label for="tf-text" class="form-label">Question Text:</label>
+                        <textarea id="tf-text" th:field="*{text}" placeholder="Enter question text" class="form-textarea"></textarea>
+                    </div>
+                    <div class="form-grid-2col">
+                        <div class="form-group">
+                            <label for="tf-chapter" class="form-label">Chapter:</label>
+                            <input type="text" id="tf-chapter" th:field="*{chapter}" placeholder="Chapter number or name" class="form-input" />
+                        </div>
+                        <div class="form-group">
+                            <label for="tf-authorName" class="form-label">Author Name:</label>
+                            <input type="text" id="tf-authorName" th:field="*{authorName}" placeholder="Author name" class="form-input" />
+                        </div>
+                    </div>
+                    <div class="form-grid-2col">
+                        <div class="form-group">
+                            <label for="tf-course" class="form-label">Course Name:</label>
+                            <input type="text" id="tf-course" th:field="*{course}" placeholder="Course name" class="form-input" />
+                        </div>
+                        <div class="form-group">
+                            <label for="tf-quizName" class="form-label">Quiz Name:</label>
+                            <input type="text" id="tf-quizName" th:field="*{quizName}" placeholder="Quiz name" class="form-input" />
+                        </div>
+                    </div>
+                    <fieldset class="form-fieldset">
+                        <legend class="form-legend">True/False Weights (supports negative values)</legend>
+                        <div class="form-grid-2col">
+                            <div class="form-group">
+                                <label for="weightTrue" class="form-label">Weight for True:</label>
+                                <input type="number" id="weightTrue" th:field="*{weightTrue}" placeholder="Weight for True (e.g., 100, -100)" step="any" class="form-input" />
+                            </div>
+                            <div class="form-group">
+                                <label for="weightFalse" class="form-label">Weight for False:</label>
+                                <input type="number" id="weightFalse" th:field="*{weightFalse}" placeholder="Weight for False (e.g., 0, -100)" step="any" class="form-input" />
+                            </div>
+                        </div>
+                    </fieldset>
+                    <div class="form-group">
+                        <label for="tf-response" class="form-label">Correct Answer:</label>
+                        <select id="tf-response" th:field="*{response1}" class="form-select">
+                            <option value="">Select correct answer</option>
+                            <option value="True">True</option>
+                            <option value="False">False</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-save">💾 Save Question</button>
+                    <a th:href="@{/questions(type='TRUEFALSE')}" class="btn btn-new">📄 New Question</a>
+                    <button type="button" class="btn btn-delete" onclick="deleteQuestion()" th:if="${question.id != null}">🗑️ Delete</button>
+                    <a th:href="@{/questions}" class="btn btn-cancel">❌ Cancel</a>
+                </div>
+            </form>
+        </div>
+        <div class="json-section">
+            <h3>📄 Question JSON</h3>
+            <div class="json-display" id="jsonDisplay">
+                <span th:utext="${questionJson}"></span>
+            </div>
+            <div style="margin-top: 20px;">
+                <h4>🔧 Quick Actions</h4>
+                <button class="btn btn-new" onclick="loadSampleQuestion()" style="margin: 5px;">Load TF Sample</button>
+                <button class="btn btn-save" onclick="copyJsonToClipboard()" style="margin: 5px;">📋 Copy JSON</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    function updateJsonDisplay() {
+        const form = document.querySelector('.form-section form');
+        const formData = new FormData(form);
+        const questionData = {};
+        for (const [key, value] of formData.entries()) {
+            if (key !== 'questionType') {
+                questionData[key] = value || null;
+            }
+        }
+        questionData.questionType = 'TF';
+        questionData.response2 = null;
+        questionData.response3 = null;
+        questionData.response4 = null;
+        questionData.weightResponse2 = null;
+        questionData.weightResponse3 = null;
+        questionData.weightResponse4 = null;
+        document.getElementById('jsonDisplay').textContent = JSON.stringify(questionData, null, 2);
+    }
+    function newQuestion() {
+        window.location.href = '/questions?type=TRUEFALSE';
+    }
+    function deleteQuestion() {
+        if (confirm('Are you sure you want to delete this question? This action cannot be undone.')) {
+            const questionId = document.querySelector('input[name="id"]').value;
+            if (questionId) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/questions/' + questionId;
+
+                const methodInput = document.createElement('input');
+                methodInput.type = 'hidden';
+                methodInput.name = '_method';
+                methodInput.value = 'DELETE';
+                form.appendChild(methodInput);
+
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+    }
+    function loadSampleQuestion() {
+        document.getElementById('tf-title').value = 'SQL Statement Usage';
+        document.getElementById('tf-text').value = 'The SQL statement SELECT is used to retrieve data from a table.';
+        document.getElementById('tf-chapter').value = 'Databases';
+        document.getElementById('tf-authorName').value = 'DB Author';
+        document.getElementById('tf-course').value = 'Database Systems';
+        document.getElementById('tf-quizName').value = 'SQL Fundamentals';
+        document.getElementById('weightTrue').value = '100';
+        document.getElementById('weightFalse').value = '-100';
+        document.getElementById('tf-response').value = 'True';
+        updateJsonDisplay();
+    }
+    function copyJsonToClipboard() {
+        const jsonText = document.getElementById('jsonDisplay').textContent;
+        navigator.clipboard.writeText(jsonText).then(() => {
+            alert('JSON copied to clipboard!');
+        });
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+        const inputs = document.querySelectorAll('input, textarea, select');
+        for (const input of inputs) {
+            input.addEventListener('input', updateJsonDisplay);
+            input.addEventListener('change', updateJsonDisplay);
+        }
+        updateJsonDisplay();
+    });
+</script>
+</body>
+</html>
