@@ -43,12 +43,16 @@ public class OllamaService {
                 .build();
     }
 
-    
+
     public OllamaResponseDto generateResponse(String model, String prompt) {
         try {
             // Create Ollama request
-            OllamaRequestDto request = new OllamaRequestDto(model != null ? model : defaultModel, prompt);
-            request.setStream(false); // Disable streaming to get complete response
+            OllamaRequestDto request = OllamaRequestDto.builder()
+                    .model(model != null ? model : defaultModel)
+                    .prompt(prompt)
+                    .stream(false)
+                    .build();
+
             String requestJson = objectMapper.writeValueAsString(request);
 
             logger.info("Sending request to Ollama API with model: {} (prompt length: {} chars)",
@@ -66,6 +70,7 @@ public class OllamaService {
             HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() == 200) {
+                logger.debug("Ollama API responded with data: {}",  response.body());
                 OllamaResponseDto ollamaResponse = objectMapper.readValue(response.body(), OllamaResponseDto.class);
                 logger.info("Received response from Ollama (length: {} chars)",
                            ollamaResponse.getResponse() != null ? ollamaResponse.getResponse().length() : 0);
@@ -81,7 +86,7 @@ public class OllamaService {
         }
     }
 
-    
+
     public String improveQuestion(Question question) {
         String prompt = String.format(
                 "Îmbunătățește această întrebare de quiz pentru a fi mai clară și mai precisă:\n\n" +
@@ -105,7 +110,7 @@ public class OllamaService {
         return response.getResponse();
     }
 
-    
+
     public String[] generateAlternativeAnswers(Question question, int numAlternatives) {
         String prompt = String.format(
                 "Pentru următoarea întrebare de quiz, generează %d răspunsuri alternative plausibile dar incorecte:\n\n" +
@@ -130,7 +135,7 @@ public class OllamaService {
         return response.getResponse().split("\n");
     }
 
-    
+
     public String correctQuestionText(String questionText, String language) {
         String prompt;
         if ("ro".equals(language)) {
@@ -151,7 +156,7 @@ public class OllamaService {
         return response.getResponse().trim();
     }
 
-    
+
     public String generateExplanation(Question question) {
         String prompt = String.format(
                 "Pentru următoarea întrebare de quiz, generează o explicație detaliată pentru răspunsul corect:\n\n" +
