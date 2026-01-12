@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Question Editor - Multiple Choice</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+<div th:insert="~{fragments::menu}"></div>
+
+<div class="container mt-3">
+    <h2>🔧 Multiple Choice Question Editor</h2>
+    <div th:if="${successMessage}" class="alert" style="background: rgba(16, 185, 129, 0.1); color: #065f46; border-color: #6ee7b7;" th:text="${successMessage}"></div>
+    <div th:if="${errorMessage}" class="alert" style="background: rgba(239, 68, 68, 0.1); color: #991b1b; border-color: #fca5a5;" th:text="${errorMessage}"></div>
+    <div class="editor-container">
+        <div class="form-container">
+            <h3>✏️ Edit Multiple Choice Question</h3>
+
+            <!-- Error Display Box -->
+            <div th:if="${question.errors != null and !question.errors.isEmpty()}" class="error-box" style="background: #fee2e2; border: 2px solid #ef4444; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                <h4 style="color: #991b1b; margin-top: 0; display: flex; align-items: center;">
+                    <svg style="width: 20px; height: 20px; margin-right: 8px;" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                    </svg>
+                    Validation Errors
+                </h4>
+                <table style="width: 100%; border-collapse: collapse; background: white; border-radius: 4px; overflow: hidden;">
+                    <thead>
+                        <tr style="background: #fecaca;">
+                            <th style="padding: 8px; text-align: left; border-bottom: 2px solid #ef4444; color: #991b1b;">Row</th>
+                            <th style="padding: 8px; text-align: left; border-bottom: 2px solid #ef4444; color: #991b1b;">Error Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="error : ${question.errors}" style="border-bottom: 1px solid #fecaca;">
+                            <td style="padding: 8px; color: #7f1d1d;" th:text="${error.rowNumber}">1</td>
+                            <td style="padding: 8px; color: #7f1d1d;" th:text="${error.description}">Error message</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <form th:action="@{/questions}" method="post" th:object="${question}">
+                <input type="hidden" th:field="*{id}" />
+                <input type="hidden" name="questionType" value="MULTICHOICE" />
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="title" class="form-label">Question Title:</label>
+                        <input type="text" id="title" th:field="*{title}" placeholder="Enter question title" class="form-input" />
+                    </div>
+                    <div class="form-group">
+                        <label for="text" class="form-label">Question Text:</label>
+                        <textarea id="text" th:field="*{text}" placeholder="Enter question text" class="form-textarea"></textarea>
+                    </div>
+                    <div class="form-grid-2col">
+                        <div class="form-group">
+                            <label for="chapter" class="form-label">Chapter:</label>
+                            <input type="text" id="chapter" th:field="*{chapter}" placeholder="Chapter number or name" class="form-input" />
+                        </div>
+                        <div class="form-group">
+                            <label for="authorName" class="form-label">Author Name:</label>
+                            <input type="text" id="authorName" th:field="*{authorName}" placeholder="Author name" class="form-input" />
+                        </div>
+                    </div>
+                    <div class="form-grid-2col">
+                        <div class="form-group">
+                            <label for="course" class="form-label">Course Name:</label>
+                            <input type="text" id="course" th:field="*{course}" placeholder="Course name" class="form-input" />
+                        </div>
+                        <div class="form-group">
+                            <label for="quizName" class="form-label">Quiz Name:</label>
+                            <input type="text" id="quizName" th:field="*{quizName}" placeholder="Quiz name" class="form-input" />
+                        </div>
+                    </div>
+                    <fieldset class="form-fieldset">
+                        <legend class="form-legend">Response Options & Weights</legend>
+                        <div class="answer-weight-row">
+                            <input type="text" id="response1" th:field="*{response1}" placeholder="Response 1" class="form-input" />
+                            <select id="weightResponse1" th:field="*{weightResponse1}" required class="form-select">
+                              <option value="-100">-100</option>
+                              <option value="-50">-50</option>
+                              <option value="0">0</option>
+                              <option value="25">25</option>
+                              <option value="33.33333">33.33333</option>
+                              <option value="50">50</option>
+                              <option value="100">100</option>
+                            </select>
+                        </div>
+                        <div class="answer-weight-row">
+                            <input type="text" id="response2" th:field="*{response2}" placeholder="Response 2" class="form-input" />
+                            <select id="weightResponse2" th:field="*{weightResponse2}" required class="form-select">
+                              <option value="-100">-100</option>
+                              <option value="-50">-50</option>
+                              <option value="0">0</option>
+                              <option value="25">25</option>
+                              <option value="33.33333">33.33333</option>
+                              <option value="50">50</option>
+                              <option value="100">100</option>
+                            </select>
+                        </div>
+                        <div class="answer-weight-row">
+                            <input type="text" id="response3" th:field="*{response3}" placeholder="Response 3" class="form-input" />
+                            <select id="weightResponse3" th:field="*{weightResponse3}" required class="form-select">
+                              <option value="-100">-100</option>
+                              <option value="-50">-50</option>
+                              <option value="0">0</option>
+                              <option value="25">25</option>
+                              <option value="33.33333">33.33333</option>
+                              <option value="50">50</option>
+                              <option value="100">100</option>
+                            </select>
+                        </div>
+                        <div class="answer-weight-row">
+                            <input type="text" id="response4" th:field="*{response4}" placeholder="Response 4" class="form-input" />
+                            <select id="weightResponse4" th:field="*{weightResponse4}" required class="form-select">
+                              <option value="-100">-100</option>
+                              <option value="-50">-50</option>
+                              <option value="0">0</option>
+                              <option value="25">25</option>
+                              <option value="33.33333">33.33333</option>
+                              <option value="50">50</option>
+                              <option value="100">100</option>
+                            </select>
+                        </div>
+                    </fieldset>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-save">💾 Save Question</button>
+                    <a th:href="@{/questions}" class="btn btn-cancel">❌ Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script>
+    function updateJsonDisplay() {
+        const form = document.querySelector('.form-container form');
+        const formData = new FormData(form);
+        const questionData = {};
+        for (const [key, value] of formData.entries()) {
+            if (key !== 'questionType') {
+                questionData[key] = value || null;
+            }
+        }
+        questionData.questionType = 'MULTICHOICE';
+        document.getElementById('jsonDisplay').textContent = JSON.stringify(questionData, null, 2);
+    }
+    function newQuestion() {
+        window.location.href = '/questions?type=MULTICHOICE';
+    }
+    function deleteQuestion() {
+        if (confirm('Are you sure you want to delete this question? This action cannot be undone.')) {
+            const questionId = document.querySelector('input[name="id"]').value;
+            if (questionId) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '/questions/' + questionId;
+
+                const methodInput = document.createElement('input');
+                methodInput.type = 'hidden';
+                methodInput.name = '_method';
+                methodInput.value = 'DELETE';
+                form.appendChild(methodInput);
+
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+    }
+    function loadSampleQuestion() {
+        document.getElementById('title').value = 'SQL Query Basics';
+        document.getElementById('text').value = 'Which SQL statement is used to retrieve data from a database table?';
+        document.getElementById('chapter').value = 'Databases';
+        document.getElementById('authorName').value = 'DB Author';
+        document.getElementById('course').value = 'Database Systems';
+        document.getElementById('quizName').value = 'SQL Fundamentals';
+        document.querySelector('input[name="response1"]').value = 'SELECT';
+        document.querySelector('input[name="response2"]').value = 'INSERT';
+        document.querySelector('input[name="response3"]').value = 'UPDATE';
+        document.querySelector('input[name="response4"]').value = 'DELETE';
+        document.querySelector('select[name="weightResponse1"]').value = '100';
+        document.querySelector('select[name="weightResponse2"]').value = '0';
+        document.querySelector('select[name="weightResponse3"]').value = '0';
+        document.querySelector('select[name="weightResponse4"]').value = '0';
+        updateJsonDisplay();
+    }
+    function copyJsonToClipboard() {
+        const jsonText = document.getElementById('jsonDisplay').textContent;
+        navigator.clipboard.writeText(jsonText).then(() => {
+            alert('JSON copied to clipboard!');
+        });
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+        const inputs = document.querySelectorAll('input, textarea, select');
+        for (const input of inputs) {
+            input.addEventListener('input', updateJsonDisplay);
+            input.addEventListener('change', updateJsonDisplay);
+        }
+        updateJsonDisplay();
+        var mcForm = document.querySelector('.form-container form');
+        if (mcForm) {
+            mcForm.addEventListener('submit', function(e) {
+                const w = [
+                    Number.parseFloat(document.getElementById('weightResponse1').value),
+                    Number.parseFloat(document.getElementById('weightResponse2').value),
+                    Number.parseFloat(document.getElementById('weightResponse3').value),
+                    Number.parseFloat(document.getElementById('weightResponse4').value)
+                ];
+                if (w.includes(25) && !w.every(val => val === 25)) {
+                    alert('If one weight is 25, all must be 25');
+                    e.preventDefault();
+                }
+                if (w.includes(33.33333)) {
+                    const sum = w.reduce((a, b) => a + b, 0);
+                    if (sum !== 100 && sum >= 0) {
+                        alert('If one weight is 33.33333, the sum must be 100 or less than 0');
+                        e.preventDefault();
+                    }
+                }
+                if (w.includes(50)) {
+                    const sorted = w.slice().sort((a, b) => a - b);
+                    const valid = JSON.stringify(sorted) === JSON.stringify([-50, -50, 50, 50]);
+                    if (!valid) {
+                        alert('If one weight is 50, the others must be 50, -50, -50');
+                        e.preventDefault();
+                    }
+                }
+                if (w.includes(100)) {
+                    const others = w.filter(val => val !== 100);
+                    if (!others.every(val => val === -100)) {
+                        alert('If one weight is 100, all others must be -100');
+                        e.preventDefault();
+                    }
+                }
+            });
+        }
+    });
+</script>
+</body>
+</html>

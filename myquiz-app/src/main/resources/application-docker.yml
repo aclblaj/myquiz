@@ -27,12 +27,15 @@ spring:
           batch_size: 20
         order_inserts: true
         order_updates: true
+        id:
+          db_structure_naming_strategy: legacy
+          increment_size_mismatch_strategy: NONE
 
   # File upload configuration
   servlet:
     multipart:
-      max-file-size: 10MB
-      max-request-size: 10MB
+      max-file-size: 100MB
+      max-request-size: 100MB
       enabled: true
 
   # Thymeleaf configuration
@@ -95,3 +98,7 @@ myquiz:
     allowed-origins: "*"
     allowed-methods: GET,POST,PUT,DELETE,OPTIONS
     allowed-headers: "*"
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:4a36d554f7299bd3d7080a324a3b3e68f19fba04a26c84ed97c5260bbb132996}

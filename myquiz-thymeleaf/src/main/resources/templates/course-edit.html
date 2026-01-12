@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Edit Course</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+
+<div th:insert="~{fragments::menu}"></div>
+
+<div class="container mt-3">
+    <h2 th:text="${course.id != null ? '✏️ Edit Course: ' + course.course : '➕ Create New Course'}">Course Management</h2>
+
+    <div class="form-container">
+        <h3 th:text="${course.id != null ? '✏️ Edit Course Details' : '➕ Create New Course'}">Course Form</h3>
+        <form th:action="${course.id != null ? '/courses/edit/' + course.id : '/courses'}" th:object="${course}" method="post">
+            <input type="hidden" th:field="*{id}" />
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="course" class="form-label">Course Name:</label>
+                    <input type="text" id="course" th:field="*{course}" required class="form-input" placeholder="Enter course name" />
+                </div>
+                <div class="form-group">
+                    <label for="description" class="form-label">Description:</label>
+                    <input type="text" id="description" th:field="*{description}" class="form-input" placeholder="Enter course description" />
+                </div>
+                <div class="form-grid-2col">
+                    <div class="form-group">
+                        <label for="universityYear" class="form-label">University Year:</label>
+                        <input type="text" id="universityYear" th:field="*{universityYear}" class="form-input" placeholder="e.g., 2024-2025" />
+                    </div>
+                    <div class="form-group">
+                        <label for="semester" class="form-label">Semester:</label>
+                        <input type="text" id="semester" th:field="*{semester}" class="form-input" placeholder="e.g., 1, 2" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="study_year" class="form-label">Study Year:</label>
+                    <input type="text" id="study_year" th:field="*{studyYear}" class="form-input" placeholder="e.g., 1, 2, 3" />
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-save" th:text="${course.id != null ? '💾 Update Course' : '➕ Create Course'}">Save</button>
+                <a th:href="@{'/'}" class="btn btn-cancel">❌ Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+</body>
+</html>

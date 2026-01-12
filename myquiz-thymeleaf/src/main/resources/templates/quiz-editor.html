@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Quiz Editor</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+
+<div th:insert="~{fragments::menu}"></div>
+
+<div class="container mt-3">
+    <h2 th:text="${quiz != null and quiz.id != null ? '✏️ Edit Quiz: ' + quiz.name : '➕ Create New Quiz'}">Quiz Editor</h2>
+
+    <div class="form-container">
+        <h3 th:text="${quiz != null and quiz.id != null ? '✏️ Edit Quiz Details' : '➕ Create New Quiz'}">Quiz Form</h3>
+        <form th:action="@{/quiz/save}" th:object="${quiz}" method="post">
+            <input type="hidden" th:field="*{id}" />
+
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="name" class="form-label">Quiz Name:</label>
+                    <input type="text" id="name" th:field="*{name}" required class="form-input" placeholder="Enter quiz name" />
+                </div>
+                <div class="form-group">
+                    <label for="course" class="form-label">Course:</label>
+                    <select id="course" th:field="*{course}" required class="form-select">
+                        <option value="">Select a course</option>
+                        <option th:each="courseItem : ${courses}"
+                                th:value="${courseItem.course}"
+                                th:text="${courseItem.course}"
+                                th:selected="${quiz.course != null && quiz.course == courseItem.course}">
+                        </option>
+                    </select>
+                </div>
+                <div class="form-grid-2col">
+                    <div class="form-group">
+                        <label for="year" class="form-label">Year:</label>
+                        <input type="number" id="year" th:field="*{year}" min="2020" max="2030" class="form-input" placeholder="e.g., 2024" />
+                    </div>
+                    <div class="form-group">
+                        <label for="sourceFile" class="form-label">Source File:</label>
+                        <input type="text" id="sourceFile" th:field="*{sourceFile}" class="form-input" placeholder="Enter source file path" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-save" th:text="${quiz != null and quiz.id != null ? '💾 Update Quiz' : '➕ Create Quiz'}">Save Quiz</button>
+                <a th:href="@{/quiz/}" class="btn btn-cancel">❌ Cancel</a>
+            </div>
+        </form>
+    </div>
+
+    <div th:if="${quiz != null and quiz.id != null}" class="mt-4">
+        <div class="form-container">
+            <h3>📊 Quiz Statistics</h3>
+            <table class="detail-table">
+                <tr>
+                    <th scope="row">Multiple Choice Questions</th>
+                    <td th:text="${quiz.questionsMultichoice != null ? quiz.questionsMultichoice.size() : 0}">0</td>
+                </tr>
+                <tr>
+                    <th scope="row">True/False Questions</th>
+                    <td th:text="${quiz.questionsTruefalse != null ? quiz.questionsTruefalse.size() : 0}">0</td>
+                </tr>
+                <tr>
+                    <th scope="row">Total Questions</th>
+                    <td th:text="${(quiz.questionsMultichoice != null ? quiz.questionsMultichoice.size() : 0) + (quiz.questionsTruefalse != null ? quiz.questionsTruefalse.size() : 0)}">0</td>
+                </tr>
+                <tr>
+                    <th scope="row">Number of Authors</th>
+                    <td th:text="${quiz.noAuthors}">0</td>
+                </tr>
+            </table>
+
+            <div class="form-actions">
+                <a th:href="@{'/questions/' + ${quiz.course}}" class="btn btn-edit">📝 Manage Questions</a>
+                <a th:href="@{'/authors/?selectedCourse=' + ${quiz.course}}" class="btn btn-info">👥 View Authors</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

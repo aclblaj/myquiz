@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Quiz Statistics</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+<div th:insert="~{fragments::menu}"></div>
+<div style="clear:both; margin-bottom:20px;"></div>
+<h2 th:text="'Statistics for Quiz: ' + ${quiz.name}"></h2>
+<table class="styled-table" style="width:100%">
+    <thead>
+    <tr>
+        <th>Author</th>
+        <th>Multichoice Questions</th>
+        <th>True/False Questions</th>
+        <th>Errors</th>
+        <th>Actions</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="stat : ${authorStats}">
+        <td th:text="${stat.authorName}"></td>
+        <td th:text="${stat.mcCount}"></td>
+        <td th:text="${stat.tfCount}"></td>
+        <td th:text="${stat.errorCount}"></td>
+        <td>
+            <a th:href="@{'/questions/author/' + ${stat.authorId} + '/quiz/' + ${quiz.id}}" class="btn btn-info">Author Questions</a>
+            <a th:href="@{'/errors/author/' + ${stat.authorId} + '/quiz/' + ${quiz.id}}" class="btn btn-warning">Author Errors</a>
+        </td>
+    </tr>
+    <tr th:if="${#lists.isEmpty(authorStats)}">
+        <td colspan="5">No statistics found for this quiz.</td>
+    </tr>
+    </tbody>
+</table>
+</body>
+</html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Fragments</title>
+    <link rel="stylesheet" type="text/css" href="../css/styles.css"/>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+    <!-- Removed inline styles; using centralized styles.css -->
+</head>
+<body>
+
+<div th:fragment="menu" class="menu">
+    <div class="main-menu-item" tabindex="0" aria-label="Quizzes">
+        <span>📝 Quizzes ▾</span>
+        <div class="main-submenu">
+            <a th:href="@{'/quiz/'}" aria-label="Quizzes List">Quizzes List</a>
+            <a th:href="@{'/quiz/new'}" aria-label="Add New Quiz">+ Add New Quiz</a>
+        </div>
+    </div>
+    <div class="main-menu-item" tabindex="0" aria-label="Authors">
+        <span>👥 Authors ▾</span>
+        <div class="main-submenu">
+            <a th:href="@{'/authors/'}" aria-label="Authors Management">Authors Management</a>
+            <a th:href="@{'/authors/new'}" aria-label="Add New Author">+ Add New Author</a>
+        </div>
+    </div>
+    <a th:href="@{'/errors'}" class="main-menu-item" aria-label="Errors">❌ Errors</a>
+    <div class="main-menu-item" tabindex="0" aria-label="Courses">
+        <span>📚 Courses ▾</span>
+        <div class="main-submenu">
+            <a th:href="@{'/courses/'}" aria-label="Course List">Course List</a>
+            <a th:href="@{'/courses/new'}" aria-label="Add New Course">+ Add New Course</a>
+        </div>
+    </div>
+    <div class="main-menu-item" tabindex="0" aria-label="Upload">
+        <span>📤 Upload ▾</span>
+        <div class="main-submenu">
+            <a th:href="@{'/uploads/excel-form'}" aria-label="Upload Excel">Excel</a>
+            <a th:href="@{'/uploads/archive-form'}" aria-label="Upload Archive">Archive</a>
+        </div>
+    </div>
+    <div class="main-menu-item" tabindex="0" aria-label="AI Tools">
+        <span>🤖 AI Tools ▾</span>
+        <div class="main-submenu">
+            <a th:href="@{'/question-correction'}" aria-label="AI Correction">AI Correction</a>
+            <a th:href="@{'/check-pdf'}" aria-label="Check PDF">Check PDF</a>
+        </div>
+    </div>
+    <div class="main-menu-item" tabindex="0" aria-label="Question">
+        <span>🔧 Question ▾</span>
+        <div class="main-submenu">
+            <a th:href="@{'/questions/'}" aria-label="Question List">Question List</a>
+            <a th:href="@{'/questions/add?type=MULTICHOICE'}" aria-label="Add MC">+ Add MC</a>
+            <a th:href="@{'/questions/add?type=TRUEFALSE'}" aria-label="Add TF">+ Add TF</a>
+        </div>
+    </div>
+<!--    <a th:href="@{'/swagger-ui.html'}" class="main-menu-item" target="_blank" aria-label="API Docs">📋 API Docs</a>-->
+    <a th:href="@{'/questions/deleteall'}" class="main-menu-item" th:onclick="return confirm('Are you sure you want to delete all the database records?')" aria-label="Delete all">🗑️ Delete all</a>
+    <a th:href="@{'/help'}" class="main-menu-item" aria-label="Help">ℹ️ Help</a>
+    <div class="main-menu-item" tabindex="0" aria-label="User">
+        <span th:if="${loggedInUser != null}"> <b th:text="${loggedInUser}"></b> ▾</span>
+        <div class="main-submenu">
+            <a th:if="${loggedInUser == null}" th:href="@{/auth/login}" aria-label="Login">Login</a>
+            <a th:if="${loggedInUser == null}" th:href="@{/auth/register}" aria-label="Register">Register</a>
+            <a th:if="${loggedInUser != null}" th:href="@{/auth/logout}" aria-label="Logout">Logout</a>
+        </div>
+    </div>
+</div>
+
+<div th:fragment="quizfilter" class="quizfilter">
+    <form method="POST" enctype="multipart/form-data" th:action="@{'/' + ${route}}">
+        <label for="quizfilter-course">Quiz</label>
+        <select id="quizfilter-course" name="course">
+            <option value="" disabled selected>Select quiz</option>
+            <option th:each="course:${courses}"
+                    th:value="${course}"
+                    th:text="${course}"
+                    th:selected="(${course == selectedCourse})"></option>
+        </select>
+        <input type="submit" value="Filter" />
+    </form>
+</div>
+<div th:fragment="searchauthor" class="searchauthor">
+    <form method="POST" enctype="multipart/form-data" th:action="@{'/authors/search'}">
+        <label for="searchauthor-input">Author name</label>
+        <input type="text" id="searchauthor-input" name="search" placeholder="Author name" />
+        <input type="submit" value="Search author" />
+    </form>
+</div>
+
+<div th:fragment="deletecourse" class="deletecourse">
+    <form method="POST" enctype="multipart/form-data" th:action="@{'/' + ${route}}">
+        <label for="deletecourse-course">Course</label>
+        <select id="deletecourse-course" name="course">
+            <option value="" disabled selected>Select course</option>
+            <option th:each="course:${courses}"
+                    th:value="${course}"
+                    th:text="${course}"
+                    th:selected="(${course == selectedCourse})"></option>
+        </select>
+        <input type="submit" value="Delete course" />
+    </form>
+</div>
+
+<script>
+// Improved: Show/hide submenu on hover and focus for accessibility
+function setupDropdown() {
+    document.querySelectorAll('.main-menu-item').forEach(function(menuItem) {
+        var submenu = menuItem.querySelector('.main-submenu');
+        if (!submenu) return;
+        menuItem.addEventListener('mouseenter', function() {
+            submenu.style.display = 'block';
+        });
+        menuItem.addEventListener('mouseleave', function() {
+            submenu.style.display = 'none';
+        });
+        menuItem.addEventListener('focusin', function() {
+            submenu.style.display = 'block';
+        });
+        menuItem.addEventListener('focusout', function(e) {
+            if (!menuItem.contains(e.relatedTarget)) {
+                submenu.style.display = 'none';
+            }
+        });
+    });
+}
+setupDropdown();
+</script>
+
+</body>
+</html>

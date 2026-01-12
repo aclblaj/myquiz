@@ -1,7 +1,6 @@
 services:
-  # PostgreSQL Database
   postgres:
-    image: postgres:latest
+    image: postgres:17-alpine
     container_name: myquiz-postgres
     environment:
       POSTGRES_DB: myquiz
@@ -10,8 +9,7 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      # - ./myquiz.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
-      - ./data/myquiz_clean_dump.sql:/docker-entrypoint-initdb.d/02-data.sql:ro
+      # Schema and default admin user are created by myquiz-iam on startup
     ports:
       - "5433:5432"
     networks:
@@ -22,48 +20,42 @@ services:
       timeout: 5s
       retries: 5
 
-  # MyQuiz Application
   myquiz-app:
     build:
       context: .
-      dockerfile: Dockerfile
-      target: runtime
-    container_name: myquiz-application
+      dockerfile: myquiz-app/Dockerfile
+    container_name: myquiz-app
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
-      # Database configuration
+      JAVA_HOME: /usr/lib/jvm/java-21-amazon-corretto
+      MVN_HOME: /usr/share/maven
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/myquiz
       SPRING_DATASOURCE_USERNAME: myquiz_user
       SPRING_DATASOURCE_PASSWORD: myquiz_password
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
-
-      # JPA/Hibernate configuration
       SPRING_JPA_HIBERNATE_DDL_AUTO: update
       SPRING_JPA_SHOW_SQL: false
       SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
-
-      # Application configuration
+      SPRING_JPA_PROPERTIES_HIBERNATE_ID_INCREMENT_SIZE_MISMATCH_STRATEGY: NONE
       SPRING_PROFILES_ACTIVE: docker
-      SERVER_PORT: 8080
-
-      # Logging
-      LOGGING_LEVEL_COM_UNITBV_MYQUIZ: INFO
-      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK: WARN
-
-      # File upload
-      SPRING_SERVLET_MULTIPART_MAX_FILE_SIZE: 10MB
-      SPRING_SERVLET_MULTIPART_MAX_REQUEST_SIZE: 10MB
+      SERVER_PORT: 8082
+      LOGGING_LEVEL_COM_UNITBV_MYQUIZ: DEBUG
+      FRONTEND_URL: http://myquiz-thymeleaf:8080
+      JWT_SECRET: myquiz-shared-secret-key-for-all-services-at-least-256-bits
+      OLLAMA_API_URL: http://ollama:11434
+      OLLAMA_DEFAULT_MODEL: llama3
+      OLLAMA_TIMEOUT_SECONDS: 120
     ports:
-      - "8080:8080"
+      - "8082:8082"
     volumes:
       - app_logs:/app/logs
       - uploaded_files:/app/uploads
     networks:
       - myquiz-network
-    depends_on:
-      postgres:
-        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/api/system/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8082/api/system/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -72,7 +64,6 @@ services:
     profiles:
       - dev
 
-  # Development tools - Adminer for database management
   adminer:
     image: adminer:4.8.1
     container_name: myquiz-adminer
@@ -80,7 +71,7 @@ services:
       ADMINER_DEFAULT_SERVER: postgres
       ADMINER_DESIGN: dracula
     ports:
-      - "8081:8080"
+      - "8083:8080"
     networks:
       - myquiz-network
     depends_on:
@@ -88,7 +79,6 @@ services:
     profiles:
       - dev
 
-  # Ollama for AI features (optional)
   ollama:
     image: ollama/ollama:latest
     container_name: myquiz-ollama
@@ -102,42 +92,128 @@ services:
       - ai
     restart: unless-stopped
 
-  # Nginx reverse proxy for production
   nginx:
     image: nginx:alpine
     container_name: myquiz-nginx
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl:/etc/nginx/ssl:ro
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
     ports:
       - "80:80"
       - "443:443"
     networks:
       - myquiz-network
     depends_on:
-      - postgres  # Changed from myquiz-app since it's disabled
+      - postgres
     profiles:
       - production
     restart: unless-stopped
 
-  # Test runner for integration/unit tests
-  test-runner:
+  myquiz-api:
     build:
       context: .
-      dockerfile: Dockerfile.test
-    container_name: myquiz-test-runner
+      dockerfile: myquiz-api/Dockerfile
+    container_name: myquiz-api
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SERVER_PORT: 8888
+      JWT_SECRET: myquiz-shared-secret-key-for-all-services-at-least-256-bits
     networks:
       - myquiz-network
+    profiles:
+      - dev
+
+  myquiz-thymeleaf:
+    build:
+      context: .
+      dockerfile: myquiz-thymeleaf/Dockerfile
+    container_name: myquiz-thymeleaf
+    depends_on:
+      myquiz-app:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SERVER_PORT: 8080
+      MYQUIZ_API_BASE_URL: http://myquiz-app:8082/api
+      AUTH_API_URL: http://myquiz-auth:8090/api/auth
+      JWT_SECRET: myquiz-shared-secret-key-for-all-services-at-least-256-bits
+      LOGGING_LEVEL_COM_UNITBV_MYQUIZ: DEBUG
+      OLLAMA_API_URL: http://ollama:11434
+      OLLAMA_DEFAULT_MODEL: llama3
+    ports:
+      - "8080:8080"
+    networks:
+      - myquiz-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    profiles:
+      - dev
+
+  myquiz-auth:
+    build:
+      context: .
+      dockerfile: myquiz-auth/Dockerfile
+    container_name: myquiz-auth
+    depends_on:
+      myquiz-iam:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SERVER_PORT: 8090
+      MYQUIZ_IAM_URL: http://myquiz-iam:8888/api
+      FRONTEND_URL: http://myquiz-thymeleaf:8080
+      JWT_SECRET: myquiz-shared-secret-key-for-all-services-at-least-256-bits
+    ports:
+      - "8090:8090"
+    networks:
+      - myquiz-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    profiles:
+      - dev
+
+  myquiz-iam:
+    build:
+      context: .
+      dockerfile: myquiz-iam/Dockerfile
+    container_name: myquiz-iam
     depends_on:
       postgres:
         condition: service_healthy
     environment:
+      SPRING_PROFILES_ACTIVE: docker
+      IAM_PORT: 8888
+      SERVER_PORT: 8888
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/myquiz
       SPRING_DATASOURCE_USERNAME: myquiz_user
       SPRING_DATASOURCE_PASSWORD: myquiz_password
       SPRING_DATASOURCE_DRIVER_CLASS_NAME: org.postgresql.Driver
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_DATABASE_PLATFORM: org.hibernate.dialect.PostgreSQLDialect
+      JWT_SECRET: myquiz-shared-secret-key-for-all-services-at-least-256-bits
+    ports:
+      - "8888:8888"
+    networks:
+      - myquiz-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/api/users/test"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
     profiles:
-      - test
+      - dev
 
 volumes:
   postgres_data:

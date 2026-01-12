@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Upload Questions</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+
+<div th:insert="~{fragments::menu}"></div>
+
+<div class="container mt-3">
+    <h2>📦 Upload Archive</h2>
+
+    <div class="form-container">
+        <h3>📁 Archive Upload</h3>
+        <form method="POST" enctype="multipart/form-data" th:action="@{/uploads/archive-file}">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="archive" class="form-label">Select Archive File:</label>
+                    <input type="file" name="archive" id="archive" accept=".zip" required class="form-input"/>
+                </div>
+                <div class="form-group">
+                    <label for="archiveCourseId" class="form-label">Course:</label>
+                    <select id="archiveCourseId" name="courseId" required class="form-select">
+                        <option value="" disabled selected>Select a course</option>
+                        <option th:each="course : ${courses}"
+                                th:value="${course.id}"
+                                th:text="${course.course}"></option>
+                    </select>
+                </div>
+                <div class="form-grid-2col">
+                    <div class="form-group">
+                        <label for="quiz" class="form-label">Quiz Name:</label>
+                        <input type="text" name="quiz" id="quiz" placeholder="Quiz name" required class="form-input"/>
+                    </div>
+                    <div class="form-group">
+                        <label for="year" class="form-label">Year:</label>
+                        <input type="number" name="year" id="year" min="2000" max="2100" required class="form-input"/>
+                    </div>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-save">📦 Upload and Import</button>
+                <a th:href="@{/}" class="btn btn-cancel">❌ Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+

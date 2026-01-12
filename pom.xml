@@ -5,8 +5,8 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.5.6</version>
-		<relativePath/> <!-- lookup parent from repository -->
+		<version>4.0.0</version>
+		<relativePath/>
 	</parent>
 	<groupId>com.unitbv.myquiz</groupId>
 	<artifactId>myquiz-parent</artifactId>
@@ -18,24 +18,30 @@
 	<modules>
 		<module>myquiz-api</module>
 		<module>myquiz-app</module>
+		<module>myquiz-thymeleaf</module>
+        <module>myquiz-auth</module>
+        <module>myquiz-iam</module>
 	</modules>
 
 	<properties>
 		<java.version>21</java.version>
-		<swagger.version>2.2.0</swagger.version>
+		<spring-boot.version>4.0.0</spring-boot.version>
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
+        <maven-compiler-plugin>3.12.1</maven-compiler-plugin>
+        <jackson-annotations.version>2.20</jackson-annotations.version>
+        <spring-web.version>6.2.12</spring-web.version>
+        <springdoc-openapi-starter-webmvc-ui.version>2.8.13</springdoc-openapi-starter-webmvc-ui.version>
 	</properties>
 
 	<dependencyManagement>
 		<dependencies>
 			<dependency>
-				<groupId>org.springdoc</groupId>
-				<artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-				<version>${swagger.version}</version>
-			</dependency>
-			<dependency>
-				<groupId>com.unitbv.myquiz</groupId>
-				<artifactId>myquiz-api</artifactId>
-				<version>${project.version}</version>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-dependencies</artifactId>
+				<version>${spring-boot.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
 			</dependency>
 		</dependencies>
 	</dependencyManagement>
@@ -46,6 +52,11 @@
 				<plugin>
 					<groupId>org.springframework.boot</groupId>
 					<artifactId>spring-boot-maven-plugin</artifactId>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-compiler-plugin</artifactId>
+					<version>${maven-compiler-plugin}</version>
 				</plugin>
 			</plugins>
 		</pluginManagement>

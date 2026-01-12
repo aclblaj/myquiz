@@ -1,0 +1,26 @@
+package com.unitbv.myquiz.iam.service;
+
+import com.unitbv.myquiz.iam.entity.User;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface UsersService {
+    
+    User createUser(String username, String email, String password);
+
+    List<User> getAllUsers();
+
+
+    Optional<User> getUserById(Long id);
+
+    Optional<User> getByUsernameOrEmail(String identifier);
+
+    Optional<User> getUserByUsername(String username);
+
+    User updateUser(Long id, String username, String email, String password);
+
+    void deleteUser(Long id);
+
+    // Users loginUser(String name);  
+}
