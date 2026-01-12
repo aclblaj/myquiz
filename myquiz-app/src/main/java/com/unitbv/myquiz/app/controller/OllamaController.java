@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.OffsetDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -155,7 +156,7 @@ public class OllamaController {
                 Map<String, Object> errorResponse = new HashMap<>();
                 errorResponse.put(KEY_ERROR, "Bad Request");
                 errorResponse.put(KEY_MESSAGE, "Prompt is required and cannot be empty");
-                errorResponse.put(KEY_TIMESTAMP, java.time.LocalDateTime.now());
+                errorResponse.put(KEY_TIMESTAMP, OffsetDateTime.now());
                 return ResponseEntity.badRequest().body(errorResponse);
             }
 
@@ -166,7 +167,7 @@ public class OllamaController {
             Map<String, Object> response = new HashMap<>();
             response.put("response", aiResponse.getResponse());
             response.put("model", model);
-            response.put(KEY_TIMESTAMP, java.time.LocalDateTime.now());
+            response.put(KEY_TIMESTAMP, OffsetDateTime.now());
 
             return ResponseEntity.ok(response);
 
@@ -175,7 +176,7 @@ public class OllamaController {
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put(KEY_ERROR, "AI Generation Failed");
             errorResponse.put(KEY_MESSAGE, e.getMessage());
-            errorResponse.put(KEY_TIMESTAMP, java.time.LocalDateTime.now());
+            errorResponse.put(KEY_TIMESTAMP, OffsetDateTime.now());
             return ResponseEntity.internalServerError().body(errorResponse);
         }
     }
@@ -203,7 +204,7 @@ public class OllamaController {
             Map<String, Object> response = new HashMap<>();
             response.put(KEY_MESSAGE, "Question improvement process initiated");
             response.put("questionIds", questionIds);
-            response.put(KEY_TIMESTAMP, java.time.LocalDateTime.now());
+            response.put("timestamp", OffsetDateTime.now());
 
             // Implementation would process questions through AI for improvement
             logger.info("Processing {} questions for AI improvement", questionIds.size());
@@ -235,7 +236,7 @@ public class OllamaController {
             status.put("service", "Ollama AI Integration");
             status.put("status", "operational");
             status.put("availableModels", List.of("llama3", "codellama", "mistral"));
-            status.put(KEY_TIMESTAMP, java.time.LocalDateTime.now());
+            status.put(KEY_TIMESTAMP, OffsetDateTime.now());
 
             return ResponseEntity.ok(status);
         } catch (Exception e) {

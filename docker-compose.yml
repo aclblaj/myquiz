@@ -1,4 +1,5 @@
 services:
+  # PostgreSQL Database
   postgres:
     image: postgres:17-alpine
     container_name: myquiz-postgres
@@ -9,7 +10,8 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      # Schema and default admin user are created by myquiz-iam on startup
+      # - ./myquiz.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./data/myquiz_clean_dump.sql:/docker-entrypoint-initdb.d/02-data.sql:ro
     ports:
       - "5433:5432"
     networks:
@@ -20,6 +22,7 @@ services:
       timeout: 5s
       retries: 5
 
+  # MyQuiz Application
   myquiz-app:
     build:
       context: .
@@ -41,7 +44,8 @@ services:
       SPRING_JPA_PROPERTIES_HIBERNATE_ID_INCREMENT_SIZE_MISMATCH_STRATEGY: NONE
       SPRING_PROFILES_ACTIVE: docker
       SERVER_PORT: 8082
-      LOGGING_LEVEL_COM_UNITBV_MYQUIZ: DEBUG
+      LOGGING_LEVEL_COM_UNITBV_MYQUIZ: INFO
+      LOGGING_LEVEL_ORG_SPRINGFRAMEWORK: WARN
       FRONTEND_URL: http://myquiz-thymeleaf:8080
       JWT_SECRET: myquiz-shared-secret-key-for-all-services-at-least-256-bits
       OLLAMA_API_URL: http://ollama:11434
@@ -86,6 +90,9 @@ services:
       - "11434:11434"
     volumes:
       - ollama_data:/root/.ollama
+    entrypoint: [ "/bin/sh", "-c" ]
+    command:
+      - "ollama serve & sleep 5 && ollama pull llama3 && wait"
     networks:
       - myquiz-network
     profiles:
