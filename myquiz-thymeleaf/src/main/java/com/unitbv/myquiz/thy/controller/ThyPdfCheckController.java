@@ -1,6 +1,5 @@
 package com.unitbv.myquiz.thy.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.unitbv.myquiz.api.dto.OllamaRequestDto;
 import com.unitbv.myquiz.api.dto.OllamaResponseDto;
 import com.unitbv.myquiz.api.settings.ControllerSettings;
@@ -16,6 +15,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.net.URI;
@@ -196,7 +196,8 @@ public class ThyPdfCheckController {
      * Send request to Ollama
      */
     private OllamaResponseDto sendToOllama(String model, String prompt) throws IOException, InterruptedException {
-        OllamaRequestDto request = new OllamaRequestDto(model, prompt);
+        OllamaRequestDto request = OllamaRequestDto
+                .builder().model(model).prompt(prompt).build();
         request.setStream(false); // Disable streaming to get complete response
         String requestJson = objectMapper.writeValueAsString(request);
 
