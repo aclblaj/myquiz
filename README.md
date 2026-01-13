@@ -136,7 +136,6 @@ Place initialization scripts in `data/` folder:
 - `init-admin-user.sql` - Create admin user
 - `insert-dummy-courses.sql` - Sample courses
 - `insert-dummy-quizzes.sql` - Sample quizzes
-- `fix-all-sequences.sql` - Fix sequence values after data import
 
 Scripts execute automatically on first container start.
 
@@ -156,25 +155,9 @@ myquiz/
 ├── myquiz-iam/          # User management service
 ├── data/                # Database initialization scripts
 ├── nginx/               # Nginx configuration (optional)
-├── prompt/              # Software design documentation
 ├── docker-compose.yml   # Docker orchestration
 └── pom.xml              # Parent Maven configuration
 ```
-
-## Documentation
-
-Comprehensive software design documentation is available in the `prompt/` folder:
-
-- **guidelines.md** - Development standards and best practices
-- **auth-sd.md** - Authentication and session management
-- **author-sd.md** - Author operations
-- **author-error-sd.md** - Error tracking
-- **question-sd.md** - Question management
-- **quiz-sd.md** - Quiz operations
-- **upload-sd.md** - File upload functionality
-- **style-sd.md** - UI/UX styling standards
-- **docker-sd.md** - Docker setup and deployment
-- **core-sd.md** - Core architecture and patterns
 
 ## Contributing
 
@@ -195,5 +178,4 @@ For issues or questions, please create an issue in the repository.
 
 ---
 
-**Built with ❤️ for educational institutions**
 
