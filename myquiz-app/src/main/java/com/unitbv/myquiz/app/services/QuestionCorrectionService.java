@@ -299,7 +299,10 @@ public class QuestionCorrectionService {
      * Generate response using Ollama API
      */
     private String generateWithOllama(String prompt, String model) throws IOException, InterruptedException {
-        OllamaRequestDto request = new OllamaRequestDto(model, prompt);
+        OllamaRequestDto request = OllamaRequestDto.builder()
+                                                   .model(model)
+                                                   .prompt(prompt)
+                                                   .build();
         request.setStream(false);
         String requestJson = objectMapper.writeValueAsString(request);
 
