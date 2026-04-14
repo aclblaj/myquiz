@@ -133,11 +133,14 @@ docker-compose up -d myquiz-app
 ## Database Initialization
 
 Place initialization scripts in `data/` folder:
-- `init-admin-user.sql` - Create admin user
-- `insert-dummy-courses.sql` - Sample courses
-- `insert-dummy-quizzes.sql` - Sample quizzes
+- `01_database_schema.sql` - Create Quiz database schema
+- `01_database_schema_auth.sql` - Create Auth database schema
+- `02_init-admin-user.sql` - Create admin user
+- `02_insert-dummy-courses.sql` - Sample courses
+- `03_insert-dummy-quizzes.sql` - Sample quizzes
 
-Scripts execute automatically on first container start.
+Scripts execute automatically on first container start.\
+Scripts will be executed alphabetically inside entrypoint.
 
 ## API Documentation
 

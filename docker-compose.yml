@@ -10,8 +10,7 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      # - ./myquiz.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
-      - ./data/myquiz_clean_dump.sql:/docker-entrypoint-initdb.d/02-data.sql:ro
+      - ./data:/docker-entrypoint-initdb.d:ro
     ports:
       - "5433:5432"
     networks:

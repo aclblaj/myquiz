@@ -124,25 +124,28 @@ public class ThyAuthController {
             ResponseEntity<Map<String, Object>> response = restTemplate.postForEntity(authApiUrl + "/register", entity, (Class<Map<String, Object>>)(Class<?>)Map.class);
             Map<String, Object> body = response.getBody();
             boolean success = false;
-            if (body != null && body.get(ControllerSettings.KEY_SUCCESS) instanceof Boolean b) {
-                success = b;
+            String jwtToken = null;
+            if (body != null && body.get(ControllerSettings.KEY_TOKEN) instanceof String token && !token.isEmpty()) {
+                success = true;
+                jwtToken = token;
             }
             if (response.getStatusCode() == HttpStatus.CREATED && success) {
                 model.addAttribute(ControllerSettings.ATTR_LOGGED_IN_USER, username);
-                if (body.get(ControllerSettings.KEY_TOKEN) != null) {
-                    session.setAttribute(ControllerSettings.ATTR_JWT_TOKEN, body.get(ControllerSettings.KEY_TOKEN));
-                    logger.debug("Register success: loggedInUser set to {} in model, jwtToken set to {} in session", username, body.get(ControllerSettings.KEY_TOKEN));
-                }
+                session.setAttribute(ControllerSettings.ATTR_JWT_TOKEN, jwtToken);
+                sessionService.setSession(session);
+                logger.debug("Register success: loggedInUser set to {} in model, jwtToken set to {} in session", username, jwtToken);
                 return ControllerSettings.REDIRECT_HOME;
             } else {
                 String errorMsg = body != null && body.get("message") != null ? body.get("message").toString() : ControllerSettings.DEFAULT_REGISTRATION_ERROR;
                 model.addAttribute(ControllerSettings.ATTR_REGISTER_ERROR, true);
                 model.addAttribute(ControllerSettings.ATTR_REGISTER_ERROR_MSG, errorMsg);
+                logger.error("Error Internal Register: {}", errorMsg);
                 return ControllerSettings.VIEW_REGISTER;
             }
         } catch (Exception e) {
             model.addAttribute(ControllerSettings.ATTR_REGISTER_ERROR, true);
             model.addAttribute(ControllerSettings.ATTR_REGISTER_ERROR_MSG, ControllerSettings.DEFAULT_INTERNAL_ERROR);
+            logger.error("Error Internal Register: {}", e.getMessage(), e);
             return ControllerSettings.VIEW_REGISTER;
         }
     }
