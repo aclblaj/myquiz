@@ -15,6 +15,7 @@ RUN mvn -pl myquiz-app clean package -DskipTests
 FROM amazoncorretto:21-alpine
 ENV JAVA_HOME=/usr/lib/jvm/java-21-amazon-corretto
 WORKDIR /app
+RUN apk add --no-cache curl
 COPY --from=builder /build/myquiz-app/target/myquiz-app-*.war /app.war
 ENTRYPOINT ["java","-jar","/app.war"]
 EXPOSE 8080

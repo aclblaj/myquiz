@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="ISO-8859-1">
+    <title>Question Banks for Course</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+<div th:insert="~{fragments::menu}"></div>
+
+<div class="container mt-3 list-page-compact">
+    <h4 class="list-page-title" th:text="'Question banks for course: ' + ${courseName}">Question banks for course</h4>
+    <div th:if="${questionBanks != null and #lists.size(questionBanks) > 0}">
+        <table class="styled-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Study Year</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="questionBank : ${questionBanks}">
+                    <td th:text="${questionBank.id}"></td>
+                    <td th:text="${questionBank.name}"></td>
+                    <td th:text="${questionBank.studyYear != null ? questionBank.studyYear.value : '-'}"></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <div th:if="${questionBanks == null or #lists.size(questionBanks) == 0}">
+        <p class="list-empty-message">No question banks found for this course.</p>
+    </div>
+</div>
+</body>
+</html>

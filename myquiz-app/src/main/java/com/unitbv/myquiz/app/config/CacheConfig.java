@@ -27,9 +27,15 @@ public class CacheConfig {
             "courseNames",
             "allAuthorsBasic",
             "authorsByCourse",
-            "allQuizInfo",
-            "quizInfoByCourse"
+            "allQuestionBankInfo",
+            "questionBankInfoByCourse",
+            "questions",
+            "allQuestions",
+            "questionsByQuestionBank",
+            "questionsByAuthor",
+            "questionsByAuthorName"
         );
     }
 }
+
 

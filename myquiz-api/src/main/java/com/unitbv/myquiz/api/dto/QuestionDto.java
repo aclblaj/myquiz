@@ -5,6 +5,8 @@ import com.unitbv.myquiz.api.types.QuestionType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import lombok.Data;
+import lombok.ToString;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,7 +14,9 @@ import java.util.List;
 /**
  * Data Transfer Object for Question entity.
  */
-@Schema(description = "Question DTO for quiz questions")
+@Schema(description = "Question DTO for questionBank questions")
+@Data
+@ToString(of = {"id", "title", "text"})
 public class QuestionDto {
 
     @Schema(description = "Unique identifier of the question")
@@ -23,11 +27,16 @@ public class QuestionDto {
     @JsonProperty("title")
     private String title;
 
-    @Schema(description = "Question text", required = true)
+    @Schema(description = "Question text", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "Question text cannot be blank")
     @Size(max = 1000, message = "Question text cannot exceed 1000 characters")
     @JsonProperty("text")
     private String text;
+
+    @Schema(description = "Optional answer reference text", maxLength = 2000)
+    @Size(max = 2000, message = "Answer reference cannot exceed 2000 characters")
+    @JsonProperty("answerReferenceText")
+    private String answerReferenceText;
 
     @Schema(description = "Chapter or topic")
     @JsonProperty("chapter")
@@ -37,9 +46,13 @@ public class QuestionDto {
     @JsonProperty("authorName")
     private String authorName;
 
-    @Schema(description = "Quiz name")
-    @JsonProperty("quizName")
-    private String quizName;
+    @Schema(description = "QuestionBank name")
+    @JsonProperty("questionBankName")
+    private String questionBankName;
+
+    @Schema(description = "QuestionBank ID")
+    @JsonProperty("questionBankId")
+    private Long questionBankId;
 
     @Schema(description = "Response 1")
     @JsonProperty("response1")
@@ -88,6 +101,7 @@ public class QuestionDto {
     @Schema(description = "Course name")
     @JsonProperty("course")
     private String course;
+
     @Schema(description = "Question type")
     @JsonProperty("type")
     private QuestionType type;
@@ -96,182 +110,11 @@ public class QuestionDto {
     @JsonProperty("errors")
     private List<QuestionErrorDto> errors = new ArrayList<>();
 
-    // Default constructor
-    public QuestionDto() {
-    }
+    @Schema(description = "Number of duplicate questions linked to this question")
+    @JsonProperty("duplicateCount")
+    private Integer duplicateCount = 0;
 
-    public QuestionType getType() {
-        return type;
-    }
-
-    public void setType(QuestionType type) {
-        this.type = type;
-    }
-
-    // Getters and setters
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    public String getText() {
-        return text;
-    }
-
-    public void setText(String text) {
-        this.text = text;
-    }
-
-    public String getChapter() {
-        return chapter;
-    }
-
-    public void setChapter(String chapter) {
-        this.chapter = chapter;
-    }
-
-    public String getAuthorName() {
-        return authorName;
-    }
-
-    public void setAuthorName(String authorName) {
-        this.authorName = authorName;
-    }
-
-    public String getResponse1() {
-        return response1;
-    }
-
-    public void setResponse1(String response1) {
-        this.response1 = response1;
-    }
-
-    public String getResponse2() {
-        return response2;
-    }
-
-    public void setResponse2(String response2) {
-        this.response2 = response2;
-    }
-
-    public String getResponse3() {
-        return response3;
-    }
-
-    public void setResponse3(String response3) {
-        this.response3 = response3;
-    }
-
-    public String getResponse4() {
-        return response4;
-    }
-
-    public void setResponse4(String response4) {
-        this.response4 = response4;
-    }
-
-    public Double getWeightResponse1() {
-        return weightResponse1;
-    }
-
-    public void setWeightResponse1(Double weightResponse1) {
-        this.weightResponse1 = weightResponse1;
-    }
-
-    public Double getWeightResponse2() {
-        return weightResponse2;
-    }
-
-    public void setWeightResponse2(Double weightResponse2) {
-        this.weightResponse2 = weightResponse2;
-    }
-
-    public Double getWeightResponse3() {
-        return weightResponse3;
-    }
-
-    public void setWeightResponse3(Double weightResponse3) {
-        this.weightResponse3 = weightResponse3;
-    }
-
-    public Double getWeightResponse4() {
-        return weightResponse4;
-    }
-
-    public void setWeightResponse4(Double weightResponse4) {
-        this.weightResponse4 = weightResponse4;
-    }
-
-    public Double getWeightTrue() {
-        return weightTrue;
-    }
-
-    public void setWeightTrue(Double weightTrue) {
-        this.weightTrue = weightTrue;
-    }
-
-    public Double getWeightFalse() {
-        return weightFalse;
-    }
-
-    public void setWeightFalse(Double weightFalse) {
-        this.weightFalse = weightFalse;
-    }
-
-    public Integer getRow() {
-        return row;
-    }
-
-    public void setRow(Integer row) {
-        this.row = row;
-    }
-
-    public String getCourse() {
-        return course;
-    }
-
-    public void setCourse(String course) {
-        this.course = course;
-    }
-
-    // Alias for text field - for backward compatibility with templates
-    public String getQuestion() {
-        return text;
-    }
-
-    public void setQuestion(String question) {
-        this.text = question;
-    }
-
-    @Override
-    public String toString() {
-        return "QuestionDto{" + "id=" + id + ", title='" + title + '\'' + ", text='" + text + '\'' + '}';
-    }
-
-    public String getQuizName() {
-        return quizName;
-    }
-
-    public void setQuizName(String quizName) {
-        this.quizName = quizName;
-    }
-
-    public List<QuestionErrorDto> getErrors() {
-        return errors;
-    }
-
-    public void setErrors(List<QuestionErrorDto> errors) {
-        this.errors = errors;
-    }
+    @Schema(description = "Duplicate questions linked to this question")
+    @JsonProperty("duplicates")
+    private List<QuestionDuplicateDto> duplicates = new ArrayList<>();
 }

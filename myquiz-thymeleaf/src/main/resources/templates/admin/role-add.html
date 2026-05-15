@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add New Role - MyQuiz</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+    <div th:insert="~{fragments::menu}"></div>
+
+    <div class="container">
+        <h1>Add New Role</h1>
+
+        <div th:if="${!menuPermissions['canManageRoles']}" class="error-message">
+            You do not have permission to manage roles.
+        </div>
+
+        <div th:if="${param.error}" class="error-message">
+            <p th:text="${param.error}">Error creating role</p>
+        </div>
+
+        <div th:if="${menuPermissions['canManageRoles']}" class="form-container">
+            <h3>New Role</h3>
+            <form th:action="@{/admin/roles/new}" method="post" class="form-grid">
+                <div class="form-group">
+                    <label for="name" class="form-label">Role Name *</label>
+                    <input type="text" id="name" name="name" required class="form-input"
+                           placeholder="e.g., CONTENT_EDITOR" maxlength="50">
+                    <small style="color:#6b7280;">Use uppercase with underscores (e.g., MY_CUSTOM_ROLE)</small>
+                </div>
+                <div class="form-group">
+                    <label for="description" class="form-label">Description *</label>
+                    <textarea id="description" name="description" required class="form-textarea"
+                              placeholder="Brief description of this role's purpose" rows="3" maxlength="255"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-new">➕ Create Role</button>
+                    <a th:href="@{/admin/roles}" class="btn btn-outline">✖️ Cancel</a>
+                </div>
+            </form>
+        </div>
+
+        <div class="info-box">
+            <h3>ℹ️ Role Creation Guidelines</h3>
+            <ul>
+                <li>Role names should be in UPPERCASE with underscores</li>
+                <li>Choose descriptive names that reflect the role's purpose</li>
+                <li>After creating a role, you can assign permissions on the edit page</li>
+                <li>Roles can be assigned to multiple users</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

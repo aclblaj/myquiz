@@ -22,6 +22,7 @@ public class InputTemplate {
     private final int position_2023_RESPONSE4 = 10;
     private final int position_2023_PRTrue = 3;
     private final int position_2023_PRFalse = 4;
+    private final int postion_2023_Reference = 11;
 
     private final int position_2024_NO = 0;
     private final int position_2024_COURSE = 1;
@@ -37,7 +38,9 @@ public class InputTemplate {
     private final int position_2024_RESPONSE4 = 11;
     private final int position_2024_PRTrue = 4;
     private final int position_2024_PRFalse = 5;
+    private final int postion_2024_Reference = 12;
 
+    private final int postion_TF_Reference = 6;
 
     public int getPositionNO() {
         switch (templateType) {
@@ -163,4 +166,18 @@ public class InputTemplate {
                 return -1;
         }
     }
+
+    public int getPostionReference() {
+        switch (templateType) {
+            case Template2024:
+                return postion_2024_Reference;
+            default:
+                return postion_2023_Reference;
+        }
+    }
+
+    public int getPostion_TF_Reference() {
+        return postion_TF_Reference;
+    }
+
 }

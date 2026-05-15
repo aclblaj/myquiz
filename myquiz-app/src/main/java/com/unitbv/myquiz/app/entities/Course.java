@@ -1,70 +1,77 @@
 package com.unitbv.myquiz.app.entities;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.*;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+import lombok.ToString;
+
+import java.time.OffsetDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Entity
+@Table(name = "course")
+@Data
+@EqualsAndHashCode(of = "id")
+@ToString(exclude = "questionBanks")
+@NoArgsConstructor
+@AllArgsConstructor
 public class Course {
+
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "course_gen")
     @SequenceGenerator(name = "course_gen", sequenceName = "course_seq", allocationSize = 1)
     @Column(name = "id", nullable = false)
     private Long id;
+
+    @Column(name = "course", nullable = false, length = 200)
     private String course;
+
+    @Column(name = "description", length = 500)
     private String description;
+
+    @Column(name = "university_year", length = 20)
     private String universityYear;
+
+    @Column(name = "semester", length = 20)
     private String semester;
-    private String studyYear;
 
-    public Long getId() {
-        return id;
+
+    @OneToMany(mappedBy = "course", fetch = FetchType.LAZY)
+    private Set<QuestionBank> questionBanks = new HashSet<>();
+
+    @Column(name = "created_at", updatable = false)
+    private OffsetDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private OffsetDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = OffsetDateTime.now();
+        updatedAt = OffsetDateTime.now();
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = OffsetDateTime.now();
     }
 
-    public String getCourse() {
-        return course;
-    }
-
-    public void setCourse(String name) {
-        this.course = name;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public String getUniversityYear() {
-        return universityYear;
-    }
-
-    public void setUniversityYear(String universityYear) {
-        this.universityYear = universityYear;
-    }
-
-    public String getSemester() {
-        return semester;
-    }
-
-    public void setSemester(String semester) {
-        this.semester = semester;
-    }
-
-    public String getStudyYear() {
-        return studyYear;
-    }
-
-    public void setStudyYear(String studyYear) {
-        this.studyYear = studyYear;
+    @Transient
+    public Set<QuestionBank> getQuestionBanks() {
+        Set<QuestionBank> banks = new HashSet<>();
+        for (QuestionBank questionBank : questionBanks) {
+            QuestionBank dmyQB = new QuestionBank();
+            dmyQB.setId(questionBank.getId());
+            dmyQB.setName(questionBank.getName());
+            dmyQB.setCourse(questionBank.getCourse());
+            dmyQB.setStudyYear(questionBank.getStudyYear());
+            dmyQB.setArchiveImports(questionBank.getArchiveImports());
+            dmyQB.setQuestionBankAuthors(questionBank.getQuestionBankAuthors());
+            banks.add(dmyQB);
+        }
+        return banks;
     }
 }

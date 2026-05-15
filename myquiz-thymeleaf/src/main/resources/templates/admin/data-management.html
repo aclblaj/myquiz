@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Management - MyQuiz</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+<div th:insert="~{fragments::menu}"></div>
+
+<div class="container list-page-compact">
+    <h1 class="list-page-title">Data Management Dashboard</h1>
+
+    <div th:if="${message}" class="success-message" th:text="${message}"></div>
+    <div th:if="${error}" class="error-message" th:text="${error}"></div>
+
+    <div class="form-container">
+        <h3>Backup</h3>
+        <p>Export all application data (excluding users, roles, and permissions) as SQL.</p>
+        <a th:if="${menuPermissions['canBackupDatabase']}" th:href="@{/admin/data/export-sql}" class="btn btn-new">📥 Download SQL Backup</a>
+        <p th:if="${!menuPermissions['canBackupDatabase']}" class="list-empty-message">You do not have permission to export backups.</p>
+    </div>
+
+    <div class="form-container">
+        <h3>Restore</h3>
+        <p>Import a previously exported SQL backup file.</p>
+        <form th:if="${menuPermissions['canRestoreDatabase']}" method="post" enctype="multipart/form-data" th:action="@{/admin/data/import-sql}">
+            <input type="file" name="file" accept=".sql" required>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-questions">📤 Import SQL Backup</button>
+            </div>
+        </form>
+        <p th:if="${!menuPermissions['canRestoreDatabase']}" class="list-empty-message">You do not have permission to import backups.</p>
+    </div>
+
+    <div class="form-container">
+        <h3>Cleanup</h3>
+        <p>Delete all questionBank/application data while keeping auth data unchanged.</p>
+        <a th:if="${menuPermissions['canCleanDatabase']}"
+           th:href="@{/admin/data/deleteall}"
+           class="btn btn-delete"
+           th:onclick="return confirm('Are you sure you want to delete all the database records?')">🗑️ Delete all</a>
+        <p th:if="${!menuPermissions['canCleanDatabase']}" class="list-empty-message">You do not have permission to run cleanup.</p>
+    </div>
+</div>
+
+</body>
+</html>

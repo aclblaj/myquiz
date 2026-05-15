@@ -1,65 +1,47 @@
 package com.unitbv.myquiz.app.repositories;
 
-import com.unitbv.myquiz.app.entities.Author;
+import com.unitbv.myquiz.api.types.QuestionType;
 import com.unitbv.myquiz.app.entities.Question;
-import com.unitbv.myquiz.app.entities.Quiz;
-import com.unitbv.myquiz.app.entities.QuizAuthor;
+import com.unitbv.myquiz.app.testutil.TestEntityFactory;
+import com.unitbv.myquiz.app.testutil.TestFixtureData;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import java.util.logging.Logger;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
 @SpringBootTest
 class QuestionRepositoryTest {
 
-    Logger logger = Logger.getLogger(QuestionRepositoryTest.class.getName());
-
     @Autowired
     QuestionRepository questionRepository;
+
     @Autowired
-    private QuizAuthorRepository quizAuthorRepository;
+    private TestEntityFactory testEntityFactory;
 
     @Test
     void findById() {
-        long idQuestion = addTestQuestion();
-        Question question = questionRepository.findById(idQuestion).get();
-        assertEquals(idQuestion, question.getId());
-        removeTestQuestion(idQuestion);
-        question = questionRepository.findById(idQuestion).orElse(null);
-        assertNull(question);
+        TestEntityFactory.QuestionFixture fixture = addTestQuestion();
+        try {
+            Question question = questionRepository.findById(fixture.question().getId()).orElse(null);
+            assertNotNull(question);
+            assertEquals(fixture.question().getId(), question.getId());
+        } finally {
+            testEntityFactory.cleanupQuestionFixture(fixture);
+        }
+
+        Question deletedQuestion = questionRepository.findById(fixture.question().getId()).orElse(null);
+        assertNull(deletedQuestion);
     }
 
-    private void removeTestQuestion(long idQuestion) {
-        questionRepository.delete(questionRepository.findById(idQuestion).get());
-    }
-
-    private long addTestQuestion() {
-        Question question = new Question();
-        question.setTitle("Test question");
-
-        Author author = new Author();
-        author.setName("Max Mustermann");
-        author.setInitials("MM");
-
-        Quiz quiz = new Quiz();
-        quiz.setName("Q1");
-        quiz.setCourse("RC");
-
-        QuizAuthor quizAuthor = new QuizAuthor();
-        quizAuthor.setAuthor(author);
-        quizAuthor.setQuiz(quiz);
-        quizAuthor.setSource("file.xlsx");
-
-        quizAuthor = quizAuthorRepository.save(quizAuthor);
-
-        question.setQuizAuthor(quizAuthor);
-
-        question = questionRepository.save(question);
-        return question.getId();
+    private TestEntityFactory.QuestionFixture addTestQuestion() {
+        return testEntityFactory.createQuestionFixture(
+                TestFixtureData.questionSpecBuilder()
+                        .type(QuestionType.MULTICHOICE)
+                        .build()
+        );
     }
 
 

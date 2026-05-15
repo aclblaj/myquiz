@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Question Bank Export View</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+<div th:insert="~{fragments::menu}"></div>
+
+<div class="container mt-3 list-page-compact">
+    <h2 class="list-page-title" th:text="'Question Bank Export View: ' + ${questionBank.name}">Question Bank Export View</h2>
+
+    <div th:if="${errorMessage}" class="alert" th:text="${errorMessage}"></div>
+
+    <div class="form-container" th:if="${questionBank != null && questionBank.id != null}">
+        <h3>Question Bank Information</h3>
+        <table class="detail-table">
+            <tr><th scope="row">Question Bank ID</th><td th:text="${questionBank.id}">N/A</td></tr>
+            <tr><th scope="row">Question Bank Name</th><td th:text="${questionBank.name}">N/A</td></tr>
+            <tr><th scope="row">Course</th><td th:text="${questionBank.course}">N/A</td></tr>
+            <tr><th scope="row">Study Year</th><td th:text="${questionBank.studyYear != null ? questionBank.studyYear.value : '-'}">N/A</td></tr>
+            <tr><th scope="row">Source File</th><td th:text="${questionBank.sourceFile}">N/A</td></tr>
+            <tr><th scope="row">MC Questions</th><td th:text="${questionBank.questionsMultichoice != null ? #lists.size(questionBank.questionsMultichoice) : 0}">0</td></tr>
+            <tr><th scope="row">TF Questions</th><td th:text="${questionBank.questionsTruefalse != null ? #lists.size(questionBank.questionsTruefalse) : 0}">0</td></tr>
+            <tr><th scope="row">Total Questions</th><td th:text="${(questionBank.questionsMultichoice != null ? #lists.size(questionBank.questionsMultichoice) : 0) + (questionBank.questionsTruefalse != null ? #lists.size(questionBank.questionsTruefalse) : 0)}">0</td></tr>
+            <tr><th scope="row">Authors</th><td th:text="${questionBank.noAuthors}">0</td></tr>
+        </table>
+
+        <div class="form-actions print-hide">
+            <a th:href="@{'/question-banks/' + ${questionBank.id}}" class="btn btn-info">👁️ View Details</a>
+            <a th:href="${backToQuestionBankUrl}" class="btn btn-outline">↩️ Back to Question Banks</a>
+        </div>
+    </div>
+
+    <div th:if="${authorSections != null && !#lists.isEmpty(authorSections)}" class="form-container mt-3" id="authors-table">
+        <h3>Authors</h3>
+        <table class="styled-table">
+            <thead>
+            <tr>
+                <th>Id</th>
+                <th>Author Name</th>
+                <th>Initials</th>
+                <th>MC Questions</th>
+                <th>TF Questions</th>
+                <th>Total Questions</th>
+                <th>Errors</th>
+                <th>Duplicates</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:each="section : ${authorSections}" class="data-row">
+                <td th:text="${section.author.id}">1</td>
+                <td>
+                    <a th:href="${'#author-' + section.author.id}" th:text="${section.author.name}">Author Name</a>
+                </td>
+                <td th:text="${section.author.initials != null and !#strings.isEmpty(section.author.initials) ? section.author.initials : '-'}">-</td>
+                <td th:text="${section.multipleChoiceQuestions != null ? #lists.size(section.multipleChoiceQuestions) : 0}">0</td>
+                <td th:text="${section.trueFalseQuestions != null ? #lists.size(section.trueFalseQuestions) : 0}">0</td>
+                <td th:text="${(section.multipleChoiceQuestions != null ? #lists.size(section.multipleChoiceQuestions) : 0) + (section.trueFalseQuestions != null ? #lists.size(section.trueFalseQuestions) : 0)}">0</td>
+                <td th:text="${section.errors != null ? #lists.size(section.errors) : 0}">0</td>
+                <td th:text="${section.duplicateQuestions != null ? #lists.size(section.duplicateQuestions) : 0}">0</td>
+                <td class="action-cell">
+                    <a th:href="${'#author-' + section.author.id}" class="btn btn-questions">⬆️ Jump</a>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div th:if="${authorSections != null && !#lists.isEmpty(authorSections)}">
+        <div th:each="section : ${authorSections}" class="form-container mt-4" th:id="${'author-' + section.author.id}">
+            <h3>
+                <span th:text="${section.author.name}">Author Name</span>
+                <span th:if="${section.author.initials != null and !#strings.isEmpty(section.author.initials)}">
+                    (<span th:text="${section.author.initials}">ACL</span>)
+                    <a href="#authors-table" class="btn btn-outline btn-small">↩️ Back</a>
+                </span>
+
+            </h3>
+
+            <div>
+                <h4 class="mt-3 mb-2">Multiple Choice Questions</h4>
+                <table class="styled-table" th:if="${section.multipleChoiceQuestions != null && !#lists.isEmpty(section.multipleChoiceQuestions)}">
+                    <thead>
+                    <tr>
+                        <th>Row</th>
+                        <th>Title</th>
+                        <th>Text</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="question : ${section.multipleChoiceQuestions}">
+                        <td th:text="${question.row}">1</td>
+                        <td th:text="${question.title}">Title</td>
+                        <td class="text-cell" th:text="${question.text}">Question text</td>
+                    </tr>
+                    </tbody>
+                </table>
+                <div th:if="${section.multipleChoiceQuestions == null || #lists.isEmpty(section.multipleChoiceQuestions)}" class="alert">
+                    No multiple choice questions for this author.
+                </div>
+            </div>
+
+            <div>
+                <h4 class="mt-3 mb-2">True/False Questions</h4>
+                <table class="styled-table" th:if="${section.trueFalseQuestions != null && !#lists.isEmpty(section.trueFalseQuestions)}">
+                    <thead>
+                    <tr>
+                        <th>Row</th>
+                        <th>Title</th>
+                        <th>Text</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="question : ${section.trueFalseQuestions}">
+                        <td th:text="${question.row}">1</td>
+                        <td th:text="${question.title}">Title</td>
+                        <td class="text-cell" th:text="${question.text}">Question text</td>
+                    </tr>
+                    </tbody>
+                </table>
+                <div th:if="${section.trueFalseQuestions == null || #lists.isEmpty(section.trueFalseQuestions)}" class="alert">
+                    No true/false questions for this author.
+                </div>
+            </div>
+
+            <div>
+                <h4 class="mt-3 mb-2">Errors</h4>
+                <div th:if="${section.errors != null && !#lists.isEmpty(section.errors)}">
+                    <div th:replace="~{fragments::error-table(errors=${section.errors}, showActions=${false})}"></div>
+                </div>
+                <div th:if="${section.errors == null || #lists.isEmpty(section.errors)}" class="alert">
+                    No errors for this author.
+                </div>
+            </div>
+
+            <div>
+                <h4 class="mt-3 mb-2">Duplicated Questions</h4>
+                <table class="styled-table" th:if="${section.duplicateQuestions != null && !#lists.isEmpty(section.duplicateQuestions)}">
+                    <thead>
+                    <tr>
+                        <th>Row</th>
+                        <th>Title</th>
+                        <th>Text</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="duplicate : ${section.duplicateQuestions}">
+                        <td th:text="${duplicate.row}">1</td>
+                        <td th:text="${duplicate.title}">Duplicate title</td>
+                        <td class="text-cell" th:text="${duplicate.text}">Duplicate text</td>
+                    </tr>
+                    </tbody>
+                </table>
+                <div th:if="${section.duplicateQuestions == null || #lists.isEmpty(section.duplicateQuestions)}" class="alert">
+                    No duplicated questions for this author.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div th:if="${authorSections == null || #lists.isEmpty(authorSections)}" class="alert mt-3">
+        No authors found for this question bank.
+    </div>
+</div>
+</body>
+</html>
+

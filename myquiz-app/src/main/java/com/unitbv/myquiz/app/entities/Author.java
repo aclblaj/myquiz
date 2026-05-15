@@ -1,17 +1,19 @@
 package com.unitbv.myquiz.app.entities;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.*;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
+import java.time.OffsetDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
 @Entity
+@Table(name = "author")
+@Data
+@EqualsAndHashCode(of = "id")
+@ToString(exclude = "questionBankAuthors")
 public class Author {
 
     @Id
@@ -19,11 +21,32 @@ public class Author {
     @SequenceGenerator(name = "author_gen", sequenceName = "author_seq", allocationSize = 1)
     @Column(name = "id", nullable = false)
     private Long id;
+
+    @Column(name = "name", nullable = false, length = 100)
     private String name;
+
+    @Column(name = "initials", nullable = false, length = 10)
     private String initials;
 
-    @OneToMany(mappedBy = "author")
-    private Set<QuizAuthor> quizAuthors = new HashSet<>();
+    @Column(name = "created_at", updatable = false)
+    private OffsetDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private OffsetDateTime updatedAt;
+
+    @OneToMany(mappedBy = "author", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<QuestionBankAuthor> questionBankAuthors = new HashSet<>();
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = OffsetDateTime.now();
+        updatedAt = OffsetDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = OffsetDateTime.now();
+    }
 
     public Author() {
     }
@@ -31,46 +54,5 @@ public class Author {
     public Author(String name, String initials) {
         this.name = name;
         this.initials = initials;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getInitials() {
-        return initials;
-    }
-
-    public void setInitials(String initials) {
-        this.initials = initials;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public Set<QuizAuthor> getQuizAuthors() {
-        return quizAuthors;
-    }
-
-    public void setQuizAuthors(Set<QuizAuthor> quizAuthors) {
-        this.quizAuthors = quizAuthors;
-    }
-
-    @Override
-    public String toString() {
-        return "Author{" +
-                "name='" + name + '\'' +
-                ", initials='" + initials + '\'' +
-                ", id=" + id +
-                '}';
     }
 }

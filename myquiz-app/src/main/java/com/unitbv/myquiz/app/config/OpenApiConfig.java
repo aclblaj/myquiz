@@ -64,7 +64,7 @@ public class OpenApiConfig {
                     
                     ## Features
                     - **Question Management**: Create, edit, and delete quiz questions
-                    - **Quiz Management**: Organize questions into quizzes by course and author
+                    - **QuestionBank Management**: Organize questions into quizzes by course and author
                     - **Author Management**: Track question authors and their contributions
                     - **AI Integration**: Generate and improve questions using Ollama AI
                     - **Course Management**: Organize content by academic courses
@@ -74,7 +74,7 @@ public class OpenApiConfig {
                     This API provides RESTful endpoints for all major functionality:
                     - Questions CRUD operations
                     - AI-powered question generation and correction
-                    - Quiz and course management
+                    - QuestionBank and course management
                     - Author tracking and statistics
                     
                     ## Authentication
@@ -143,7 +143,7 @@ public class OpenApiConfig {
                         .description("Ollama AI integration for question generation and improvement"),
                 new Tag()
                         .name("Quizzes")
-                        .description("Quiz management operations - Organize questions into cohesive quizzes"),
+                        .description("QuestionBank management operations - Organize questions into cohesive quizzes"),
                 new Tag()
                         .name("Authors")
                         .description("Author management and tracking operations"),

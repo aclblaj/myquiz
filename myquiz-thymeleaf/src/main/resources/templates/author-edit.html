@@ -34,7 +34,7 @@
 
             <div class="form-actions">
                 <button type="submit" class="btn btn-save" th:text="${editMode} ? '💾 Update Author' : '➕ Add Author'">Save</button>
-                <a th:href="@{/authors}" class="btn btn-cancel">❌ Cancel</a>
+                <a th:href="${backToAuthorsUrl != null ? backToAuthorsUrl : '/authors'}" class="btn btn-cancel">✖️ Cancel</a>
             </div>
         </form>
     </div>

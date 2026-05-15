@@ -5,6 +5,8 @@ import com.unitbv.myquiz.iam.dto.RegisterRequest;
 import com.unitbv.myquiz.iam.dto.RegisterResponse;
 import com.unitbv.myquiz.iam.dto.UserDTO;
 import com.unitbv.myquiz.iam.dto.UserDetailsDTO;
+import com.unitbv.myquiz.iam.entity.Permission;
+import com.unitbv.myquiz.iam.entity.Role;
 import com.unitbv.myquiz.iam.entity.User;
 import com.unitbv.myquiz.iam.exceptions.UserAlreadyExistsException;
 import com.unitbv.myquiz.iam.service.UsersService;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,6 +45,13 @@ public class UsersController {
         return ResponseEntity.ok(users);
     }
 
+    @GetMapping("/{userId}")
+    public ResponseEntity<User> getUserById(@PathVariable Long userId) {
+        Optional<User> user = usersService.getUserById(userId);
+        return user.map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
     @GetMapping("find/{identifier}")
     public ResponseEntity<UserDetailsDTO> findByIdentifier(@PathVariable String identifier) {
         try {
@@ -52,18 +62,19 @@ public class UsersController {
                         user.get().getId(),
                         user.get().getUsername(),
                         user.get().getEmail(),
-                        user.get().getHashedPassword()
+                        user.get().getHashedPassword(),
+                        user.get().getEnabled()
                 );
                 return ResponseEntity.ok(userDetailsDTO);
             }
 
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(
-                    new UserDetailsDTO(null, null, null, null)
+                    new UserDetailsDTO(null, null, null, null, null)
             );
 
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(new UserDetailsDTO(null, null, null, null));
+                    .body(new UserDetailsDTO(null, null, null, null, null));
         }
     }
 
@@ -104,6 +115,120 @@ public class UsersController {
             log.error("Registration error: ", e);
             RegisterResponse response = new RegisterResponse(false, "Internal server error", null);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    /**
+     * Assign role to user
+     * @param userId User ID
+     * @param roleId Role ID
+     * @return Updated user
+     */
+    @PostMapping("/{userId}/roles/{roleId}")
+    public ResponseEntity<User> assignRole(@PathVariable Long userId, @PathVariable Long roleId) {
+        try {
+            User user = usersService.assignRoleToUser(userId, roleId);
+            return ResponseEntity.ok(user);
+        } catch (RuntimeException e) {
+            log.error("Error assigning role {} to user {}: {}", roleId, userId, e.getMessage());
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * Remove role from user
+     * @param userId User ID
+     * @param roleId Role ID
+     * @return Updated user
+     */
+    @DeleteMapping("/{userId}/roles/{roleId}")
+    public ResponseEntity<User> removeRole(@PathVariable Long userId, @PathVariable Long roleId) {
+        try {
+            User user = usersService.removeRoleFromUser(userId, roleId);
+            return ResponseEntity.ok(user);
+        } catch (RuntimeException e) {
+            log.error("Error removing role {} from user {}: {}", roleId, userId, e.getMessage());
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * Get all roles for a user
+     * @param userId User ID
+     * @return Set of roles
+     */
+    @GetMapping("/{userId}/roles")
+    public ResponseEntity<Set<Role>> getUserRoles(@PathVariable Long userId) {
+        try {
+            Set<Role> roles = usersService.getUserRoles(userId);
+            return ResponseEntity.ok(roles);
+        } catch (RuntimeException e) {
+            log.error("Error getting roles for user {}: {}", userId, e.getMessage());
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * Get all permissions for a user (merged from all roles)
+     * @param userId User ID
+     * @return Set of permissions
+     */
+    @GetMapping("/{userId}/permissions")
+    public ResponseEntity<Set<Permission>> getUserPermissions(@PathVariable Long userId) {
+        try {
+            Set<Permission> permissions = usersService.getUserPermissions(userId);
+            return ResponseEntity.ok(permissions);
+        } catch (RuntimeException e) {
+            log.error("Error getting permissions for user {}: {}", userId, e.getMessage());
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * Enable user account
+     * @param userId User ID
+     * @return Updated user
+     */
+    @PutMapping("/{userId}/enable")
+    public ResponseEntity<User> enableUser(@PathVariable Long userId) {
+        try {
+            User user = usersService.enableUser(userId);
+            return ResponseEntity.ok(user);
+        } catch (RuntimeException e) {
+            log.error("Error enabling user {}: {}", userId, e.getMessage());
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * Disable user account
+     * @param userId User ID
+     * @return Updated user
+     */
+    @PutMapping("/{userId}/disable")
+    public ResponseEntity<User> disableUser(@PathVariable Long userId) {
+        try {
+            User user = usersService.disableUser(userId);
+            return ResponseEntity.ok(user);
+        } catch (RuntimeException e) {
+            log.error("Error disabling user {}: {}", userId, e.getMessage());
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * Delete user account
+     * @param userId User ID
+     * @return No content
+     */
+    @DeleteMapping("/{userId}")
+    public ResponseEntity<Void> deleteUser(@PathVariable Long userId) {
+        try {
+            usersService.deleteUser(userId);
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            log.error("Error deleting user {}: {}", userId, e.getMessage());
+            return ResponseEntity.notFound().build();
         }
     }
 

@@ -12,6 +12,7 @@ RUN mvn -pl myquiz-auth clean install -DskipTests
 
 FROM amazoncorretto:21-alpine
 WORKDIR /myquiz-auth
+RUN apk add --no-cache curl
 COPY --from=build /build/myquiz-auth/target/*.jar app.jar
 ENTRYPOINT ["java", "-jar", "app.jar"]
 EXPOSE 8082

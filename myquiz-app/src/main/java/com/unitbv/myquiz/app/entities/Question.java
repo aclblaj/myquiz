@@ -14,209 +14,128 @@ import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.SequenceGenerator;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
 
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * JPA entity representing a question_bank question.
+ * Supports multiple question types including multiple choice and true/false questions.
+ * Questions belong to a QuestionBankAuthor and can have associated errors.
+ */
 @Entity
-@Table(name = "question", indexes = {
-    @Index(name = "idx_question_quiz_author_id", columnList = "quiz_author_id"),
-    @Index(name = "idx_question_type", columnList = "type")
-})
+@Table(name = "question", indexes = {@Index(name = "idx_qbi_question_bank_author_id", columnList = "question_bank_author_id"), @Index(name = "idx_qbi_type", columnList = "type")})
+@Data
+@EqualsAndHashCode(of = "id")
+@ToString(exclude = {"questionBankAuthor", "questionErrors", "duplicateLinks", "duplicateOfLinks", "answersReference"})
 public class Question {
-    private int crtNo;
-    private String chapter;
-    private String title;
-    @Column(length = 1024)
-    private String text;
-    @Enumerated(EnumType.STRING)
-    private QuestionType type;
-    private Double weightResponse1;
-    @Column(length = 1024)
-    private String response1;
-    private Double weightResponse2;
-    @Column(length = 1024)
-    private String response2;
-    private Double weightResponse3;
-    @Column(length = 1024)
-    private String response3;
-    private Double weightResponse4;
-    @Column(length = 1024)
-    private String response4;
 
-    private Double weightTrue;
-    private Double weightFalse;
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "quiz_author_id")
-    private QuizAuthor quizAuthor;
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "question_gen")
-    @SequenceGenerator(name = "question_gen", sequenceName = "question_seq")
+    @SequenceGenerator(name = "question_gen", sequenceName = "question_seq", allocationSize = 1)
     @Column(name = "id", nullable = false)
     private Long id;
+
+    @Column(name = "crt_no")
+    private int crtNo;
+
+    @Column(name = "chapter", length = 100)
+    private String chapter;
+
+    @Column(name = "title", length = 500)
+    private String title;
+
+    @Column(name = "text", length = 2048)
+    private String text;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type", nullable = false, length = 50)
+    private QuestionType type;
+
+    // Multiple choice responses and weights
+    @Column(name = "weight_response1")
+    private Double weightResponse1;
+
+    @Column(name = "response1", length = 2048)
+    private String response1;
+
+    @Column(name = "weight_response2")
+    private Double weightResponse2;
+
+    @Column(name = "response2", length = 2048)
+    private String response2;
+
+    @Column(name = "weight_response3")
+    private Double weightResponse3;
+
+    @Column(name = "response3", length = 2048)
+    private String response3;
+
+    @Column(name = "weight_response4")
+    private Double weightResponse4;
+
+    @Column(name = "response4", length = 2048)
+    private String response4;
+
+    // True/false weights
+    @Column(name = "weight_true")
+    private Double weightTrue;
+
+    @Column(name = "weight_false")
+    private Double weightFalse;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "question_bank_author_id")
+    private QuestionBankAuthor questionBankAuthor;
 
     @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<QuestionError> questionErrors = new ArrayList<>();
 
+    @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<QuestionDuplicate> duplicateLinks = new ArrayList<>();
+
+    @OneToMany(mappedBy = "duplicateQuestion", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<QuestionDuplicate> duplicateOfLinks = new ArrayList<>();
+
+    @OneToOne(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private AnswersReference answersReference;
+
+    @Column(name = "created_at", updatable = false)
+    private OffsetDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private OffsetDateTime updatedAt;
+
     public Question() {
     }
 
-    public Double getWeightTrue() {
-        return weightTrue;
+    @PrePersist
+    protected void onCreate() {
+        createdAt = OffsetDateTime.now();
+        updatedAt = OffsetDateTime.now();
     }
 
-    public void setWeightTrue(Double weightTrue) {
-        this.weightTrue = weightTrue;
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = OffsetDateTime.now();
     }
 
-    public Double getWeightFalse() {
-        return weightFalse;
-    }
-
-    public void setWeightFalse(Double weightFalse) {
-        this.weightFalse = weightFalse;
-    }
-
-    public int getCrtNo() {
-        return crtNo;
-    }
-
-    public void setCrtNo(int crtNo) {
-        this.crtNo = crtNo;
-    }
-
-    public String getChapter() {
-        return chapter;
-    }
-
-    public void setChapter(String course) {
-        this.chapter = course;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    public String getText() {
-        return text;
-    }
-
-    public void setText(String text) {
-        this.text = text;
-    }
-
-    public QuestionType getType() {
-        return type;
-    }
-
-    public void setType(QuestionType type) {
-        this.type = type;
-    }
-
-    public Double getWeightResponse1() {
-        return weightResponse1;
-    }
-
-    public void setWeightResponse1(Double weightResponse1) {
-        this.weightResponse1 = weightResponse1;
-    }
-
-    public String getResponse1() {
-        return response1;
-    }
-
-    public void setResponse1(String response1) {
-        this.response1 = response1;
-    }
-
-    public Double getWeightResponse2() {
-        return weightResponse2;
-    }
-
-    public void setWeightResponse2(Double weightResponse2) {
-        this.weightResponse2 = weightResponse2;
-    }
-
-    public String getResponse2() {
-        return response2;
-    }
-
-    public void setResponse2(String response2) {
-        this.response2 = response2;
-    }
-
-    public Double getWeightResponse3() {
-        return weightResponse3;
-    }
-
-    public void setWeightResponse3(Double weightResponse3) {
-        this.weightResponse3 = weightResponse3;
-    }
-
-    public String getResponse3() {
-        return response3;
-    }
-
-    public void setResponse3(String response3) {
-        this.response3 = response3;
-    }
-
-    public Double getWeightResponse4() {
-        return weightResponse4;
-    }
-
-    public void setWeightResponse4(Double weightResponse4) {
-        this.weightResponse4 = weightResponse4;
-    }
-
-    public String getResponse4() {
-        return response4;
-    }
-
-    public void setResponse4(String response4) {
-        this.response4 = response4;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
+    // Utility method for row number
     public int getRow() {
-        // Return the row number or unique identifier for this question
         return crtNo;
     }
 
-    @Override
-    public String toString() {
-        return "Question{" + "crtNo=" + crtNo + ", title='" + title + '\'' + ", text='" + text + '\'' + ", type=" + type + ", weightResponse1=" + weightResponse1 + ", response1='" + response1 + '\'' + ", weightResponse2=" + weightResponse2 + ", response2='" + response2 + '\'' + ", weightResponse3=" + weightResponse3 + ", response3='" + response3 + '\'' + ", weightResponse4=" + weightResponse4 + ", response4='" + response4 + '\'' + ", id=" + id + '}';
-    }
-
-    public QuizAuthor getQuizAuthor() {
-        return quizAuthor;
-    }
-
-    public void setQuizAuthor(QuizAuthor quizAuthor) {
-        this.quizAuthor = quizAuthor;
-    }
-
-    public List<QuestionError> getQuestionErrors() {
-        return questionErrors;
-    }
-
-    public void setQuestionErrors(List<QuestionError> questionErrors) {
-        this.questionErrors = questionErrors;
-    }
-
+    // Helper methods for managing bidirectional relationship
     public void addQuestionError(QuestionError questionError) {
         questionErrors.add(questionError);
         questionError.setQuestion(this);
@@ -225,5 +144,30 @@ public class Question {
     public void removeQuestionError(QuestionError questionError) {
         questionErrors.remove(questionError);
         questionError.setQuestion(null);
+    }
+
+    public String getAnswerReferenceText() {
+        return answersReference != null ? answersReference.getReferenceText() : null;
+    }
+
+    public void setAnswerReferenceText(String referenceText) {
+        if (referenceText == null || referenceText.isBlank()) {
+            if (answersReference != null) {
+                answersReference.setQuestion(null);
+            }
+            answersReference = null;
+            return;
+        }
+
+        if (answersReference == null) {
+            answersReference = new AnswersReference();
+            answersReference.setQuestion(this);
+        }
+        answersReference.setReferenceText(referenceText);
+    }
+
+    @Transient
+    public int getDuplicateCount() {
+        return duplicateLinks.size() + duplicateOfLinks.size();
     }
 }

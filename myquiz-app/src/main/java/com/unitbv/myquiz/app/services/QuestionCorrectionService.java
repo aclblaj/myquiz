@@ -1,10 +1,10 @@
 package com.unitbv.myquiz.app.services;
 
-import com.unitbv.myquiz.api.dto.QuestionCorrectionDto;
-import com.unitbv.myquiz.api.dto.QuestionDto;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.unitbv.myquiz.api.dto.OllamaRequestDto;
 import com.unitbv.myquiz.api.dto.OllamaResponseDto;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.unitbv.myquiz.api.dto.QuestionCorrectionDto;
+import com.unitbv.myquiz.api.dto.QuestionDto;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,21 +25,16 @@ import java.time.Duration;
 public class QuestionCorrectionService {
 
     private static final Logger log = LoggerFactory.getLogger(QuestionCorrectionService.class);
-
+    private final ObjectMapper objectMapper;
+    private final HttpClient httpClient;
     @Value("${OLLAMA_API_URL:${ollama.api.url:http://localhost:11434}}")
     private String ollamaApiUrl;
-
     @Value("${OLLAMA_DEFAULT_MODEL:${ollama.default.model:llama3}}")
     private String defaultModel;
 
-    private final ObjectMapper objectMapper;
-    private final HttpClient httpClient;
-
     public QuestionCorrectionService() {
         this.objectMapper = new ObjectMapper();
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(60))
-                .build();
+        this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(60)).build();
     }
 
     private String getModelFromDto(QuestionCorrectionDto correctionDto) {
@@ -73,6 +68,12 @@ public class QuestionCorrectionService {
             log.debug("Corrected text: {} -> {}", correctionDto.getOriginalQuestion().getText(), correctedText);
         }
 
+        if (modified.getAnswerReferenceText() != null && !modified.getAnswerReferenceText().isEmpty()) {
+            String correctedReference = correctText(modified.getAnswerReferenceText(), language, model);
+            modified.setAnswerReferenceText(correctedReference);
+            log.debug("Corrected answer reference text");
+        }
+
         // Correct response 1
         if (modified.getResponse1() != null && !modified.getResponse1().isEmpty()) {
             String correctedResponse = correctText(modified.getResponse1(), language, model);
@@ -104,7 +105,7 @@ public class QuestionCorrectionService {
         correctionDto.setModifiedQuestion(modified);
         correctionDto.setCorrectionType("grammar");
         correctionDto.setModelUsed(model);
-        correctionDto.setCorrectionNotes("Grammar and spelling corrected for title, text, and all response options");
+        correctionDto.setCorrectionNotes("Grammar and spelling corrected for title, text, reference, and all response options");
 
         return correctionDto;
     }
@@ -131,6 +132,12 @@ public class QuestionCorrectionService {
             String improvedText = improveText(modified.getText(), "question", language, model);
             modified.setText(improvedText);
             log.debug("Improved text: {} -> {}", correctionDto.getOriginalQuestion().getText(), improvedText);
+        }
+
+        if (modified.getAnswerReferenceText() != null && !modified.getAnswerReferenceText().isEmpty()) {
+            String improvedReference = improveText(modified.getAnswerReferenceText(), "reference", language, model);
+            modified.setAnswerReferenceText(improvedReference);
+            log.debug("Improved answer reference text");
         }
 
         // Improve response 1
@@ -164,7 +171,7 @@ public class QuestionCorrectionService {
         correctionDto.setModifiedQuestion(modified);
         correctionDto.setCorrectionType("improve");
         correctionDto.setModelUsed(model);
-        correctionDto.setCorrectionNotes("Question improved for clarity and precision in title, text, and all response options");
+        correctionDto.setCorrectionNotes("Question improved for clarity and precision in title, text, reference, and all response options");
 
         return correctionDto;
     }
@@ -178,19 +185,16 @@ public class QuestionCorrectionService {
         QuestionDto original = correctionDto.getOriginalQuestion();
 
         StringBuilder promptBuilder = new StringBuilder();
-        promptBuilder.append("For this quiz question, generate 4 alternative plausible but incorrect answers:\n\n");
+        promptBuilder.append("For this question, generate 4 alternative plausible but incorrect answers:\n\n");
         promptBuilder.append("Question: ").append(original.getTitle()).append("\n");
         promptBuilder.append("Text: ").append(original.getText()).append("\n\n");
 
         if (original.getResponse1() != null) {
             promptBuilder.append("Current answer options:\n");
             promptBuilder.append("A) ").append(original.getResponse1()).append("\n");
-            if (original.getResponse2() != null)
-                promptBuilder.append("B) ").append(original.getResponse2()).append("\n");
-            if (original.getResponse3() != null)
-                promptBuilder.append("C) ").append(original.getResponse3()).append("\n");
-            if (original.getResponse4() != null)
-                promptBuilder.append("D) ").append(original.getResponse4()).append("\n");
+            if (original.getResponse2() != null) promptBuilder.append("B) ").append(original.getResponse2()).append("\n");
+            if (original.getResponse3() != null) promptBuilder.append("C) ").append(original.getResponse3()).append("\n");
+            if (original.getResponse4() != null) promptBuilder.append("D) ").append(original.getResponse4()).append("\n");
         }
 
         promptBuilder.append("\nGenerate 4 new alternative answers that are plausible distractors but clearly incorrect. Return only the alternatives, one per line.");
@@ -278,6 +282,8 @@ public class QuestionCorrectionService {
                     return "Improve this quiz question text to be clearer, more precise, and pedagogically sound. Maintain the same meaning but enhance clarity. Return ONLY the improved question text, nothing else:\n\n" + text;
                 case "answer":
                     return "Improve this answer option to be clearer and more precise. Keep it concise. Return ONLY the improved answer, nothing else:\n\n" + text;
+                case "reference":
+                    return "Improve this answer reference so it is concise, relevant, and educational. Keep factual meaning and return ONLY the improved reference text:\n\n" + text;
                 default:
                     return "Improve this text to be clearer and more precise. Return ONLY the improved text, nothing else:\n\n" + text;
             }
@@ -289,6 +295,8 @@ public class QuestionCorrectionService {
                     return "Îmbunătățește textul acestei întrebări pentru a fi mai clar, mai precis și mai corect din punct de vedere pedagogic. Păstrează același înțeles dar îmbunătățește claritatea. Returnează DOAR textul îmbunătățit al întrebării, nimic altceva:\n\n" + text;
                 case "answer":
                     return "Îmbunătățește această opțiune de răspuns pentru a fi mai clară și mai precisă. Păstrează-o concisă. Returnează DOAR răspunsul îmbunătățit, nimic altceva:\n\n" + text;
+                case "reference":
+                    return "Îmbunătățește această referință de răspuns pentru a fi concisă, relevantă și utilă didactic. Păstrează sensul factual și returnează DOAR textul îmbunătățit al referinței:\n\n" + text;
                 default:
                     return "Îmbunătățește acest text pentru a fi mai clar și mai precis. Returnează DOAR textul îmbunătățit, nimic altceva:\n\n" + text;
             }
@@ -299,21 +307,14 @@ public class QuestionCorrectionService {
      * Generate response using Ollama API
      */
     private String generateWithOllama(String prompt, String model) throws IOException, InterruptedException {
-        OllamaRequestDto request = OllamaRequestDto.builder()
-                                                   .model(model)
-                                                   .prompt(prompt)
-                                                   .build();
+        OllamaRequestDto request = OllamaRequestDto.builder().model(model).prompt(prompt).build();
         request.setStream(false);
         String requestJson = objectMapper.writeValueAsString(request);
 
         log.debug("Sending request to Ollama at: {} with model {}", ollamaApiUrl, model);
 
-        HttpRequest httpRequest = HttpRequest.newBuilder()
-                .uri(URI.create(ollamaApiUrl + "/api/generate"))
-                .timeout(Duration.ofSeconds(300))
-                .header("Content-Type", "application/json")
-                .POST(HttpRequest.BodyPublishers.ofString(requestJson))
-                .build();
+        HttpRequest httpRequest = HttpRequest.newBuilder().uri(URI.create(ollamaApiUrl + "/api/generate")).timeout(Duration.ofSeconds(300)).header("Content-Type", "application/json").POST(
+                HttpRequest.BodyPublishers.ofString(requestJson)).build();
 
         HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
 

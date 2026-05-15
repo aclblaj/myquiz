@@ -16,7 +16,7 @@
     <!-- Ollama Connection Status -->
     <div id="ollama-status" class="status-indicator">
         <span id="status-text">Checking Ollama connection...</span>
-        <button onclick="checkOllamaStatus()" class="btn btn-sm" style="margin-left: 10px;">🔄 Check Status</button>
+        <button onclick="checkOllamaStatus()" class="btn btn-info btn-small" style="margin-left: 10px;">🔍 Check Status</button>
     </div>
 
     <!-- Model Selection (shown when models are available) -->
@@ -29,7 +29,7 @@
 
     <!-- PDF Upload and Question Form -->
     <div class="form-container">
-        <h3>📤 Upload PDF and Ask Question</h3>
+        <h3>📄 Upload PDF and Ask Question</h3>
 
         <form id="pdf-question-form" onsubmit="submitQuestion(event)">
             <div class="form-group">
@@ -46,10 +46,10 @@
             </div>
 
             <div class="form-actions">
-                <button type="submit" class="btn btn-save" id="submit-btn">
-                    🔍 Ask Question
+                <button type="submit" class="btn btn-questions" id="submit-btn">
+                    ❓ Ask Question
                 </button>
-                <button type="button" onclick="clearForm()" class="btn btn-secondary">
+                <button type="button" onclick="clearForm()" class="btn btn-outline">
                     🗑️ Clear
                 </button>
             </div>
@@ -58,7 +58,7 @@
 
     <!-- Response Section -->
     <div id="response-section" class="response-container" style="display: none;">
-        <h3>💬 AI Response</h3>
+        <h3>🤖 AI Response</h3>
         <div id="response-content" class="response-box">
             <!-- Response will be displayed here -->
         </div>
@@ -331,7 +331,7 @@ async function checkOllamaStatus() {
 
         if (data.status === 'online') {
             statusDiv.className = 'status-indicator online';
-            statusText.textContent = '✅ ' + data.message;
+            statusText.textContent = '🟢 ' + data.message;
             isOllamaConnected = true;
 
             // Populate model dropdown
@@ -348,14 +348,14 @@ async function checkOllamaStatus() {
             }
         } else {
             statusDiv.className = 'status-indicator offline';
-            statusText.textContent = '❌ ' + data.message;
+            statusText.textContent = '🔴 ' + data.message;
             isOllamaConnected = false;
             modelSelection.style.display = 'none';
         }
     } catch (error) {
         console.error('Error checking Ollama status:', error);
         statusDiv.className = 'status-indicator offline';
-        statusText.textContent = '❌ Cannot connect to Ollama service';
+        statusText.textContent = '🔴 Cannot connect to Ollama service';
         isOllamaConnected = false;
         modelSelection.style.display = 'none';
     }
@@ -417,7 +417,7 @@ async function submitQuestion(event) {
         showMessage('Failed to submit question: ' + error.message, 'error');
     } finally {
         submitBtn.disabled = false;
-        submitBtn.textContent = '🔍 Ask Question';
+        submitBtn.textContent = '❓ Ask Question';
     }
 }
 
@@ -431,7 +431,7 @@ function displayResponse(result) {
     responseMeta.innerHTML = `
         <span>📄 File: <strong>${result.fileName}</strong></span>
         <span>🤖 Model: <strong>${result.model}</strong></span>
-        <span>📊 PDF Length: <strong>${result.pdfLength} characters</strong></span>
+        <span>📏 PDF Length: <strong>${result.pdfLength} characters</strong></span>
     `;
 
     responseSection.style.display = 'block';

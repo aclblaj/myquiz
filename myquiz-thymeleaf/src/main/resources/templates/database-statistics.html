@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Database Statistics</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+
+<div th:insert="~{fragments::menu}"></div>
+
+<div class="container mt-3 list-page-compact">
+    <h2 class="list-page-title">Database Statistics</h2>
+
+    <div class="searchfilter">
+        Overview of all database tables and their record counts.
+    </div>
+
+    <!-- Error message display -->
+    <div th:if="${errorMessage}" class="list-error-message">
+        <strong>Error:</strong> <span th:text="${errorMessage}"></span>
+    </div>
+
+    <!-- Styled Table -->
+    <table class="styled-table">
+        <thead>
+        <tr>
+            <th class="text-left">Table Name</th>
+            <th class="text-right">Record Count</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:if="${statistics != null && !statistics.isEmpty()}" th:each="entry : ${statistics}" class="data-row">
+            <td class="text-left" th:text="${entry.key}"></td>
+            <td class="text-right text-mono" th:text="${entry.value}"></td>
+        </tr>
+        <tr th:if="${statistics == null || statistics.isEmpty()}" class="empty-row">
+            <td colspan="2" class="list-empty-message">No statistics available</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <!-- Total Records Summary -->
+    <div class="total-elements text-center" th:if="${statistics != null && !statistics.isEmpty()}">
+        <strong>Total Tables:</strong> <span th:text="${statistics.size()}"></span>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="page-actions-centered">
+        <a th:href="@{/help}" class="btn btn-outline">↩️ Back to Help</a>
+        <button onclick="location.reload()" class="btn btn-info">🔄 Refresh Statistics</button>
+    </div>
+</div>
+
+</body>
+</html>

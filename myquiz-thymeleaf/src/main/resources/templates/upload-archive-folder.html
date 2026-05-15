@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Upload Archive Folder</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+
+<div th:insert="~{fragments::menu}"></div>
+
+<div class="container mt-3">
+    <h2>📁 Upload Archive Folder</h2>
+
+    <div class="alert" th:if="${message}" th:text="${message}" style="white-space: pre-line;"></div>
+
+    <div class="form-container">
+        <h3>📁 Folder Upload (All archives)</h3>
+        <form id="archiveFolderForm" method="POST" enctype="multipart/form-data" th:action="@{/uploads/archive-folder}">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="archives" class="form-label">Select Folder With ZIP Archives:</label>
+                    <input type="file"
+                           id="archives"
+                           name="archives"
+                           webkitdirectory
+                           directory
+                           multiple
+                           required
+                           class="form-input"/>
+                </div>
+                <div class="form-group">
+                    <label for="folderStudyYear" class="form-label">Study Year:</label>
+                    <select name="studyYear" id="folderStudyYear" required class="form-select">
+                        <option value="" disabled selected>Select study year</option>
+                        <option th:each="studyYearItem : ${studyYears}"
+                                th:value="${studyYearItem.name()}"
+                                th:text="${studyYearItem.value}"></option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-save">📁 Process Folder</button>
+                <a th:href="@{/}" class="btn btn-cancel">✖️ Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+
+</body>
+</html>

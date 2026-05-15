@@ -48,7 +48,8 @@ public class OllamaResponseDto {
     private Long evalDuration;
 
     // Default constructor
-    public OllamaResponseDto() {}
+    public OllamaResponseDto() {
+    }
 
     // Getters and setters
     public String getResponse() {
@@ -125,12 +126,6 @@ public class OllamaResponseDto {
 
     @Override
     public String toString() {
-        return "OllamaResponseDto{" +
-                "response='" + response + '\'' +
-                ", model='" + model + '\'' +
-                ", done=" + done +
-                ", totalDuration=" + totalDuration +
-                ", evalCount=" + evalCount +
-                '}';
+        return "OllamaResponseDto{" + "response='" + response + '\'' + ", model='" + model + '\'' + ", done=" + done + ", totalDuration=" + totalDuration + ", evalCount=" + evalCount + '}';
     }
 }
