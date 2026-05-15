@@ -9,22 +9,32 @@
 
 <div th:insert="~{fragments::menu}"></div>
 
-<div class="container mt-3">
-    <h2>Authors</h2>
+<div class="container mt-3 list-page-compact">
+    <h2 class="list-page-title">Authors</h2>
 
     <!-- Search Filter Section -->
     <div class="searchfilter">
         <form method="post" th:action="@{/authors/filter}" class="searchfilter-form">
-            <div>
+            <div class="list-filter-field">
                 <label for="courseFilter" class="searchfilter-label">Course</label>
-                <select id="courseFilter" name="course" class="searchfilter-select">
+                <select id="courseFilter" name="courseId" class="searchfilter-select">
                     <option value="">All Courses</option>
-                    <option th:each="course : ${courses}" th:value="${course}"
-                            th:text="${course}"
-                            th:selected="${course} == ${selectedCourse}"></option>
+                    <option th:each="course : ${courses}" th:value="${course.id}"
+                            th:text="${course.name}"
+                            th:selected="${course.id} == ${selectedCourseId}"></option>
                 </select>
             </div>
-            <div>
+            <div class="list-filter-field">
+                <label for="questionBankFilter" class="searchfilter-label">Question Bank</label>
+                <select id="questionBankFilter" name="questionBankId" class="searchfilter-select">
+                    <option value="">All Question Banks</option>
+                    <option th:each="questionBank : ${questionBanks}"
+                            th:value="${questionBank.id}"
+                            th:text="${questionBank.name}"
+                            th:selected="${questionBank.id} == ${selectedQuestionBankId}"></option>
+                </select>
+            </div>
+            <div class="list-filter-field">
                 <label for="authorFilter" class="searchfilter-label">Author</label>
                 <select id="authorFilter" name="authorId" class="searchfilter-select">
                     <option value="">All Authors</option>
@@ -34,7 +44,7 @@
                             th:selected="${author.id} == ${selectedAuthorId}"></option>
                 </select>
             </div>
-            <div>
+            <div class="list-filter-field">
                 <label for="pageSize" class="searchfilter-label">Page Size</label>
                 <select id="pageSize" name="pageSize" class="searchfilter-select">
                     <option th:selected="${pageSize == 5}" value="5">5</option>
@@ -43,12 +53,12 @@
                     <option th:selected="${pageSize == 50}" value="50">50</option>
                 </select>
             </div>
-            <div>
+            <div class="list-filter-field">
                 <label for="currentPage" class="searchfilter-label">Page</label>
                 <input type="number" id="currentPage" name="page"
                        th:value="${currentPage != null ? currentPage : 1}"
                        min="1"
-                       class="searchfilter-select" style="width: 80px;" />
+                       class="searchfilter-select searchfilter-select-small" />
             </div>
             <button type="submit" class="btn-filter">Filter Authors</button>
         </form>
@@ -68,6 +78,7 @@
             <th>TF Questions</th>
             <th>Total Questions</th>
             <th>Errors</th>
+            <th>Duplicates</th>
             <th>Actions</th>
         </tr>
         </thead>
@@ -80,46 +91,46 @@
             <td th:text="${author.numberOfTrueFalseQuestions != null ? author.numberOfTrueFalseQuestions : 0}"></td>
             <td th:text="${author.numberOfQuestions != null ? author.numberOfQuestions : 0}"></td>
             <td th:text="${author.numberOfErrors != null ? author.numberOfErrors : 0}"></td>
+            <td th:text="${author.numberOfDuplicates != null ? author.numberOfDuplicates : 0}"></td>
             <td class="action-cell">
-                <a th:href="@{'/questions/filter/' + ${author.course} + '/' + ${author.id} + '/1/20'}" class="btn btn-info">Questions</a>
-                <a th:href="@{'/authors/edit/' + ${author.id}}" class="btn btn-info">Edit</a>
-                <a th:href="@{'/errors/filter/' + ${author.course} + '/' + ${author.name} + '/1/20'}" class="btn btn-info">Error List</a>
-                <a th:href="@{'/authors/' + ${author.id} + '/details'}" class="btn btn-save">Details</a>
-                <button th:onclick="|deleteAuthor(${author.id})|" class="btn btn-outline">Delete</button>
+                <a th:href="@{/questions(courseId=${selectedCourseId}, authorId=${author.id}, page=${currentPage != null ? currentPage : 1}, pageSize=${pageSize != null ? pageSize : 10})}" class="btn btn-questions">📚 Questions</a>
+                <a th:href="@{'/authors/edit/' + ${author.id}(courseId=${selectedCourseId}, authorId=${selectedAuthorId}, questionBankId=${selectedQuestionBankId}, page=${currentPage}, pageSize=${pageSize})}" class="btn btn-questionBank-edit">✏️ Edit</a>
+                <a th:href="@{'/authors/' + ${author.id} + '/details'(courseId=${selectedCourseId}, authorId=${selectedAuthorId}, questionBankId=${selectedQuestionBankId}, page=${currentPage}, pageSize=${pageSize})}" class="btn btn-new">📋 Details</a>
+                <button th:onclick="|deleteAuthor(${author.id})|" class="btn btn-delete">🗑️ Delete</button>
             </td>
         </tr>
         <tr th:if="${#lists.isEmpty(authors)}" class="empty-row">
-            <td colspan="8">No authors found for the selected criteria</td>
+            <td colspan="9" class="list-empty-message">No authors found for the selected criteria</td>
         </tr>
         </tbody>
     </table>
 
     <!-- Pagination Controls -->
     <div class="pagination-controls" th:if="${totalPages != null && totalPages > 1}">
-        <div style="display: flex; align-items: center; gap: 10px;">
+        <div class="list-pagination-row">
             <!-- First Button -->
             <a th:if="${currentPage != null && currentPage > 1}"
-               th:href="@{/authors(course=${selectedCourse}, page=1, pageSize=${pageSize})}"
+               th:href="@{/authors(courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, page=1, pageSize=${pageSize})}"
                class="btn btn-outline">⏮️ First</a>
             <span th:if="${currentPage == null || currentPage <= 1}" class="btn btn-outline disabled">⏮️ First</span>
 
             <!-- Previous Button -->
             <a th:if="${currentPage != null && currentPage > 1}"
-               th:href="@{/authors(course=${selectedCourse}, page=${currentPage - 1}, pageSize=${pageSize})}"
-               class="btn btn-outline">⬅️ Previous</a>
-            <span th:if="${currentPage == null || currentPage <= 1}" class="btn btn-outline disabled">⬅️ Previous</span>
+               th:href="@{/authors(courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, page=${currentPage - 1}, pageSize=${pageSize})}"
+               class="btn btn-outline">◀️ Previous</a>
+            <span th:if="${currentPage == null || currentPage <= 1}" class="btn btn-outline disabled">◀️ Previous</span>
 
-            <span>Page <span th:text="${currentPage != null ? currentPage : 1}"></span> of <span th:text="${totalPages}"></span></span>
+            <span class="list-page-indicator">Page <span th:text="${currentPage != null ? currentPage : 1}"></span> of <span th:text="${totalPages}"></span></span>
 
             <!-- Next Button -->
             <a th:if="${currentPage != null && currentPage < totalPages}"
-               th:href="@{/authors(course=${selectedCourse}, page=${currentPage + 1}, pageSize=${pageSize})}"
-               class="btn btn-outline">➡️ Next</a>
-            <span th:if="${currentPage == null || currentPage >= totalPages}" class="btn btn-outline disabled">➡️ Next</span>
+               th:href="@{/authors(courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, page=${currentPage + 1}, pageSize=${pageSize})}"
+               class="btn btn-outline">▶️ Next</a>
+            <span th:if="${currentPage == null || currentPage >= totalPages}" class="btn btn-outline disabled">▶️ Next</span>
 
             <!-- Last Button -->
             <a th:if="${currentPage != null && currentPage < totalPages}"
-               th:href="@{/authors(course=${selectedCourse}, page=${totalPages}, pageSize=${pageSize})}"
+               th:href="@{/authors(courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, page=${totalPages}, pageSize=${pageSize})}"
                class="btn btn-outline">⏭️ Last</a>
             <span th:if="${currentPage == null || currentPage >= totalPages}" class="btn btn-outline disabled">⏭️ Last</span>
         </div>
@@ -155,7 +166,7 @@ function deleteAuthor(authorId) {
     }
 }
 
-// Auto-submit form when course filter changes to refresh the author list
+// Auto-submit form when course filter changes to refresh the author list and questionBank list
 document.addEventListener('DOMContentLoaded', function() {
     var courseFilter = document.getElementById('courseFilter');
     var form = courseFilter.closest('form');
@@ -164,7 +175,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Reset author filter to "All Authors" when course changes
         var authorFilter = document.getElementById('authorFilter');
         authorFilter.value = '';
-        // Submit the form to get the updated author list from the server
+        // Reset questionBank filter to "All Question Banks" when course changes
+        var questionBankFilter = document.getElementById('questionBankFilter');
+        questionBankFilter.value = '';
+        // Submit the form to get the updated author list and questionBank list from the server
         form.submit();
     });
 });

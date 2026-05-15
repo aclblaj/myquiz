@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit User - MyQuiz</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+    <div th:insert="~{fragments::menu}"></div>
+
+    <div class="container">
+        <h1 class="list-page-title">Edit User</h1>
+
+        <div th:if="${error}" class="error-message" th:text="${error}"></div>
+
+        <div class="form-container">
+            <h3>User Information</h3>
+            <table class="detail-table">
+                <tr>
+                    <th>Username</th>
+                    <td th:text="${user.username}">admin</td>
+                </tr>
+                <tr>
+                    <th>Email</th>
+                    <td th:text="${user.email}">admin@test.com</td>
+                </tr>
+                <tr>
+                    <th>Status</th>
+                    <td>
+                        <span th:if="${user.enabled}" class="status-active">Active</span>
+                        <span th:unless="${user.enabled}" class="status-inactive">Disabled</span>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Created</th>
+                    <td th:text="${user.createdAt != null ? user.createdAt : 'N/A'}">2024-01-01</td>
+                </tr>
+            </table>
+
+            <h3 style="color:#1e40af;margin-top:1.25rem;">Manage Roles</h3>
+
+            <div th:if="${!menuPermissions['canManageUsers']}" class="error-message">
+                You do not have permission to manage user roles.
+            </div>
+
+            <div th:if="${menuPermissions['canManageUsers']}" class="roles-section">
+                <div class="roles-list">
+                    <div th:each="role : ${allRoles}" class="role-item">
+                        <span th:text="${role.name}">ROLE_NAME</span>
+                        <span th:if="${userRoles.contains(role.name)}" class="badge badge-success">Assigned</span>
+
+                        <form th:if="${userRoles.contains(role.name)}"
+                              th:action="@{/admin/users/{userId}/roles/{roleId}/remove(userId=${user.id}, roleId=${role.id})}"
+                              method="post" style="display:inline;">
+                            <button type="submit" class="btn btn-delete">🗑️ Remove</button>
+                        </form>
+
+                        <form th:unless="${userRoles.contains(role.name)}"
+                              th:action="@{/admin/users/{userId}/roles/assign(userId=${user.id})}"
+                              method="post" style="display:inline;">
+                            <input type="hidden" name="roleId" th:value="${role.id}">
+                            <button type="submit" class="btn btn-new">➕ Assign</button>
+                        </form>
+                    </div>
+                    <p th:if="${allRoles == null or allRoles.isEmpty()}" class="no-data">No roles available</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="actions">
+            <a th:href="@{/admin/users}" class="btn btn-outline">↩️ Back to User List</a>
+        </div>
+    </div>
+</body>
+</html>
+

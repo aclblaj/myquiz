@@ -1,5 +1,6 @@
 package com.unitbv.myquiz.app.services;
 
+import com.unitbv.myquiz.app.util.FileValidator;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
@@ -8,12 +9,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.FileSystemUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 @Service
 public class FileService {
@@ -39,46 +43,94 @@ public class FileService {
             logger.atDebug().log("Upload directory is not set - default temp will be used");
             uploadDir = System.getProperty("java.io.tmpdir");
         }
-        setRootDir(uploadDir + File.separator + UPLOAD_FOLDER);
+        Path uploadPath = Path.of(uploadDir).resolve(UPLOAD_FOLDER);
+        setRootDir(uploadPath.toString());
         try {
-            Files.createDirectories(Path.of(rootDir));
+            Files.createDirectories(uploadPath);
             logger.atInfo().addArgument(getRootDir()).log("Root folder for upload '{}' created");
         } catch (IOException e) {
-            logger.atError().addArgument(getRootDir()).log("Could not create the root folder for upload: {}", e);
+            logger.atError()
+                  .addArgument(getRootDir())
+                  .setCause(e)
+                  .log("Could not create the root folder for upload: {}");
             throw new IllegalStateException("Could not initialize the root folder for upload", e);
         }
     }
 
-    public String uploadFile(MultipartFile file) {
-        initFileServiceImpl();
-        String filepath = "not found";
-        try {
-            filepath = getRootDir() + File.separator + file.getOriginalFilename();
-            Files.copy(file.getInputStream(), Paths.get(filepath));
-            logger.atInfo().addArgument(filepath).log("File uploaded to: {}");
-        } catch (IOException e) {
-            logger.atError().addArgument(filepath).log("Error uploading file: {}", e);
+    /**
+     * Saves a multipart file to the upload root directory and returns the absolute path.
+     * <p>
+     * The original filename may contain directory components when the file originates from a
+     * {@code webkitdirectory} (folder) browser upload (e.g. {@code archives/test.zip}).  Only the
+     * base filename is used for the target path; a UUID prefix is added to avoid name collisions
+     * between concurrent or sequential uploads.
+     *
+     * @param file the multipart file to save
+     * @return absolute path of the saved file
+     * @throws IOException if the file cannot be written to disk
+     */
+    public String uploadFile(MultipartFile file) throws IOException {
+        String originalFilename = file.getOriginalFilename();
+
+        // Strip any directory components that webkitdirectory uploads embed in the filename
+        // e.g. "archives/test.zip" → "test.zip"; null or blank → "upload"
+        String baseName = (originalFilename != null)
+                ? Path.of(originalFilename).getFileName().toString()
+                : "";
+        if (baseName.isBlank()) {
+            baseName = "upload";
         }
-        return filepath;
+
+        // UUID prefix prevents collisions when the same base name is uploaded concurrently
+        String uniqueFilename = UUID.randomUUID() + "_" + baseName;
+        Path targetPath = Path.of(getRootDir()).resolve(uniqueFilename);
+
+        Files.copy(file.getInputStream(), targetPath);
+        logger.atInfo().addArgument(targetPath).log("File uploaded to: {}");
+        return targetPath.toString();
     }
 
     public void removeFile(String filepath) {
         try {
-            Files.deleteIfExists(Paths.get(filepath));
-            logger.atInfo().addArgument(filepath).log("File removed from: {}");
+            Path path = Paths.get(filepath);
+            if (FileValidator.exists(path)) {
+                Files.deleteIfExists(path);
+                logger.atInfo().addArgument(filepath).log("File removed from: {}");
+            } else {
+                logger.atWarn().addArgument(filepath).log("File does not exist: {}");
+            }
         } catch (IOException e) {
-            logger.atError().addArgument(filepath).log("Error removing file: {}", e);
+            logger.atError()
+                  .addArgument(filepath)
+                  .setCause(e)
+                  .log("Error removing file: {}");
         }
     }
 
     public void removeAllFiles(String dirName) {
-        try (var stream = Files.walk(Path.of(dirName))) {
-            stream.filter(Files::isRegularFile)
-                  .map(Path::toFile)
-                  .forEach(File::delete);
-            logger.atInfo().addArgument(getRootDir()).log("All files removed from: {}");
+        Path directory = Path.of(dirName);
+        if (!FileValidator.isDirectory(directory)) {
+            logger.atWarn().addArgument(dirName).log("Not a directory: {}");
+            return;
+        }
+        try (var stream = Files.walk(directory)) {
+            stream.filter(FileValidator::isRegularFile)
+                  .forEach(path -> {
+                      try {
+                          Files.delete(path);
+                      } catch (IOException e) {
+                          logger.atError()
+                                .addArgument(path)
+                                .setCause(e)
+                                .log("Error removing file: {}");
+                      }
+                  });
+            logger.atInfo().addArgument(dirName).log("All files removed from: {}");
         } catch (IOException e) {
-            logger.atError().addArgument(getRootDir()).log("Error removing all files: {}", e);
+            logger.atError()
+                  .addArgument(dirName)
+                  .setCause(e)
+                  .log("Error removing all files: {}");
         }
     }
 
@@ -87,13 +139,21 @@ public class FileService {
     }
 
     public String getFilename(String filepath) {
-        int pos = filepath.lastIndexOf(File.separator);
-        return filepath.substring(pos + 1);
+        return Path.of(filepath).getFileName().toString();
     }
 
     public void removeDir(String dirName) {
-        FileSystemUtils.deleteRecursively(new File(dirName));
-        logger.atInfo().addArgument(getRootDir()).log("Root directory removed: {}");
+        Path directory = Path.of(dirName);
+        if (FileValidator.exists(directory)) {
+            try {
+                FileSystemUtils.deleteRecursively(directory);
+                logger.atInfo().addArgument(dirName).log("Directory removed: {}");
+            } catch (IOException e) {
+                logger.atError().addArgument(dirName).setCause(e).log("Failed to remove directory: {}");
+            }
+        } else {
+            logger.atWarn().addArgument(dirName).log("Directory does not exist: {}");
+        }
     }
 
     @PreDestroy
@@ -110,35 +170,37 @@ public class FileService {
      * @return number of files extracted
      */
     public int unzipAndRenameExcelFiles(Path zipFilePath, Path destFolder) throws IOException {
+        // Validate input
+        if (!FileValidator.exists(zipFilePath)) {
+            throw new IOException("Zip file does not exist: " + zipFilePath);
+        }
+        if (!FileValidator.isReadable(zipFilePath)) {
+            throw new IOException("Zip file is not readable: " + zipFilePath);
+        }
+        
         // Prepare inpArchive folder in the same parent as zipFilePath
         Path inpArchive = zipFilePath.getParent().resolve("inpArchive");
-        if (Files.exists(inpArchive)) {
-            FileSystemUtils.deleteRecursively(inpArchive.toFile());
+        if (FileValidator.exists(inpArchive)) {
+            FileSystemUtils.deleteRecursively(inpArchive);
         }
         Files.createDirectories(inpArchive);
-        // Run system unzip command
-        try {
-            ProcessBuilder pb = new ProcessBuilder("unzip", zipFilePath.toAbsolutePath().toString(), "-d", inpArchive.toAbsolutePath().toString());
-            pb.redirectErrorStream(true);
-            Process process = pb.start();
-            int exitCode = process.waitFor();
-            if (exitCode != 0) {
-                logger.atError().addArgument(zipFilePath.toString()).log("Unzip command failed for: {} (exit code: " + exitCode + ")");
-                throw new IOException("Unzip command failed");
-            }
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new IOException("Unzip interrupted", e);
+        // Extract archive with system unzip when available, otherwise fallback to Java ZIP.
+        if (isSystemUnzipAvailable()) {
+            extractWithSystemUnzip(zipFilePath, inpArchive);
+        } else {
+            logger.atWarn().addArgument(zipFilePath.toString())
+                  .log("System 'unzip' is not available. Falling back to Java ZIP extraction for: {}");
+            extractWithJavaZip(zipFilePath, inpArchive);
         }
         // Ensure destFolder exists
-        if (!Files.exists(destFolder)) {
+        if (!FileValidator.exists(destFolder)) {
             Files.createDirectories(destFolder);
         }
         AtomicInteger count = new AtomicInteger();
         // Walk inpArchive for Excel files
         try (var excelStream = Files.walk(inpArchive)) {
-            excelStream.filter(Files::isRegularFile)
-                .filter(p -> p.toString().endsWith(".xls") || p.toString().endsWith(".xlsx"))
+            excelStream.filter(FileValidator::isRegularFile)
+                .filter(FileValidator::isExcelFile)
                 .forEach(excelFile -> {
                     try {
                         Path parent = excelFile.getParent();
@@ -169,10 +231,98 @@ public class FileService {
                 });
         } finally {
             // Clean up inpArchive
-            FileSystemUtils.deleteRecursively(inpArchive.toFile());
+            if (FileValidator.exists(inpArchive)) {
+                FileSystemUtils.deleteRecursively(inpArchive);
+            }
         }
-        logger.atInfo().addArgument(count).log("Extracted and renamed {} Excel files from archive");
+        logger.atInfo().addArgument(count.get()).log("Extracted and renamed {} Excel files from archive");
         return count.get();
+    }
+
+    private boolean isSystemUnzipAvailable() {
+        try {
+            ProcessBuilder pb = new ProcessBuilder("unzip", "-v");
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+            int exitCode = process.waitFor();
+            return exitCode == 0;
+        } catch (IOException e) {
+            return false;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
+    }
+
+    private void extractWithSystemUnzip(Path zipFilePath, Path destinationDir) throws IOException {
+        try {
+            ProcessBuilder pb = new ProcessBuilder(
+                "unzip",
+                zipFilePath.toAbsolutePath().toString(),
+                "-d",
+                destinationDir.toAbsolutePath().toString()
+            );
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+            int exitCode = process.waitFor();
+            if (exitCode != 0) {
+                logger.atError().addArgument(zipFilePath.toString())
+                      .log("Unzip command failed for: {} (exit code: " + exitCode + ")");
+                throw new IOException("Unzip command failed");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("Unzip interrupted", e);
+        }
+    }
+
+    private void extractWithJavaZip(Path zipFilePath, Path destinationDir) throws IOException {
+        Path normalizedDestination = destinationDir.toAbsolutePath().normalize();
+
+        try (ZipFile zipFile = new ZipFile(zipFilePath.toFile())) {
+            var entries = zipFile.entries();
+            while (entries.hasMoreElements()) {
+                ZipEntry entry = entries.nextElement();
+                Path targetPath = resolveZipEntryPath(normalizedDestination, entry.getName());
+
+                if (entry.isDirectory()) {
+                    Files.createDirectories(targetPath);
+                    continue;
+                }
+
+                Path parent = targetPath.getParent();
+                if (parent != null) {
+                    Files.createDirectories(parent);
+                }
+
+                try (var entryInputStream = zipFile.getInputStream(entry)) {
+                    Files.copy(entryInputStream, targetPath, StandardCopyOption.REPLACE_EXISTING);
+                }
+            }
+        }
+    }
+
+    private Path resolveZipEntryPath(Path destinationRoot, String entryName) throws IOException {
+        if (destinationRoot == null) {
+            throw new IOException("ZIP extraction destination is not configured");
+        }
+
+        String normalizedEntryName = entryName == null ? "" : entryName.replace('\\', '/').trim();
+        if (normalizedEntryName.isEmpty()) {
+            throw new IOException("ZIP entry name is empty");
+        }
+        if (normalizedEntryName.startsWith("/")
+                || normalizedEntryName.startsWith("../")
+                || normalizedEntryName.contains("/../")
+                || normalizedEntryName.matches("^[A-Za-z]:.*")) {
+            throw new IOException("Invalid ZIP entry path: " + entryName);
+        }
+
+        Path resolvedPath = destinationRoot.resolve(normalizedEntryName).normalize();
+        if (!resolvedPath.startsWith(destinationRoot)) {
+            throw new IOException("Invalid ZIP entry path: " + entryName);
+        }
+        return resolvedPath;
     }
 
 }

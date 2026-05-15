@@ -10,7 +10,7 @@
 <div th:insert="~{fragments::menu}"></div>
 
 <div class="container mt-3">
-    <h2>📤 Upload Questions</h2>
+    <h2>📊 Upload Questions</h2>
 
     <div class="form-container">
         <h3>📊 Excel File Upload</h3>
@@ -18,7 +18,7 @@
             <div class="form-grid">
                 <div class="form-group">
                     <label for="file" class="form-label">Select Excel File:</label>
-                    <input type="file" name="file" id="file" accept=".xlsx,.xls" required class="form-input" />
+                    <input type="file" name="file" id="file" accept=".xlsx" required class="form-input" />
                 </div>
                 <div class="form-group">
                     <label for="username" class="form-label">Username:</label>
@@ -33,7 +33,7 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="name" class="form-label">Quiz Short Name:</label>
+                        <label for="name" class="form-label">Question Bank Short Name:</label>
                         <input type="text" id="name" name="name" placeholder="Q1" required class="form-input"/>
                     </div>
                 </div>
@@ -45,8 +45,8 @@
                 </div>
             </div>
             <div class="form-actions">
-                <button type="submit" class="btn btn-save">📤 Upload File</button>
-                <a th:href="@{/}" class="btn btn-cancel">❌ Cancel</a>
+                <button type="submit" class="btn btn-save">📊 Upload File</button>
+                <a th:href="@{/}" class="btn btn-cancel">✖️ Cancel</a>
             </div>
         </form>
     </div>

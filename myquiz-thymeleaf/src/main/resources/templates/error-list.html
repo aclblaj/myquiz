@@ -2,40 +2,50 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Author Errors List</title>
+    <title>Question Errors List</title>
     <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
 </head>
 <body>
 
 <div th:insert="~{fragments::menu}"></div>
 
-<div class="container mt-3">
-    <h2>Errors</h2>
+<div class="container mt-3 list-page-compact">
+    <h2 class="list-page-title">⚠️ Question Errors</h2>
 
     <!-- Search Filter Section -->
     <div class="searchfilter">
-        <form method="post" action="/errors/filter" class="searchfilter-form">
-            <div>
+        <form method="post" th:action="@{/errors/filter}" class="searchfilter-form">
+            <div class="list-filter-field">
                 <label for="courseFilter" class="searchfilter-label">Course</label>
-                <select id="courseFilter" name="selectedCourse" class="searchfilter-select">
+                <select id="courseFilter" name="courseId" class="searchfilter-select">
                     <option value="">All Courses</option>
-                    <option th:each="course : ${courses}"
-                            th:value="${course}"
-                            th:text="${course}"
-                            th:selected="${course} == ${selectedCourse}"></option>
+                    <option th:each="c : ${courses}"
+                            th:value="${c.id}"
+                            th:text="${c.name}"
+                            th:selected="${c.id == selectedCourseId}"></option>
                 </select>
             </div>
-            <div>
+            <div class="list-filter-field">
+                <label for="questionBankFilter" class="searchfilter-label">Question Bank</label>
+                <select id="questionBankFilter" name="questionBankId" class="searchfilter-select">
+                    <option value="">All Question Banks</option>
+                    <option th:each="questionBank : ${questionBanks}"
+                            th:value="${questionBank.id}"
+                            th:text="${questionBank.name}"
+                            th:selected="${questionBank.id == selectedQuestionBankIdErrors}"></option>
+                </select>
+            </div>
+            <div class="list-filter-field">
                 <label for="authorFilter" class="searchfilter-label">Author</label>
-                <select id="authorFilter" name="selectedAuthor" class="searchfilter-select">
+                <select name="author" id="authorFilter" class="searchfilter-select">
                     <option value="">All Authors</option>
-                    <option th:each="author : ${authors}"
-                            th:value="${author}"
-                            th:text="${author}"
-                            th:selected="${author} == ${selectedAuthor}"></option>
+                    <option th:each="authorName : ${authorNames}"
+                            th:value="${authorName}"
+                            th:text="${authorName}"
+                            th:selected="${authorName == selectedAuthor}"></option>
                 </select>
             </div>
-            <div>
+            <div class="list-filter-field">
                 <label for="pageSize" class="searchfilter-label">Page Size</label>
                 <select id="pageSize" name="pageSize" class="searchfilter-select">
                     <option th:selected="${pageSize == 5}" value="5">5</option>
@@ -44,78 +54,52 @@
                     <option th:selected="${pageSize == 50}" value="50">50</option>
                 </select>
             </div>
-            <div>
+            <div class="list-filter-field">
                 <label for="currentPage" class="searchfilter-label">Page</label>
-                <input type="number" id="currentPage" name="currentPage"
+                <input type="number" id="currentPage" name="page"
                        th:value="${currentPage != null ? currentPage : 1}"
                        min="1"
-                       class="searchfilter-select" style="width: 80px;" />
+                       class="searchfilter-select searchfilter-select-small" />
             </div>
             <button type="submit" class="btn-filter">🔍 Filter Errors</button>
         </form>
     </div>
 
     <!-- Error Message -->
-    <div th:if="${errorMessage}" class="alert mt-3" th:text="${errorMessage}"></div>
+    <div th:if="${errorMessage}" class="alert alert-error mt-3" th:text="${errorMessage}"></div>
 
-    <!-- Styled Table -->
-    <table class="styled-table">
-        <thead>
-        <tr>
-            <th>ID</th>
-            <th>Quiz Name</th>
-            <th>Row #</th>
-            <th>Error Description</th>
-            <th>Author</th>
-            <th>Actions</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr th:each="error : ${errors}" class="data-row">
-            <td th:text="${error.id}"></td>
-            <td th:text="${error.quizName ?: 'N/A'}"></td>
-            <td th:text="${error.row ?: 'N/A'}"></td>
-            <td th:text="${error.description}"></td>
-            <td th:text="${error.authorName ?: 'Unknown'}"></td>
-            <td class="action-cell">
-                <a th:if="${error.questionId != null}"
-                   th:href="@{'/questions/' + ${error.questionId}}"
-                   class="btn btn-info">👁️ View Question</a>
-                <span th:if="${error.questionId == null}" class="btn btn-outline disabled">No Question</span>
-            </td>
-        </tr>
-        <tr th:if="${#lists.isEmpty(errors)}" class="empty-row">
-            <td colspan="6">No errors found for the selected criteria</td>
-        </tr>
-        </tbody>
-    </table>
+    <!-- Success Message -->
+    <div th:if="${successMessage}" class="alert alert-success mt-3" th:text="${successMessage}"></div>
+
+    <!-- Errors Table Fragment -->
+    <div th:replace="~{fragments::error-table(errors=${questionErrors}, showActions=${true})}"></div>
 
     <!-- Pagination Controls -->
     <div class="pagination-controls" th:if="${totalPages != null && totalPages > 1}">
-        <div style="display: flex; align-items: center; gap: 10px;">
+        <div class="list-pagination-row">
             <!-- First Button -->
             <a th:if="${currentPage != null && currentPage > 1}"
-               th:href="@{'/errors/filter/' + ${selectedCourse != null && selectedCourse != '' ? selectedCourse : 'All Courses'} + '/' + ${selectedAuthor != null && selectedAuthor != '' ? selectedAuthor : 'All Authors'} + '/1/' + ${pageSize != null ? pageSize : 10}}"
+               th:href="@{/errors(courseId=${selectedCourseId}, author=${selectedAuthor}, questionBankId=${selectedQuestionBankIdErrors}, page=1, pageSize=${pageSize != null ? pageSize : 10})}"
                class="btn btn-outline">⏮️ First</a>
             <span th:if="${currentPage == null || currentPage <= 1}" class="btn btn-outline disabled">⏮️ First</span>
 
             <!-- Previous Button -->
             <a th:if="${currentPage != null && currentPage > 1}"
-               th:href="@{'/errors/filter/' + ${selectedCourse != null && selectedCourse != '' ? selectedCourse : 'All Courses'} + '/' + ${selectedAuthor != null && selectedAuthor != '' ? selectedAuthor : 'All Authors'} + '/' + ${(currentPage != null ? currentPage : 1) - 1} + '/' + ${pageSize != null ? pageSize : 10}}"
-               class="btn btn-outline">⬅️ Previous</a>
-            <span th:if="${currentPage == null || currentPage <= 1}" class="btn btn-outline disabled">⬅️ Previous</span>
+               th:href="@{/errors(courseId=${selectedCourseId}, author=${selectedAuthor}, questionBankId=${selectedQuestionBankIdErrors}, page=${currentPage - 1}, pageSize=${pageSize != null ? pageSize : 10})}"
+               class="btn btn-outline">◀️ Previous</a>
+            <span th:if="${currentPage == null || currentPage <= 1}" class="btn btn-outline disabled">◀️ Previous</span>
 
-            <span>Page <span th:text="${currentPage != null ? currentPage : 1}"></span> of <span th:text="${totalPages}"></span></span>
+            <span class="list-page-indicator">Page <span th:text="${currentPage != null ? currentPage : 1}"></span> of <span th:text="${totalPages}"></span></span>
 
             <!-- Next Button -->
             <a th:if="${currentPage != null && currentPage < totalPages}"
-               th:href="@{'/errors/filter/' + ${selectedCourse != null && selectedCourse != '' ? selectedCourse : 'All Courses'} + '/' + ${selectedAuthor != null && selectedAuthor != '' ? selectedAuthor : 'All Authors'} + '/' + ${(currentPage != null ? currentPage : 1) + 1} + '/' + ${pageSize != null ? pageSize : 10}}"
-               class="btn btn-outline">➡️ Next</a>
-            <span th:if="${currentPage == null || currentPage >= totalPages}" class="btn btn-outline disabled">➡️ Next</span>
+               th:href="@{/errors(courseId=${selectedCourseId}, author=${selectedAuthor}, questionBankId=${selectedQuestionBankIdErrors}, page=${currentPage + 1}, pageSize=${pageSize != null ? pageSize : 10})}"
+               class="btn btn-outline">▶️ Next</a>
+            <span th:if="${currentPage == null || currentPage >= totalPages}" class="btn btn-outline disabled">▶️ Next</span>
 
             <!-- Last Button -->
             <a th:if="${currentPage != null && currentPage < totalPages}"
-               th:href="@{'/errors/filter/' + ${selectedCourse != null && selectedCourse != '' ? selectedCourse : 'All Courses'} + '/' + ${selectedAuthor != null && selectedAuthor != '' ? selectedAuthor : 'All Authors'} + '/' + ${totalPages} + '/' + ${pageSize != null ? pageSize : 10}}"
+               th:href="@{/errors(courseId=${selectedCourseId}, author=${selectedAuthor}, questionBankId=${selectedQuestionBankIdErrors}, page=${totalPages}, pageSize=${pageSize != null ? pageSize : 10})}"
                class="btn btn-outline">⏭️ Last</a>
             <span th:if="${currentPage == null || currentPage >= totalPages}" class="btn btn-outline disabled">⏭️ Last</span>
         </div>
@@ -127,5 +111,8 @@
     </div>
 </div>
 
+
+
 </body>
 </html>
+

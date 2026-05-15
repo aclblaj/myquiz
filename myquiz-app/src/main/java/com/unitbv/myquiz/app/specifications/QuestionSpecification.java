@@ -13,23 +13,25 @@ import java.util.List;
 
 /**
  * JPA Specification for filtering Question entities.
- * This class encapsulates the filtering logic for questions based on course, author, quiz, and question type.
+ * This class encapsulates the filtering logic for questions based on course, author, question bank, and question type.
  */
-public class QuestionSpecification implements Specification<Question> {
+public final class QuestionSpecification implements Specification<Question> {
 
-    private static final String QUIZ_AUTHOR = "quizAuthor";
+    private static final String QUESTION_BANK_AUTHOR = "questionBankAuthor";
     private static final String AUTHOR = "author";
-    private static final String QUIZ = "quiz";
+    private static final String QUESTION_BANK = "questionBank";
+    private static final String COURSE_ENTITY = "course";
+    private static final String COURSE = "course";
 
     private final String course;
     private final Long authorId;
-    private final Long quizId;
+    private final Long questionBankId;
     private final QuestionType questionType;
 
-    public QuestionSpecification(String course, Long authorId, Long quizId, QuestionType questionType) {
+    public QuestionSpecification(String course, Long authorId, Long questionBankId, QuestionType questionType) {
         this.course = course;
         this.authorId = authorId;
-        this.quizId = quizId;
+        this.questionBankId = questionBankId;
         this.questionType = questionType;
     }
 
@@ -37,26 +39,29 @@ public class QuestionSpecification implements Specification<Question> {
     public Predicate toPredicate(Root<Question> root, CriteriaQuery<?> query, CriteriaBuilder cb) {
         // Eagerly fetch related entities to avoid N+1 queries
         if (query.getResultType().equals(Question.class)) {
-            root.fetch(QUIZ_AUTHOR, jakarta.persistence.criteria.JoinType.LEFT)
-                .fetch(AUTHOR, jakarta.persistence.criteria.JoinType.LEFT);
-            root.fetch(QUIZ_AUTHOR, jakarta.persistence.criteria.JoinType.LEFT)
-                .fetch(QUIZ, jakarta.persistence.criteria.JoinType.LEFT);
+            var questionBankAuthorFetch = root.fetch(QUESTION_BANK_AUTHOR, jakarta.persistence.criteria.JoinType.LEFT);
+            questionBankAuthorFetch.fetch(AUTHOR, jakarta.persistence.criteria.JoinType.LEFT);
+            questionBankAuthorFetch.fetch(QUESTION_BANK, jakarta.persistence.criteria.JoinType.LEFT);
             query.distinct(true);
         }
 
         List<Predicate> predicates = new ArrayList<>();
+
+        // Create a single questionBankAuthorJoin if any of the filters need it
+        var questionBankAuthorJoin = (course != null && !course.isEmpty()) || authorId != null || questionBankId != null
+            ? root.join(QUESTION_BANK_AUTHOR, jakarta.persistence.criteria.JoinType.LEFT)
+            : null;
+
         if (course != null && !course.isEmpty()) {
-            var quizAuthorJoin = root.join(QUIZ_AUTHOR, jakarta.persistence.criteria.JoinType.LEFT);
-            var quizJoin = quizAuthorJoin.join(QUIZ, jakarta.persistence.criteria.JoinType.LEFT);
-            predicates.add(cb.equal(cb.lower(quizJoin.get("course")), course.toLowerCase()));
+            var questionBankJoin = questionBankAuthorJoin.join(QUESTION_BANK, jakarta.persistence.criteria.JoinType.LEFT);
+            var courseJoin = questionBankJoin.join(COURSE_ENTITY, jakarta.persistence.criteria.JoinType.LEFT);
+            predicates.add(cb.equal(cb.lower(courseJoin.get(COURSE)), course.toLowerCase()));
         }
         if (authorId != null) {
-            var quizAuthorJoin = root.join(QUIZ_AUTHOR, jakarta.persistence.criteria.JoinType.LEFT);
-            predicates.add(cb.equal(quizAuthorJoin.get(AUTHOR).get("id"), authorId));
+            predicates.add(cb.equal(questionBankAuthorJoin.get(AUTHOR).get("id"), authorId));
         }
-        if (quizId != null) {
-            var quizAuthorJoin = root.join(QUIZ_AUTHOR, jakarta.persistence.criteria.JoinType.LEFT);
-            predicates.add(cb.equal(quizAuthorJoin.get(QUIZ).get("id"), quizId));
+        if (questionBankId != null) {
+            predicates.add(cb.equal(questionBankAuthorJoin.get(QUESTION_BANK).get("id"), questionBankId));
         }
         if (questionType != null) {
             predicates.add(cb.equal(root.get("type"), questionType));
@@ -64,8 +69,8 @@ public class QuestionSpecification implements Specification<Question> {
         return cb.and(predicates.toArray(new Predicate[0]));
     }
 
-    public static QuestionSpecification byFilters(String course, Long authorId, Long quizId, QuestionType questionType) {
-        return new QuestionSpecification(course, authorId, quizId, questionType);
+    public static QuestionSpecification byFilters(String course, Long authorId, Long questionBankId, QuestionType questionType) {
+        return new QuestionSpecification(course, authorId, questionBankId, questionType);
     }
 
     /**
@@ -82,16 +87,16 @@ public class QuestionSpecification implements Specification<Question> {
     }
 
     /**
-     * Filter questions by QuizAuthor ID.
-     * This is a clear, reusable method for filtering questions belonging to a specific QuizAuthor.
+     * Filter questions by QuestionBankAuthor ID.
+     * This is a clear, reusable method for filtering questions belonging to a specific QuestionBankAuthor.
      *
-     * @param quizAuthorId the QuizAuthor ID
-     * @return Specification for filtering by QuizAuthor ID
+     * @param questionBankAuthorId the QuestionBankAuthor ID
+     * @return Specification for filtering by QuestionBankAuthor ID
      */
-    public static Specification<Question> byQuizAuthorId(Long quizAuthorId) {
+    public static Specification<Question> byQuestionBankAuthorId(Long questionBankAuthorId) {
         return (root, query, cb) -> {
-            if (quizAuthorId == null) return cb.conjunction();
-            return cb.equal(root.get(QUIZ_AUTHOR).get("id"), quizAuthorId);
+            if (questionBankAuthorId == null) return cb.conjunction();
+            return cb.equal(root.get(QUESTION_BANK_AUTHOR).get("id"), questionBankAuthorId);
         };
     }
 
@@ -104,22 +109,22 @@ public class QuestionSpecification implements Specification<Question> {
     public static Specification<Question> byAuthorId(Long authorId) {
         return (root, query, cb) -> {
             if (authorId == null) return cb.conjunction();
-            var quizAuthorJoin = root.join(QUIZ_AUTHOR);
-            return cb.equal(quizAuthorJoin.get(AUTHOR).get("id"), authorId);
+            var questionBankAuthorJoin = root.join(QUESTION_BANK_AUTHOR);
+            return cb.equal(questionBankAuthorJoin.get(AUTHOR).get("id"), authorId);
         };
     }
 
     /**
-     * Filter questions by quiz ID.
+     * Filter questions by question bank ID.
      *
-     * @param quizId the quiz ID
-     * @return Specification for filtering by quiz ID
+     * @param questionBankId the question bank ID
+     * @return Specification for filtering by question bank ID
      */
-    public static Specification<Question> byQuizId(Long quizId) {
+    public static Specification<Question> byQuestionBankId(Long questionBankId) {
         return (root, query, cb) -> {
-            if (quizId == null) return cb.conjunction();
-            var quizAuthorJoin = root.join(QUIZ_AUTHOR);
-            return cb.equal(quizAuthorJoin.get(QUIZ).get("id"), quizId);
+            if (questionBankId == null) return cb.conjunction();
+            var questionBankAuthorJoin = root.join(QUESTION_BANK_AUTHOR);
+            return cb.equal(questionBankAuthorJoin.get(QUESTION_BANK).get("id"), questionBankId);
         };
     }
 
@@ -132,9 +137,10 @@ public class QuestionSpecification implements Specification<Question> {
     public static Specification<Question> byCourse(String course) {
         return (root, query, cb) -> {
             if (course == null || course.isEmpty()) return cb.conjunction();
-            var quizAuthorJoin = root.join(QUIZ_AUTHOR);
-            var quizJoin = quizAuthorJoin.join(QUIZ);
-            return cb.equal(cb.lower(quizJoin.get("course")), course.toLowerCase());
+            var questionBankAuthorJoin = root.join(QUESTION_BANK_AUTHOR);
+            var questionBankJoin = questionBankAuthorJoin.join(QUESTION_BANK);
+            var courseJoin = questionBankJoin.join(COURSE_ENTITY);
+            return cb.equal(cb.lower(courseJoin.get(COURSE)), course.toLowerCase());
         };
     }
 
@@ -151,12 +157,17 @@ public class QuestionSpecification implements Specification<Question> {
         };
     }
 
-    // Add a static method for filtering by author name (case-insensitive contains)
+    /**
+     * Filter questions by author name (case-insensitive contains).
+     *
+     * @param authorName the author name to search for
+     * @return Specification for filtering by author name
+     */
     public static Specification<Question> hasAuthorName(String authorName) {
         return (root, query, cb) -> {
             if (authorName == null || authorName.isEmpty()) return cb.conjunction();
-            var quizAuthorJoin = root.join(QUIZ_AUTHOR);
-            return cb.like(cb.lower(quizAuthorJoin.get(AUTHOR).get("name")), "%" + authorName.toLowerCase() + "%");
+            var questionBankAuthorJoin = root.join(QUESTION_BANK_AUTHOR);
+            return cb.like(cb.lower(questionBankAuthorJoin.get(AUTHOR).get("name")), "%" + authorName.toLowerCase() + "%");
         };
     }
 }

@@ -24,27 +24,27 @@
         </table>
 
         <div class="form-actions">
-            <a th:href="@{'/authors/' + ${author.id} + '/edit'}" class="btn btn-edit">✏️ Edit Author</a>
-            <a th:href="@{/authors}" class="btn btn-cancel">❌ Back to Authors</a>
+            <a th:href="${editAuthorUrl != null ? editAuthorUrl : '/authors/' + author.id + '/edit'}" class="btn btn-questionBank-edit">✏️ Edit Author</a>
+            <a th:href="${backToAuthorsUrl != null ? backToAuthorsUrl : '/authors'}" class="btn btn-outline">↩️ Back to Authors</a>
         </div>
     </div>
 
-    <!-- Quiz Navigation Links -->
-    <div th:if="${quizzes != null && #lists.size(quizzes) > 0}" class="form-container mt-3">
-        <h3>📚 Quizzes</h3>
-        <div class="quiz-navigation">
-            <span th:each="quiz, iterStat : ${quizzes}">
-                <a th:href="${'#quiz-' + quiz.id}" th:text="${quiz.name}">Quiz Name</a>
+    <!-- Question Bank Navigation Links -->
+    <div th:if="${questionBanks != null && #lists.size(questionBanks) > 0}" class="form-container mt-3">
+        <h3>🗂️ Question Banks</h3>
+        <div class="questionBank-navigation">
+            <span th:each="questionBank, iterStat : ${questionBanks}">
+                <a th:href="${'#questionBank-' + questionBank.id}" th:text="${questionBank.name}">Question Bank Name</a>
                 <span th:if="${!iterStat.last}"> | </span>
             </span>
         </div>
     </div>
 
-    <div th:if="${quizzes != null && #lists.size(quizzes) > 0}">
-        <div th:each="quiz : ${quizzes}" class="form-container mt-4" th:id="${'quiz-' + quiz.id}">
-            <h3 th:text="${quiz.name} + ' - ' + ${quiz.course}">Quiz Name - Course</h3>
+    <div th:if="${questionBanks != null && #lists.size(questionBanks) > 0}">
+        <div th:each="questionBank : ${questionBanks}" class="form-container mt-4" th:id="${'questionBank-' + questionBank.id}">
+            <h3 th:text="${questionBank.name} + ' - ' + ${questionBank.course}">Question Bank Name - Course</h3>
 
-            <div th:if="${questionsByQuiz != null && questionsByQuiz[quiz.id] != null}">
+            <div th:if="${questionsByQuestionBank != null && questionsByQuestionBank[questionBank.id] != null}">
                 <h4 class="mt-3 mb-2">Questions</h4>
                 <table class="styled-table">
                     <thead>
@@ -55,7 +55,7 @@
                     </tr>
                     </thead>
                     <tbody>
-                    <tr th:each="question : ${questionsByQuiz[quiz.id]}">
+                    <tr th:each="question : ${questionsByQuestionBank[questionBank.id]}">
                         <td th:text="${question.id}">1</td>
                         <td th:text="${question.text}">Question text</td>
                         <td th:text="${question.type}">Multiple Choice</td>
@@ -64,7 +64,7 @@
                 </table>
             </div>
 
-            <div th:if="${errorsByQuiz != null && errorsByQuiz[quiz.id] != null && !errorsByQuiz[quiz.id].isEmpty()}">
+            <div th:if="${errorsByQuestionBank != null && errorsByQuestionBank[questionBank.id] != null && !errorsByQuestionBank[questionBank.id].isEmpty()}">
                 <h4 class="mt-3 mb-2">⚠️ Validation Errors</h4>
                 <table class="styled-table">
                     <thead>
@@ -78,7 +78,7 @@
                     </tr>
                     </thead>
                     <tbody>
-                    <tr th:each="error : ${errorsByQuiz[quiz.id]}">
+                    <tr th:each="error : ${errorsByQuestionBank[questionBank.id]}">
                         <td th:text="${error.errorCode}">ERROR_CODE</td>
                         <td th:text="${error.description != null ? error.description : error.message}">Error description</td>
                         <td th:text="${error.questionId != null ? error.questionId : '-'}">-</td>
@@ -97,8 +97,8 @@
         </div>
     </div>
 
-    <div th:if="${quizzes == null || #lists.size(quizzes) == 0}" class="alert mt-3">
-        <p>No quizzes found for this author.</p>
+    <div th:if="${questionBanks == null || #lists.size(questionBanks) == 0}" class="alert mt-3">
+        <p>No questionBanks found for this author.</p>
     </div>
 </div>
 </body>

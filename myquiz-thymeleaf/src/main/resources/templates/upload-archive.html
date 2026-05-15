@@ -12,8 +12,10 @@
 <div class="container mt-3">
     <h2>📦 Upload Archive</h2>
 
+    <div class="alert" th:if="${message}" th:text="${message}"></div>
+
     <div class="form-container">
-        <h3>📁 Archive Upload</h3>
+        <h3>📤 Archive Upload</h3>
         <form method="POST" enctype="multipart/form-data" th:action="@{/uploads/archive-file}">
             <div class="form-grid">
                 <div class="form-group">
@@ -31,20 +33,27 @@
                 </div>
                 <div class="form-grid-2col">
                     <div class="form-group">
-                        <label for="quiz" class="form-label">Quiz Name:</label>
-                        <input type="text" name="quiz" id="quiz" placeholder="Quiz name" required class="form-input"/>
+                        <label for="questionBank" class="form-label">Question Bank Name:</label>
+                        <input type="text" name="questionBank" id="questionBank" placeholder="Question bank name" required class="form-input"/>
                     </div>
                     <div class="form-group">
-                        <label for="year" class="form-label">Year:</label>
-                        <input type="number" name="year" id="year" min="2000" max="2100" required class="form-input"/>
+                        <label for="studyYear" class="form-label">Study Year:</label>
+                        <select name="studyYear" id="studyYear" required class="form-select">
+                            <option value="" disabled selected>Select study year</option>
+                            <option th:each="studyYearItem : ${studyYears}"
+                                    th:value="${studyYearItem.name()}"
+                                    th:text="${studyYearItem.value}"></option>
+                        </select>
                     </div>
                 </div>
             </div>
             <div class="form-actions">
                 <button type="submit" class="btn btn-save">📦 Upload and Import</button>
-                <a th:href="@{/}" class="btn btn-cancel">❌ Cancel</a>
+                <a th:href="@{/}" class="btn btn-cancel">✖️ Cancel</a>
             </div>
         </form>
     </div>
 </div>
 
+</body>
+</html>

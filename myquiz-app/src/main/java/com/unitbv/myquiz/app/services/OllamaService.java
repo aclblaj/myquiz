@@ -89,7 +89,7 @@ public class OllamaService {
 
     public String improveQuestion(Question question) {
         String prompt = String.format(
-                "Îmbunătățește această întrebare de quiz pentru a fi mai clară și mai precisă:\n\n" +
+                "Îmbunătățește această întrebare pentru a fi mai clară și mai precisă:\n\n" +
                 "Întrebare: %s\n" +
                 "Text: %s\n\n" +
                 "Răspunsuri:\n" +
@@ -113,7 +113,7 @@ public class OllamaService {
 
     public String[] generateAlternativeAnswers(Question question, int numAlternatives) {
         String prompt = String.format(
-                "Pentru următoarea întrebare de quiz, generează %d răspunsuri alternative plausibile dar incorecte:\n\n" +
+                "Pentru următoarea întrebare, generează %d răspunsuri alternative plausibile dar incorecte:\n\n" +
                 "Întrebare: %s\n" +
                 "Text: %s\n\n" +
                 "Răspunsul corect este unul dintre acestea:\n" +
@@ -159,7 +159,7 @@ public class OllamaService {
 
     public String generateExplanation(Question question) {
         String prompt = String.format(
-                "Pentru următoarea întrebare de quiz, generează o explicație detaliată pentru răspunsul corect:\n\n" +
+                "Pentru următoarea întrebare, generează o explicație detaliată pentru răspunsul corect:\n\n" +
                 "Întrebare: %s\n" +
                 "Text: %s\n\n" +
                 "Răspunsuri:\n" +

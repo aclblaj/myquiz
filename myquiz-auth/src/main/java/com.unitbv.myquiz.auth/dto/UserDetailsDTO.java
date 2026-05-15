@@ -11,4 +11,5 @@ public class UserDetailsDTO {
     private String username;
     private String email;
     private String hashedPassword;
+    private Boolean enabled;
 }

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Role - MyQuiz</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+    <div th:insert="~{fragments::menu}"></div>
+
+    <div class="container">
+        <h1>Edit Role</h1>
+
+        <div th:if="${!menuPermissions['canManageRoles']}" class="error-message">
+            You do not have permission to manage roles.
+        </div>
+
+        <div th:if="${param.error}" class="error-message" th:text="${param.error}">Error</div>
+
+        <div th:if="${menuPermissions['canManageRoles']}" class="form-container">
+            <h3>Role Information</h3>
+            <form th:action="@{/admin/roles/{id}/update(id=${role.id})}" method="post" class="form-grid">
+                <div class="form-group">
+                    <label for="name" class="form-label">Role Name *</label>
+                    <input type="text" id="name" name="name" th:value="${role.name}" required maxlength="50" class="form-input">
+                </div>
+                <div class="form-group">
+                    <label for="description" class="form-label">Description *</label>
+                    <textarea id="description" name="description" required rows="3" maxlength="255" class="form-textarea"
+                              th:text="${role.description}"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-save">💾 Update Role</button>
+                    <a th:href="@{/admin/roles}" class="btn btn-outline">✖️ Cancel</a>
+                </div>
+            </form>
+
+            <h3 style="color:#1e40af;margin-top:1.5rem;">Manage Permissions</h3>
+
+            <div class="permissions-section">
+                <h3>Assign Permissions</h3>
+                <div class="permissions-grid">
+                    <div th:each="permission : ${allPermissions}" class="permission-item">
+                        <div class="permission-info">
+                            <strong th:text="${permission.name}">PERMISSION_NAME</strong>
+                            <small th:text="${permission.description}">Description</small>
+                            <span class="badge" th:text="${permission.action}">READ</span>
+                        </div>
+
+                        <div class="permission-actions">
+                            <form th:if="${rolePermissions.contains(permission.name)}"
+                                  th:action="@{/admin/roles/{roleId}/permissions/{permId}/remove(roleId=${role.id}, permId=${permission.id})}"
+                                  method="post" style="display:inline;">
+                                <button type="submit" class="btn btn-small btn-delete">🗑️ Remove</button>
+                            </form>
+
+                            <form th:unless="${rolePermissions.contains(permission.name)}"
+                                  th:action="@{/admin/roles/{roleId}/permissions/assign(roleId=${role.id})}"
+                                  method="post" style="display:inline;">
+                                <input type="hidden" name="permissionId" th:value="${permission.id}">
+                                <button type="submit" class="btn btn-small btn-new">➕ Assign</button>
+                            </form>
+                        </div>
+                    </div>
+                    <p th:if="${allPermissions == null or allPermissions.isEmpty()}" class="no-data">No permissions available</p>
+                </div>
+            </div>
+
+            <div class="info-box">
+                <p><strong>Current Permissions:</strong>
+                    <span th:if="${rolePermissions != null}" th:text="${#sets.size(rolePermissions)}">0</span>
+                    <span th:unless="${rolePermissions != null}">0</span>
+                </p>
+            </div>
+        </div>
+
+        <div class="actions">
+            <a th:href="@{/admin/roles}" class="btn btn-outline">↩️ Back to Role List</a>
+        </div>
+    </div>
+</body>
+</html>
+

@@ -7,6 +7,7 @@ import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Repository interface for Course entity operations.
@@ -15,4 +16,5 @@ import java.util.List;
 @Repository
 public interface CourseRepository extends PagingAndSortingRepository<Course, Long>, JpaSpecificationExecutor<Course>, CrudRepository<Course, Long> {
     List<Course> findAll();
+    Optional<Course> findByCourseIgnoreCase(String course);
 }

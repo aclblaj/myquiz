@@ -9,17 +9,23 @@
 
 <div th:insert="~{fragments::menu}"></div>
 
-<div class="container mt-3">
+<div class="container mt-3 list-page-compact">
     <h2>🤖 AI Question Correction Tool</h2>
     <p>Edit your question and use AI-powered corrections and improvements. Supports both Multiple Choice and True/False questions.</p>
+
+    <div class="form-actions question-correction-nav">
+        <a th:if="${questionViewUrl != null}" th:href="${questionViewUrl}" class="btn btn-info">👁️ View Question</a>
+        <a th:href="${backToQuestionsUrl != null ? backToQuestionsUrl : '/questions'}" class="btn btn-outline">↩️ Back to Questions</a>
+        <a th:href="${backToQuestionsUrl != null ? backToQuestionsUrl : '/questions'}" class="btn btn-cancel">✖️ Cancel</a>
+    </div>
 
     <!-- Ollama Connection Status and Model Selection -->
     <div id="ollama-status" class="status-indicator">
         <span id="status-text">Checking Ollama connection...</span>
-        <button onclick="checkOllamaHealth()" class="btn btn-sm" style="margin-left: 10px;">🔄 Check Status</button>
-        <span id="model-select-container" style="margin-left: 30px;">
+        <button onclick="checkOllamaHealth()" class="btn btn-info btn-small question-correction-status-button">🔍 Check Status</button>
+        <span id="model-select-container" class="question-correction-model-container">
             <label for="ai-model-select"><strong>AI Model:</strong></label>
-            <select id="ai-model-select" class="form-select" style="width: auto; display: inline-block; margin-left: 8px;">
+            <select id="ai-model-select" class="form-select question-correction-model-select">
                 <!-- Dynamically populated -->
             </select>
         </span>
@@ -67,9 +73,9 @@
                            th:value="${correctionDto != null && correctionDto.originalQuestion != null ? correctionDto.originalQuestion.course : ''}">
                 </div>
                 <div class="form-group">
-                    <label for="original-quiz" class="form-label">Quiz Name:</label>
-                    <input type="text" id="original-quiz" placeholder="Quiz" class="form-input"
-                           th:value="${correctionDto != null && correctionDto.originalQuestion != null ? correctionDto.originalQuestion.quizName : ''}">
+                    <label for="original-questionBankName" class="form-label">Question Bank Name:</label>
+                    <input type="text" id="original-questionBankName" placeholder="Question Bank" class="form-input"
+                           th:value="${correctionDto != null && correctionDto.originalQuestion != null ? correctionDto.originalQuestion.questionBankName : ''}">
                 </div>
             </div>
 
@@ -136,11 +142,18 @@
                     </select>
                 </div>
             </fieldset>
+
+            <div class="form-group">
+                <label for="original-answer-reference" class="form-label">Answer Reference:</label>
+                <textarea id="original-answer-reference" rows="3" placeholder="Reference details used to justify/correct the answer..." class="form-textarea"
+                          th:text="${correctionDto != null && correctionDto.originalQuestion != null ? correctionDto.originalQuestion.answerReferenceText : ''}"></textarea>
+            </div>
+
         </div>
 
         <!-- Right Panel: Corrected Question -->
         <div class="panel corrected-panel">
-            <h3>✨ Corrected Question</h3>
+            <h3>✅ Corrected Question</h3>
 
             <div class="form-group">
                 <label for="corrected-title" class="form-label">Question Title:</label>
@@ -169,8 +182,8 @@
                     <input type="text" id="corrected-course" placeholder="Course" class="form-input">
                 </div>
                 <div class="form-group">
-                    <label for="corrected-quiz" class="form-label">Quiz Name:</label>
-                    <input type="text" id="corrected-quiz" placeholder="Quiz" class="form-input">
+                    <label for="corrected-questionBankName" class="form-label">Question Bank Name:</label>
+                    <input type="text" id="corrected-questionBankName" placeholder="Question Bank" class="form-input">
                 </div>
             </div>
 
@@ -233,13 +246,19 @@
                     </select>
                 </div>
             </fieldset>
+
+            <div class="form-group">
+                <label for="corrected-answer-reference" class="form-label">Answer Reference:</label>
+                <textarea id="corrected-answer-reference" rows="3" placeholder="Corrected reference will appear here..." class="form-textarea"></textarea>
+            </div>
+
         </div>
     </div>
 
     <!-- Action Buttons -->
     <div class="form-actions centered-actions">
         <button onclick="correctGrammar()" class="btn btn-save" id="grammar-btn">
-            ✍️ Correct Grammar
+            ✏️ Correct Grammar
         </button>
         <button onclick="improveQuestion()" class="btn btn-new" id="improve-btn">
             🚀 Improve Question
@@ -248,10 +267,10 @@
             🎯 Generate Alternatives
         </button>
         <button onclick="explainAnswer()" class="btn btn-export" id="explain-btn">
-            📖 Explain Correct Answer
+            💡 Explain Correct Answer
         </button>
         <button onclick="copyToCorrected()" class="btn btn-outline" id="copy-btn">
-            ➡️ Copy to Corrected
+            📋 Copy to Corrected
         </button>
         <button onclick="saveImprovedQuestion()" class="btn btn-save-improved" id="save-btn">
             💾 Save Improved Question
@@ -276,9 +295,9 @@
         <h3>Sample Questions for Testing:</h3>
         <div class="sample-buttons">
             <button onclick="loadSample(1)" class="btn btn-outline">🇷🇴 Load Romanian Sample</button>
-            <button onclick="loadSample(2)" class="btn btn-outline">🇺🇸 Load English Sample</button>
-            <button onclick="loadSample(3)" class="btn btn-outline">⚠️ Load Grammar Error Sample</button>
-            <button onclick="loadSample(4)" class="btn btn-outline">✓✗ Load True/False Sample</button>
+            <button onclick="loadSample(2)" class="btn btn-outline">🇬🇧 Load English Sample</button>
+            <button onclick="loadSample(3)" class="btn btn-outline">✍️ Load Grammar Error Sample</button>
+            <button onclick="loadSample(4)" class="btn btn-outline">✅ Load True/False Sample</button>
         </div>
     </div>
 </div>
@@ -303,7 +322,7 @@ const samples = {
         chapter: "Geografie",
         author: "Test Author",
         course: "Geografia Europei",
-        quiz: "Capitale",
+        questionBankName: "Capitale",
         type: "MULTICHOICE"
     },
     2: {
@@ -321,7 +340,7 @@ const samples = {
         chapter: "Web Development",
         author: "Test Author",
         course: "Computer Science",
-        quiz: "Programming Basics",
+        questionBankName: "Programming Basics",
         type: "MULTICHOICE"
     },
     3: {
@@ -339,7 +358,7 @@ const samples = {
         chapter: "Geografie",
         author: "Test Author",
         course: "Geografia Europei",
-        quiz: "Capitale",
+        questionBankName: "Capitale",
         type: "MULTICHOICE"
     },
     4: {
@@ -353,7 +372,7 @@ const samples = {
         chapter: "Programare",
         author: "Test Author",
         course: "Informatica",
-        quiz: "Limbaje de Programare",
+        questionBankName: "Limbaje de Programare",
         type: "TRUEFALSE"
     }
 };
@@ -370,10 +389,11 @@ function loadSample(sampleId) {
         document.getElementById('question-id').value = '';
         document.getElementById('original-title').value = sample.title || '';
         document.getElementById('original-text').value = sample.text || '';
+        document.getElementById('original-answer-reference').value = sample.answerReferenceText || '';
         document.getElementById('original-chapter').value = sample.chapter || '';
         document.getElementById('original-author').value = sample.author || '';
         document.getElementById('original-course').value = sample.course || '';
-        document.getElementById('original-quiz').value = sample.quiz || '';
+        document.getElementById('original-questionBankName').value = sample.questionBankName || '';
         document.getElementById('original-language').value = sample.language || 'ro';
 
         document.getElementById('original-response1').value = sample.response1 || '';
@@ -404,10 +424,11 @@ function buildQuestionCorrectionDto() {
         id: document.getElementById('question-id').value || null,
         title: document.getElementById('original-title').value,
         text: document.getElementById('original-text').value,
+        answerReferenceText: document.getElementById('original-answer-reference').value,
         chapter: document.getElementById('original-chapter').value,
         authorName: document.getElementById('original-author').value,
         course: document.getElementById('original-course').value,
-        quizName: document.getElementById('original-quiz').value,
+        questionBankName: document.getElementById('original-questionBankName').value,
         response1: document.getElementById('original-response1').value,
         response2: document.getElementById('original-response2').value,
         weightResponse1: parseFloat(document.getElementById('original-weight1').value),
@@ -435,10 +456,11 @@ function populateCorrectedFromDto(modifiedQuestion) {
 
     document.getElementById('corrected-title').value = modifiedQuestion.title || '';
     document.getElementById('corrected-text').value = modifiedQuestion.text || '';
+    document.getElementById('corrected-answer-reference').value = modifiedQuestion.answerReferenceText || '';
     document.getElementById('corrected-chapter').value = modifiedQuestion.chapter || '';
     document.getElementById('corrected-author').value = modifiedQuestion.authorName || '';
     document.getElementById('corrected-course').value = modifiedQuestion.course || '';
-    document.getElementById('corrected-quiz').value = modifiedQuestion.quizName || '';
+    document.getElementById('corrected-questionBankName').value = modifiedQuestion.questionBankName || '';
     document.getElementById('corrected-response1').value = modifiedQuestion.response1 || '';
     document.getElementById('corrected-response2').value = modifiedQuestion.response2 || '';
     document.getElementById('corrected-weight1').value = modifiedQuestion.weightResponse1 || '100';
@@ -459,10 +481,11 @@ function copyToCorrected() {
 
     document.getElementById('corrected-title').value = document.getElementById('original-title').value;
     document.getElementById('corrected-text').value = document.getElementById('original-text').value;
+    document.getElementById('corrected-answer-reference').value = document.getElementById('original-answer-reference').value;
     document.getElementById('corrected-chapter').value = document.getElementById('original-chapter').value;
     document.getElementById('corrected-author').value = document.getElementById('original-author').value;
     document.getElementById('corrected-course').value = document.getElementById('original-course').value;
-    document.getElementById('corrected-quiz').value = document.getElementById('original-quiz').value;
+    document.getElementById('corrected-questionBankName').value = document.getElementById('original-questionBankName').value;
     document.getElementById('corrected-language').value = document.getElementById('original-language').value;
 
     document.getElementById('corrected-response1').value = document.getElementById('original-response1').value;
@@ -502,10 +525,11 @@ async function saveImprovedQuestion() {
         id: questionId,
         title: document.getElementById('corrected-title').value,
         text: document.getElementById('corrected-text').value,
+        answerReferenceText: document.getElementById('corrected-answer-reference').value,
         chapter: document.getElementById('corrected-chapter').value,
         authorName: document.getElementById('corrected-author').value,
         course: document.getElementById('corrected-course').value,
-        quizName: document.getElementById('corrected-quiz').value,
+        questionBankName: document.getElementById('corrected-questionBankName').value,
         response1: document.getElementById('corrected-response1').value,
         response2: document.getElementById('corrected-response2').value,
         weightResponse1: parseFloat(document.getElementById('corrected-weight1').value),
@@ -531,7 +555,7 @@ async function saveImprovedQuestion() {
         originalQuestion: buildQuestionCorrectionDto().originalQuestion,
         modifiedQuestion: modifiedQuestion,
         language: document.getElementById('original-language').value,
-        model: getSelectedModel()
+        modelUsed: getSelectedModel()
     };
 
     setButtonLoading('save-btn', true);
@@ -559,10 +583,11 @@ async function saveImprovedQuestion() {
         // Update the original panel with the saved data to reflect changes
         document.getElementById('original-title').value = savedQuestion.title || '';
         document.getElementById('original-text').value = savedQuestion.text || '';
+        document.getElementById('original-answer-reference').value = savedQuestion.answerReferenceText || '';
         document.getElementById('original-chapter').value = savedQuestion.chapter || '';
         document.getElementById('original-author').value = savedQuestion.authorName || '';
         document.getElementById('original-course').value = savedQuestion.course || '';
-        document.getElementById('original-quiz').value = savedQuestion.quizName || '';
+        document.getElementById('original-questionBankName').value = savedQuestion.questionBankName || '';
         document.getElementById('original-response1').value = savedQuestion.response1 || '';
         document.getElementById('original-response2').value = savedQuestion.response2 || '';
         document.getElementById('original-weight1').value = savedQuestion.weightResponse1 || '100';
@@ -618,7 +643,7 @@ async function checkOllamaHealth() {
 
     } catch (error) {
         console.error('Error checking Ollama health:', error);
-        document.getElementById('status-text').innerHTML = '❌ Error checking Ollama status';
+        document.getElementById('status-text').innerHTML = '✖️ Error checking Ollama status';
         document.getElementById('ollama-status').className = 'status-indicator error';
         isOllamaConnected = false;
     }
@@ -740,7 +765,7 @@ async function correctGrammar() {
 
     try {
         const correctionDto = buildQuestionCorrectionDto();
-        correctionDto.model = getSelectedModel();
+        correctionDto.modelUsed = getSelectedModel();
         const questionId = getCurrentQuestionId();
         const url = questionId ? `/questions/${questionId}/correction/grammar` : '/questions/0/correction/grammar';
 
@@ -768,14 +793,14 @@ async function correctGrammar() {
         populateCorrectedFromDto(result.modifiedQuestion);
 
         showMessage('Grammar correction completed! Check the corrected panel.', 'success');
-        addResult('✍️ Grammar Correction',
+        addResult('✏️ Grammar Correction',
                   `Grammar and spelling corrected using ${result.modelUsed || 'AI'}.<br>${result.correctionNotes || ''}`,
                   'success');
 
     } catch (error) {
         console.error('Error correcting grammar:', error);
         showMessage('Error correcting grammar: ' + error.message, 'error');
-        addResult('❌ Grammar Correction Failed', error.message, 'error');
+        addResult('✖️ Grammar Correction Failed', error.message, 'error');
     } finally {
         setButtonLoading('grammar-btn', false);
     }
@@ -800,7 +825,7 @@ async function improveQuestion() {
 
     try {
         const correctionDto = buildQuestionCorrectionDto();
-        correctionDto.model = getSelectedModel();
+        correctionDto.modelUsed = getSelectedModel();
         const questionId = getCurrentQuestionId();
         const url = questionId ? `/questions/${questionId}/correction/improve` : '/questions/0/correction/improve';
 
@@ -834,7 +859,7 @@ async function improveQuestion() {
     } catch (error) {
         console.error('Error improving question:', error);
         showMessage('Error improving question: ' + error.message, 'error');
-        addResult('❌ Question Improvement Failed', error.message, 'error');
+        addResult('✖️ Question Improvement Failed', error.message, 'error');
     } finally {
         setButtonLoading('improve-btn', false);
     }
@@ -859,7 +884,7 @@ async function generateAlternatives() {
 
     try {
         const correctionDto = buildQuestionCorrectionDto();
-        correctionDto.model = getSelectedModel();
+        correctionDto.modelUsed = getSelectedModel();
         const questionId = getCurrentQuestionId();
         const url = questionId ? `/questions/${questionId}/correction/alternatives` : '/questions/0/correction/alternatives';
 
@@ -888,7 +913,7 @@ async function generateAlternatives() {
     } catch (error) {
         console.error('Error generating alternatives:', error);
         showMessage('Error generating alternatives: ' + error.message, 'error');
-        addResult('❌ Generate Alternatives Failed', error.message, 'error');
+        addResult('✖️ Generate Alternatives Failed', error.message, 'error');
     } finally {
         setButtonLoading('alternatives-btn', false);
     }
@@ -913,7 +938,7 @@ async function explainAnswer() {
 
     try {
         const correctionDto = buildQuestionCorrectionDto();
-        correctionDto.model = getSelectedModel();
+        correctionDto.modelUsed = getSelectedModel();
         const questionId = getCurrentQuestionId();
         const url = questionId ? `/questions/${questionId}/correction/explanation` : '/questions/0/correction/explanation';
 
@@ -926,7 +951,7 @@ async function explainAnswer() {
         if (!response.ok) throw new Error('Failed to generate explanation');
 
         const result = await response.json();
-        addResult('📖 Answer Explanation',
+        addResult('💡 Answer Explanation',
                   `<div class="explanation-text">${result.explanation.replace(/\n/g, '<br>')}</div>`,
                   'warning');
         showMessage('Answer explanation generated!', 'success');
@@ -945,10 +970,11 @@ function clearAll() {
     document.getElementById('question-id').value = '';
     document.getElementById('original-title').value = '';
     document.getElementById('original-text').value = '';
+    document.getElementById('original-answer-reference').value = '';
     document.getElementById('original-chapter').value = '';
     document.getElementById('original-author').value = '';
     document.getElementById('original-course').value = '';
-    document.getElementById('original-quiz').value = '';
+    document.getElementById('original-questionBankName').value = '';
     document.getElementById('original-response1').value = '';
     document.getElementById('original-response2').value = '';
     document.getElementById('original-response3').value = '';
@@ -958,10 +984,11 @@ function clearAll() {
     // Clear corrected panel
     document.getElementById('corrected-title').value = '';
     document.getElementById('corrected-text').value = '';
+    document.getElementById('corrected-answer-reference').value = '';
     document.getElementById('corrected-chapter').value = '';
     document.getElementById('corrected-author').value = '';
     document.getElementById('corrected-course').value = '';
-    document.getElementById('corrected-quiz').value = '';
+    document.getElementById('corrected-questionBankName').value = '';
     document.getElementById('corrected-response1').value = '';
     document.getElementById('corrected-response2').value = '';
     document.getElementById('corrected-response3').value = '';
@@ -1003,254 +1030,6 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<style>
-/* Additional styles specific to question correction tool */
-.status-indicator {
-    padding: 10px;
-    border-radius: 5px;
-    margin-bottom: 20px;
-    text-align: center;
-    font-weight: bold;
-}
-
-.status-indicator.connected {
-    background-color: #d4edda;
-    border: 1px solid #c3e6cb;
-    color: #155724;
-}
-
-.status-indicator.disconnected {
-    background-color: #f8d7da;
-    border: 1px solid #f5c6cb;
-    color: #721c24;
-}
-
-.status-indicator.error {
-    background-color: #fff3cd;
-    border: 1px solid #ffeaa7;
-    color: #856404;
-}
-
-/* Dual Panel Layout */
-.dual-panel-container {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-    margin-bottom: 20px;
-}
-
-.panel {
-    border: 2px solid #ddd;
-    border-radius: 12px;
-    padding: 20px;
-    background: rgba(255, 255, 255, 0.95);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.original-panel {
-    border-color: #ffc107;
-    background: linear-gradient(135deg, #fff9e6 0%, #ffffff 100%);
-}
-
-.original-panel h3 {
-    color: #f57c00;
-    margin-top: 0;
-}
-
-.corrected-panel {
-    border-color: #28a745;
-    background: linear-gradient(135deg, #e8f5e9 0%, #ffffff 100%);
-}
-
-.corrected-panel h3 {
-    color: #28a745;
-    margin-top: 0;
-}
-
-.answer-weight-row {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 10px;
-    margin-bottom: 10px;
-}
-
-.weight-select {
-    width: 120px;
-}
-
-.centered-actions {
-    display: flex;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin: 30px 0;
-}
-
-.btn-save-improved {
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 8px;
-    font-weight: bold;
-    cursor: pointer;
-    font-size: 16px;
-    transition: all 0.3s ease;
-}
-
-.btn-save-improved:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(40, 167, 69, 0.3);
-}
-
-.results-section {
-    margin-top: 30px;
-}
-
-.results-section h3 {
-    margin-bottom: 15px;
-}
-
-#results-container {
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    min-height: 100px;
-    background: white;
-}
-
-.result-placeholder {
-    padding: 20px;
-    text-align: center;
-    color: #6c757d;
-    font-style: italic;
-}
-
-.result-item {
-    border-bottom: 1px solid #eee;
-    padding: 15px;
-}
-
-.result-item:last-child {
-    border-bottom: none;
-}
-
-.result-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-}
-
-.result-header h4 {
-    margin: 0;
-    color: #333;
-}
-
-.copy-btn {
-    background: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 4px;
-    padding: 5px 10px;
-    cursor: pointer;
-    font-size: 12px;
-}
-
-.copy-btn:hover {
-    background: #e9ecef;
-}
-
-.result-content {
-    background: #f8f9fa;
-    padding: 15px;
-    border-radius: 4px;
-    border-left: 4px solid #007bff;
-}
-
-.result-item.success .result-content {
-    border-left-color: #28a745;
-}
-
-.result-item.warning .result-content {
-    border-left-color: #ffc107;
-}
-
-.result-item.info .result-content {
-    border-left-color: #17a2b8;
-}
-
-.samples-section {
-    margin-top: 30px;
-    padding: 20px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 16px;
-    border: 2px solid rgba(255, 255, 255, 0.2);
-}
-
-.sample-buttons {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.message {
-    padding: 10px;
-    border-radius: 4px;
-    margin-bottom: 10px;
-    border-left: 4px solid;
-}
-
-.message.success {
-    background: #d4edda;
-    border-color: #28a745;
-    color: #155724;
-}
-
-.message.error {
-    background: #f8d7da;
-    border-color: #dc3545;
-    color: #721c24;
-}
-
-.message.info {
-    background: #d1ecf1;
-    border-color: #17a2b8;
-    color: #0c5460;
-}
-
-pre {
-    background: #f8f9fa;
-    padding: 10px;
-    border-radius: 4px;
-    overflow-x: auto;
-    white-space: pre-wrap;
-}
-
-.saved-content {
-    padding: 10px;
-    background: #e8f5e9;
-    border-radius: 4px;
-}
-
-@media (max-width: 1200px) {
-    .dual-panel-container {
-        grid-template-columns: 1fr;
-    }
-}
-
-@media (max-width: 768px) {
-    .sample-buttons {
-        flex-direction: column;
-    }
-
-    .btn {
-        width: 100%;
-    }
-
-    .centered-actions {
-        flex-direction: column;
-    }
-}
-</style>
 
 </body>
 </html>

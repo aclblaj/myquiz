@@ -8,16 +8,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.ui.Model;
 import org.thymeleaf.TemplateEngine;
 
-import org.thymeleaf.context.WebContext;
+import org.thymeleaf.context.Context;
 import org.xhtmlrenderer.pdf.ITextRenderer;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Locale;
 
-import org.springframework.web.context.WebApplicationContext;
-import org.springframework.web.context.support.WebApplicationContextUtils;
 @Service
 public class PdfGenerationService {
 
@@ -29,8 +28,9 @@ public class PdfGenerationService {
     }
 
     public String renderHtmlFromTemplate(String templateName, Model model, HttpServletRequest request, HttpServletResponse response) {
-        WebApplicationContext webApplicationContext = WebApplicationContextUtils.getWebApplicationContext(request.getServletContext());
-        WebContext context = null; // new WebContext(request, response, request.getServletContext(), request.getLocale(), model.asMap(), webApplicationContext);
+        Locale locale = request != null ? request.getLocale() : Locale.getDefault();
+        Context context = new Context(locale);
+        context.setVariables(model.asMap());
         return templateEngine.process(templateName, context);
     }
 

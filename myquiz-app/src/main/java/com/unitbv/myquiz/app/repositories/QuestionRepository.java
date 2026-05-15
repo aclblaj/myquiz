@@ -27,14 +27,4 @@ public interface QuestionRepository extends PagingAndSortingRepository<Question,
     String getEncoding();
 
     void deleteAll();
-
-    /*
-     * REMOVED METHODS - Now use QuestionSpecification instead:
-     *
-     * Replace: findById(Long id)
-     * With: findOne(QuestionSpecification.byId(id))
-     *
-     * Replace: deleteQuestionsByQuizAuthorId(Long quizAuthorId)
-     * With: deleteAll(findAll(QuestionSpecification.byQuizAuthorId(quizAuthorId)))
-     */
 }

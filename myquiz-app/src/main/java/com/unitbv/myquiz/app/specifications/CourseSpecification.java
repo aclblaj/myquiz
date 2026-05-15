@@ -6,17 +6,14 @@ import org.springframework.data.jpa.domain.Specification;
 /**
  * JPA Specification for filtering Course entities.
  * Provides reusable predicates for filtering courses.
- *
- * @author MyQuiz Team
- * @since December 28, 2025
  */
-public class CourseSpecification {
+public final class CourseSpecification {
 
     private static final String COURSE = "course";
     private static final String DESCRIPTION = "description";
     private static final String UNIVERSITY_YEAR = "universityYear";
     private static final String SEMESTER = "semester";
-    private static final String STUDY_YEAR = "studyYear";
+    private static final String ID = "id";
 
     // Private constructor to prevent instantiation
     private CourseSpecification() {
@@ -32,7 +29,7 @@ public class CourseSpecification {
     public static Specification<Course> hasId(Long id) {
         return (root, query, cb) -> {
             if (id == null) return cb.conjunction();
-            return cb.equal(root.get("id"), id);
+            return cb.equal(root.get(ID), id);
         };
     }
 
@@ -102,34 +99,19 @@ public class CourseSpecification {
     }
 
     /**
-     * Filter by study year.
-     *
-     * @param studyYear the study year
-     * @return Specification for filtering by study year
-     */
-    public static Specification<Course> hasStudyYear(String studyYear) {
-        return (root, query, cb) -> {
-            if (studyYear == null || studyYear.isEmpty()) return cb.conjunction();
-            return cb.equal(root.get(STUDY_YEAR), studyYear);
-        };
-    }
-
-    /**
      * Combined filter by multiple criteria.
      * This is a convenience method for common filtering scenarios.
      *
      * @param courseName the course name (optional)
      * @param universityYear the university year (optional)
      * @param semester the semester (optional)
-     * @param studyYear the study year (optional)
      * @return Specification combining all non-null filters
      */
-    public static Specification<Course> byFilters(String courseName, String universityYear, String semester, String studyYear) {
+    public static Specification<Course> byFilters(String courseName, String universityYear, String semester) {
         return Specification
                 .where(hasCourseName(courseName))
                 .and(hasUniversityYear(universityYear))
-                .and(hasSemester(semester))
-                .and(hasStudyYear(studyYear));
+                .and(hasSemester(semester));
     }
 
     /**

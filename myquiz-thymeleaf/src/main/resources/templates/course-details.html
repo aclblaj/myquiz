@@ -8,8 +8,9 @@
 <body>
 <div th:insert="~{fragments::menu}"></div>
 
-<div class="container mt-3">
-    <h2>📚 Course Details</h2>
+<div class="container mt-3 list-page-compact">
+    <h2 class="list-page-title">🎓 Course Details</h2>
+    <div th:replace="~{fragments :: recompute-feedback(${message})}"></div>
 
     <div th:if="${course != null}" class="form-container">
         <h3>Course Information</h3>
@@ -19,20 +20,62 @@
             <tr><th scope="row">Description</th><td th:text="${course.description}"></td></tr>
             <tr><th scope="row">University Year</th><td th:text="${course.universityYear}"></td></tr>
             <tr><th scope="row">Semester</th><td th:text="${course.semester}"></td></tr>
-            <tr><th scope="row">Study Year</th><td th:text="${course.studyYear}"></td></tr>
         </table>
 
+        <h3>Sources</h3>
+        <table class="styled-table">
+            <thead>
+            <tr>
+                <th scope="col">Course Question Bank</th>
+                <th scope="col">MC</th>
+                <th scope="col">TF</th>
+                <th scope="col">Total</th>
+                <th scope="col">Authors</th>
+                <th scope="col">Archive Import</th>
+                <th scope="col">Action</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr th:if="${course.sources == null or #lists.isEmpty(course.sources)}">
+                <td colspan="7">No source tuples found.</td>
+            </tr>
+            <tr th:each="source : ${course.sources}">
+                <td th:text="${source.courseQuestionBank}"></td>
+                <td th:text="${source.mcQuestionsCount}"></td>
+                <td th:text="${source.tfQuestionsCount}"></td>
+                <td th:text="${source.totalQuestionsCount}"></td>
+                <td th:text="${source.authorsCount}"></td>
+                <td th:text="${source.archiveImport}"></td>
+                <td>
+                    <a th:if="${source.questionBankId != null}"
+                       th:href="@{/question-banks/{id}(id=${source.questionBankId})}"
+                       class="btn btn-info"
+                       title="View">👁️ View</a>
+                    <a th:if="${source.questionBankId != null}"
+                       th:href="@{/question-banks/{id}/extended(id=${source.questionBankId})}"
+                       class="btn btn-info"
+                       title="Details">📋 Details</a>
+                    <span th:if="${source.questionBankId == null}">-</span>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+
+        <div th:replace="~{fragments :: course-actions(${course}, ${course.course}, ${null}, ${null}, ${null}, 'form-actions')}"></div>
+
         <div class="form-actions">
-            <a th:href="@{'/courses/edit/' + ${course.id}}" class="btn btn-edit">✏️ Edit Course</a>
-            <a th:href="@{'/courses'}" class="btn btn-cancel">❌ Back to Courses</a>
+            <a th:if="${menuPermissions['canExportXml']}" th:href="@{'/courses/' + ${course.id} + '/export-xml'}" class="btn btn-export-xml" target="_blank">Export XML</a>
+            <a th:href="@{'/courses'}" class="btn btn-outline">↩️ Back to Courses</a>
         </div>
     </div>
 
     <div th:if="${course == null}" class="alert">
         <p>Course not found.</p>
-        <a th:href="@{'/courses'}" class="btn btn-cancel">❌ Back to Courses</a>
+        <a th:href="@{'/courses'}" class="btn btn-outline">↩️ Back to Courses</a>
     </div>
 </div>
+
+<script th:src="@{/js/course-actions.js}"></script>
 
 </body>
 </html>

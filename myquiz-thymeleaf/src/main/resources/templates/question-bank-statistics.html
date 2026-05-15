@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Question Bank Statistics</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+<div th:insert="~{fragments::menu}"></div>
+
+<div class="container mt-3 list-page-compact">
+    <h2 class="list-page-title" th:text="'Statistics for Question Bank: ' + ${questionBank.name}">Statistics for Question Bank</h2>
+    <table class="styled-table">
+        <thead>
+        <tr>
+            <th>Author</th>
+            <th>Multichoice Questions</th>
+            <th>True/False Questions</th>
+            <th>Errors</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="stat : ${authorStats}">
+            <td th:text="${stat.authorName}"></td>
+            <td th:text="${stat.mcCount}"></td>
+            <td th:text="${stat.tfCount}"></td>
+            <td th:text="${stat.errorCount}"></td>
+            <td class="action-cell">
+                <a th:href="@{'/questions/author/' + ${stat.authorId} + '/question-banks/' + ${questionBank.id}}" class="btn btn-questions">📚 Author Questions</a>
+            </td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(authorStats)}" class="empty-row">
+            <td colspan="5" class="list-empty-message">No statistics found for this question bank.</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+</body>
+</html>

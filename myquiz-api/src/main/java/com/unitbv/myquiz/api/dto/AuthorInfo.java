@@ -4,17 +4,16 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.ToString;
 
 /**
- * Helper class to hold minimal author information
+ * Helper class to hold minimal author information (id + name + initials) for dropdowns and filter lists.
  */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString
 public class AuthorInfo {
-    Long id;
-    String name;
+    private Long id;
+    private String name;
+    private String initials;
 }

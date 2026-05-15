@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Upload XML</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+
+<div th:insert="~{fragments::menu}"></div>
+
+<div class="container mt-3">
+    <h2>📄 Upload XML</h2>
+
+    <div class="alert" th:if="${message}" th:text="${message}"></div>
+
+    <div class="form-container">
+        <h3>📥 XML Import</h3>
+        <form method="POST" enctype="multipart/form-data" th:action="@{/uploads/xml-file}">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="xml" class="form-label">Select XML File:</label>
+                    <input type="file" name="xml" id="xml" accept=".xml" required class="form-input"/>
+                </div>
+                <div class="form-group">
+                    <label for="xmlCourseId" class="form-label">Course:</label>
+                    <select id="xmlCourseId" name="courseId" required class="form-select">
+                        <option value="" disabled selected>Select a course</option>
+                        <option th:each="course : ${courses}"
+                                th:value="${course.id}"
+                                th:text="${course.course}"></option>
+                    </select>
+                </div>
+                <div class="form-grid-2col">
+                    <div class="form-group">
+                        <label for="questionBank" class="form-label">Question Bank Name:</label>
+                        <input type="text" name="questionBank" id="questionBank" placeholder="Question bank name" required class="form-input"/>
+                    </div>
+                    <div class="form-group">
+                        <label for="studyYear" class="form-label">Study Year:</label>
+                        <select name="studyYear" id="studyYear" required class="form-select">
+                            <option value="" disabled selected>Select study year</option>
+                            <option th:each="studyYearItem : ${studyYears}"
+                                    th:value="${studyYearItem.name()}"
+                                    th:text="${studyYearItem.value}"></option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="submit" class="btn btn-save">📄 Upload and Import XML</button>
+                <a th:href="@{/}" class="btn btn-cancel">✖️ Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+</body>
+</html>
+

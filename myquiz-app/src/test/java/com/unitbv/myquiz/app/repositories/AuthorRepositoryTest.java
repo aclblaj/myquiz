@@ -1,13 +1,15 @@
 package com.unitbv.myquiz.app.repositories;
 
 import com.unitbv.myquiz.app.entities.Author;
+import com.unitbv.myquiz.app.testutil.TestEntityFactory;
+import com.unitbv.myquiz.app.testutil.TestFixtureData;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 @SpringBootTest
 class AuthorRepositoryTest {
@@ -18,16 +20,13 @@ class AuthorRepositoryTest {
     AuthorRepository authorRepository;
 
     @Autowired
-    QuizErrorRepository quizErrorRepository;
+    TestEntityFactory testEntityFactory;
 
     @Test
     void saveAuthor() {
-        Author author = new Author();
-        author.setName("Monika Mustermann");
-        author.setInitials("EM");
-        author = authorRepository.save(author);
+        Author author = testEntityFactory.createAuthor(TestFixtureData.AUTHOR_NAME, TestFixtureData.AUTHOR_INITIALS);
         assertNotNull(author.getId());
-        authorRepository.delete(author);
+        authorRepository.findById(author.getId()).ifPresent(authorRepository::delete);
         logger.atInfo().addArgument(author).log("Author saved and deleted: {}");
     }
 

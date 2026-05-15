@@ -1,89 +1,137 @@
 <!DOCTYPE html>
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
+    <meta charset="UTF-8">
     <title>Fragments</title>
-    <link rel="stylesheet" type="text/css" href="../css/styles.css"/>
     <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
-    <!-- Removed inline styles; using centralized styles.css -->
 </head>
 <body>
 
 <div th:fragment="menu" class="menu">
-    <div class="main-menu-item" tabindex="0" aria-label="Quizzes">
-        <span>📝 Quizzes ▾</span>
+
+    <!-- Courses -->
+    <div th:if="${menuPermissions['canReadCourse']}" class="main-menu-item" tabindex="0" aria-label="Courses">
+        <span>🎓 Courses ▾</span>
         <div class="main-submenu">
-            <a th:href="@{'/quiz/'}" aria-label="Quizzes List">Quizzes List</a>
-            <a th:href="@{'/quiz/new'}" aria-label="Add New Quiz">+ Add New Quiz</a>
+            <a th:href="@{'/courses/'}">Course List</a>
+            <a th:if="${menuPermissions['canModifyCourse']}" th:href="@{'/courses/new'}">+ Add Course</a>
         </div>
     </div>
-    <div class="main-menu-item" tabindex="0" aria-label="Authors">
-        <span>👥 Authors ▾</span>
+
+    <!-- Question Banks -->
+    <div th:if="${menuPermissions['canReadQuiz']}" class="main-menu-item" tabindex="0" aria-label="Question Banks">
+        <span>🗂️ Question Banks ▾</span>
         <div class="main-submenu">
-            <a th:href="@{'/authors/'}" aria-label="Authors Management">Authors Management</a>
-            <a th:href="@{'/authors/new'}" aria-label="Add New Author">+ Add New Author</a>
+            <a th:href="@{'/question-banks/'}">Question Banks List</a>
+            <a th:if="${menuPermissions['canModifyQuiz']}" th:href="@{'/question-banks/new'}">+ Add Question Bank</a>
         </div>
     </div>
-    <a th:href="@{'/errors'}" class="main-menu-item" aria-label="Errors">❌ Errors</a>
-    <div class="main-menu-item" tabindex="0" aria-label="Courses">
-        <span>📚 Courses ▾</span>
+
+    <!-- Authors -->
+    <div th:if="${menuPermissions['canReadAuthor']}" class="main-menu-item" tabindex="0" aria-label="Authors">
+        <span>👤 Authors ▾</span>
         <div class="main-submenu">
-            <a th:href="@{'/courses/'}" aria-label="Course List">Course List</a>
-            <a th:href="@{'/courses/new'}" aria-label="Add New Course">+ Add New Course</a>
+            <a th:href="@{'/authors/'}">Authors Management</a>
+            <a th:if="${menuPermissions['canModifyAuthor']}" th:href="@{'/authors/new'}">+ Add Author</a>
         </div>
     </div>
-    <div class="main-menu-item" tabindex="0" aria-label="Upload">
+
+    <!-- Questions -->
+    <div th:if="${menuPermissions['canReadQuestion']}" class="main-menu-item" tabindex="0" aria-label="Questions">
+        <span>❓ Questions ▾</span>
+        <div class="main-submenu">
+            <a th:href="@{'/questions/'}">Question List</a>
+            <a th:if="${menuPermissions['canModifyQuestion']}" th:href="@{'/questions/add?type=MULTICHOICE'}">+ Add
+                MC</a>
+            <a th:if="${menuPermissions['canModifyQuestion']}" th:href="@{'/questions/add?type=TRUEFALSE'}">+ Add TF</a>
+            <!-- Duplicate Management -->
+            <a th:if="${menuPermissions['canModifyQuestion']}" th:href="@{'/duplicate-management'}">🔄 Duplicates</a>
+            <!-- Errors (top-level direct link) -->
+            <a th:if="${menuPermissions['canReadQuestion']}" th:href="@{'/errors'}">⚠️ Errors</a>
+        </div>
+    </div>
+
+    <!-- Upload -->
+    <div th:if="${menuPermissions['canUploadFiles']}" class="main-menu-item" tabindex="0" aria-label="Upload">
         <span>📤 Upload ▾</span>
         <div class="main-submenu">
-            <a th:href="@{'/uploads/excel-form'}" aria-label="Upload Excel">Excel</a>
-            <a th:href="@{'/uploads/archive-form'}" aria-label="Upload Archive">Archive</a>
+            <a th:href="@{'/uploads/excel-form'}">Excel</a>
+            <a th:href="@{'/uploads/archive-form'}">Archive</a>
+            <a th:href="@{'/uploads/xml-form'}">Upload XML</a>
+            <a th:href="@{'/uploads/archive-folder-form'}">Folder</a>
         </div>
     </div>
-    <div class="main-menu-item" tabindex="0" aria-label="AI Tools">
+
+    <!-- AI Tools -->
+    <div th:if="${menuPermissions['canUseAiTools']}" class="main-menu-item" tabindex="0" aria-label="AI Tools">
         <span>🤖 AI Tools ▾</span>
         <div class="main-submenu">
-            <a th:href="@{'/question-correction'}" aria-label="AI Correction">AI Correction</a>
-            <a th:href="@{'/check-pdf'}" aria-label="Check PDF">Check PDF</a>
+            <a th:href="@{'/questions/add?type=MULTICHOICE'}">Sample MC Question</a>
+            <a th:href="@{'/check-pdf'}">Check PDF</a>
         </div>
     </div>
-    <div class="main-menu-item" tabindex="0" aria-label="Question">
-        <span>🔧 Question ▾</span>
+
+    <!-- Administration -->
+    <div th:if="${menuPermissions['canManageUsers'] or menuPermissions['canManageRoles'] or menuPermissions['canBackupDatabase'] or menuPermissions['canRestoreDatabase'] or menuPermissions['canCleanDatabase']}"
+         class="main-menu-item" tabindex="0" aria-label="Administration">
+        <span>⚙️ Administration ▾</span>
         <div class="main-submenu">
-            <a th:href="@{'/questions/'}" aria-label="Question List">Question List</a>
-            <a th:href="@{'/questions/add?type=MULTICHOICE'}" aria-label="Add MC">+ Add MC</a>
-            <a th:href="@{'/questions/add?type=TRUEFALSE'}" aria-label="Add TF">+ Add TF</a>
+            <a th:if="${menuPermissions['canManageUsers']}" th:href="@{'/admin/users'}">User Management</a>
+            <a th:if="${menuPermissions['canManageRoles']}" th:href="@{'/admin/roles'}">Role Management</a>
+            <a th:if="${menuPermissions['canManageRoles']}" th:href="@{'/admin/permissions'}">Permission Management</a>
+            <a th:if="${menuPermissions['canBackupDatabase'] or menuPermissions['canRestoreDatabase'] or menuPermissions['canCleanDatabase']}"
+               th:href="@{'/admin/data'}">Data Management</a>
+            <!-- Delete all -->
+            <a th:if="${menuPermissions['canCleanDatabase']}"
+               th:href="@{'/home/deleteall'}"
+               th:onclick="return confirm('Are you sure you want to delete all the database records?')">🗑️ Delete all</a>
         </div>
     </div>
-<!--    <a th:href="@{'/swagger-ui.html'}" class="main-menu-item" target="_blank" aria-label="API Docs">📋 API Docs</a>-->
-    <a th:href="@{'/questions/deleteall'}" class="main-menu-item" th:onclick="return confirm('Are you sure you want to delete all the database records?')" aria-label="Delete all">🗑️ Delete all</a>
-    <a th:href="@{'/help'}" class="main-menu-item" aria-label="Help">ℹ️ Help</a>
+
+
+
+    <!-- Help -->
+    <div class="main-menu-item" tabindex="0" aria-label="Help">
+        <span>❓ Help ▾</span>
+        <div class="main-submenu">
+            <a th:href="@{'/help'}">About</a>
+            <a th:href="@{'/statistics'}">Database Statistics</a>
+            <a th:href="@{${@environment.getProperty('swagger.ui.url', 'http://localhost:8082/swagger-ui.html')}}"
+               target="_blank">API Documentation</a>
+        </div>
+    </div>
+
+    <!-- User -->
     <div class="main-menu-item" tabindex="0" aria-label="User">
-        <span th:if="${loggedInUser != null}"> <b th:text="${loggedInUser}"></b> ▾</span>
+        <span th:if="${loggedInUser != null}"><b th:text="${loggedInUser}"></b> ▾</span>
+        <span th:if="${loggedInUser == null}">👤 User ▾</span>
         <div class="main-submenu">
-            <a th:if="${loggedInUser == null}" th:href="@{/auth/login}" aria-label="Login">Login</a>
-            <a th:if="${loggedInUser == null}" th:href="@{/auth/register}" aria-label="Register">Register</a>
-            <a th:if="${loggedInUser != null}" th:href="@{/auth/logout}" aria-label="Logout">Logout</a>
+            <a th:if="${loggedInUser == null}" th:href="@{/auth/login}">Login</a>
+            <a th:if="${loggedInUser == null}" th:href="@{/auth/register}">Register</a>
+            <a th:if="${loggedInUser != null}" th:href="@{/auth/logout}">Logout</a>
         </div>
     </div>
+
 </div>
 
-<div th:fragment="quizfilter" class="quizfilter">
+<div th:fragment="question-bank-filter" class="question-bank-filter">
     <form method="POST" enctype="multipart/form-data" th:action="@{'/' + ${route}}">
-        <label for="quizfilter-course">Quiz</label>
-        <select id="quizfilter-course" name="course">
-            <option value="" disabled selected>Select quiz</option>
+        <label for="question-bank-filter-course">Question Bank</label>
+        <select id="question-bank-filter-course" name="course">
+            <option value="" disabled selected>Select question bank</option>
             <option th:each="course:${courses}"
                     th:value="${course}"
                     th:text="${course}"
                     th:selected="(${course == selectedCourse})"></option>
         </select>
-        <input type="submit" value="Filter" />
+        <input type="submit" value="Filter"/>
     </form>
 </div>
 <div th:fragment="searchauthor" class="searchauthor">
     <form method="POST" enctype="multipart/form-data" th:action="@{'/authors/search'}">
         <label for="searchauthor-input">Author name</label>
-        <input type="text" id="searchauthor-input" name="search" placeholder="Author name" />
-        <input type="submit" value="Search author" />
+        <input type="text" id="searchauthor-input" name="search" placeholder="Author name"/>
+        <input type="submit" value="Search author"/>
     </form>
 </div>
 
@@ -97,33 +145,159 @@
                     th:text="${course}"
                     th:selected="(${course == selectedCourse})"></option>
         </select>
-        <input type="submit" value="Delete course" />
+        <input type="submit" value="Delete course"/>
     </form>
 </div>
 
+<div th:fragment="course-actions(course, selectedCourse, selectedYear, currentPage, pageSize, containerClass)"
+     th:class="${containerClass}">
+    <a th:href="@{'/courses/' + ${course.id}}" class="btn btn-info">👁️ View</a>
+    <a th:href="@{'/courses/edit/' + ${course.id}}" class="btn btn-questionBank-edit">✏️ Edit</a>
+    <a th:href="@{'/question-banks/course/id/' + ${course.id}}" class="btn btn-questions">📂 Question Banks</a>
+
+    <form th:id="${'recompute-form-' + course.id}"
+          th:action="@{'/courses/' + ${course.id} + '/recompute-duplicates'}"
+          method="post"
+          style="display:inline-block; margin:0;">
+        <input type="hidden" name="selectedCourse" th:value="${selectedCourse}">
+        <input type="hidden" name="selectedYear" th:value="${selectedYear}">
+        <input type="hidden" name="page" th:value="${currentPage}">
+        <input type="hidden" name="pageSize" th:value="${pageSize}">
+    </form>
+    <button type="button" class="btn btn-new" th:attr="onclick=|toggleRecomputeConfirm(${course.id})|">🔄 Recompute
+        Duplicates
+    </button>
+
+    <form th:action="@{'/courses/' + ${course.id}}" method="post" style="display:inline-block; margin:0;">
+        <input type="hidden" name="_method" value="delete"/>
+        <button type="submit"
+                class="btn btn-delete"
+                onclick="return confirm('Are you sure you want to delete this course? This will also delete all associated question banks and questions. This action cannot be undone.')">
+            🗑️ Delete
+        </button>
+    </form>
+
+    <div th:id="${'recompute-confirm-' + course.id}" class="form-container mt-1" style="display:none;">
+        <div class="list-error-message">Recompute duplicates for this course? Existing duplicate links for the course
+            will be removed first.
+        </div>
+        <div class="form-actions" style="margin-top:0.5rem;">
+            <button type="button" class="btn btn-new btn-small" th:attr="onclick=|submitRecompute(${course.id})|">
+                Confirm
+            </button>
+            <button type="button" class="btn btn-outline btn-small"
+                    th:attr="onclick=|hideRecomputeConfirm(${course.id})|">Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+<div th:fragment="recompute-feedback(message)">
+    <div th:if="${message != null and #strings.contains(message, 'Recompute started:')}" class="recompute-feedback-box">
+        <div class="recompute-feedback-header">🔄 Duplicate Recompute Completed</div>
+        <div class="recompute-feedback-grid">
+            <div class="recompute-feedback-item" th:each="part : ${#strings.arraySplit(message, '|')}">
+                <div class="recompute-feedback-key" th:text="${#strings.trim(#strings.substringBefore(part, ':'))}">
+                    Metric
+                </div>
+                <div class="recompute-feedback-value" th:text="${#strings.trim(#strings.substringAfter(part, ':'))}">
+                    Value
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Error Table Fragment - Reusable for error-list and question-bank-extended-details -->
+<table th:fragment="error-table(errors, showActions)" class="styled-table">
+    <thead>
+        <tr>
+            <th>Question ID</th>
+            <th>Row</th>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Author</th>
+            <th>Question Bank</th>
+            <th>Status</th>
+            <th th:if="${showActions}">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr th:each="error : ${errors}" class="data-row" th:classappend="${error != null and error.status == T(com.unitbv.myquiz.api.settings.ControllerSettings).ERROR_STATUS_RESOLVED} ? 'resolved-row' : ''">
+            <td>
+                <a th:if="${error != null and error.questionId != null}"
+                   th:href="${backToErrorsUrl != null and !backToErrorsUrl.isBlank() ? '/questions/' + error.questionId + '?backUrl=' + #uris.escapeQueryParam(backToErrorsUrl) : '/questions/' + error.questionId}"
+                   class="btn btn-info btn-small">
+                    👁️ <span th:text="${error.questionId}"></span>
+                </a>
+                <span th:if="${error == null or error.questionId == null}">—</span>
+            </td>
+            <td th:text="${error != null and error.row != null ? error.row : '-'}"></td>
+            <td th:text="${error != null and error.questionType != null ? error.questionType : '-'}"></td>
+            <td th:text="${error != null and error.description != null ? error.description : (error != null and error.message != null ? error.message : '-')}"></td>
+            <td th:text="${error != null and error.authorName != null ? error.authorName : '-'}"></td>
+            <td th:text="${error != null and error.questionBankName != null ? error.questionBankName : '-'}"></td>
+            <td>
+                <span th:if="${error != null and error.status == T(com.unitbv.myquiz.api.settings.ControllerSettings).ERROR_STATUS_OPEN}" class="badge badge-status-open">OPEN</span>
+                <span th:if="${error != null and error.status == T(com.unitbv.myquiz.api.settings.ControllerSettings).ERROR_STATUS_RESOLVED}" class="badge badge-status-resolved">RESOLVED</span>
+                <span th:if="${error == null or error.status == null}" class="badge badge-status-open">OPEN</span>
+            </td>
+            <td th:if="${showActions}" class="action-cell">
+                <form method="post" th:action="@{/errors/{id}/resolve(id=${error.id})}" style="display: inline;" th:if="${error != null and error.id != null}">
+                    <input type="hidden" name="courseId" th:value="${selectedCourseId}" />
+                    <input type="hidden" name="author" th:value="${selectedAuthor}" />
+                    <input type="hidden" name="questionBankId" th:value="${selectedQuestionBankIdErrors}" />
+                    <input type="hidden" name="page" th:value="${currentPage}" />
+                    <input type="hidden" name="pageSize" th:value="${pageSize}" />
+                    <button type="submit" class="btn btn-success btn-small"
+                            th:unless="${error.status == T(com.unitbv.myquiz.api.settings.ControllerSettings).ERROR_STATUS_RESOLVED}"
+                            onclick="return confirm('Mark this error as resolved?')">
+                        ✔️ Resolve
+                    </button>
+                </form>
+                <form method="post" th:action="@{/errors/{id}/delete(id=${error.id})}" style="display: inline;" th:if="${error != null and error.id != null}">
+                    <input type="hidden" name="courseId" th:value="${selectedCourseId}" />
+                    <input type="hidden" name="author" th:value="${selectedAuthor}" />
+                    <input type="hidden" name="questionBankId" th:value="${selectedQuestionBankIdErrors}" />
+                    <input type="hidden" name="page" th:value="${currentPage}" />
+                    <input type="hidden" name="pageSize" th:value="${pageSize}" />
+                    <button type="submit" class="btn btn-delete btn-small"
+                            onclick="return confirm('Delete this error? This action cannot be undone.')">
+                        🗑️ Delete
+                    </button>
+                </form>
+            </td>
+        </tr>
+        <tr th:if="${#lists.isEmpty(errors)}" class="empty-row">
+            <td th:colspan="${showActions ? 8 : 7}" class="list-empty-message">No errors found for the selected criteria</td>
+        </tr>
+    </tbody>
+</table>
+
 <script>
-// Improved: Show/hide submenu on hover and focus for accessibility
-function setupDropdown() {
-    document.querySelectorAll('.main-menu-item').forEach(function(menuItem) {
-        var submenu = menuItem.querySelector('.main-submenu');
-        if (!submenu) return;
-        menuItem.addEventListener('mouseenter', function() {
-            submenu.style.display = 'block';
-        });
-        menuItem.addEventListener('mouseleave', function() {
-            submenu.style.display = 'none';
-        });
-        menuItem.addEventListener('focusin', function() {
-            submenu.style.display = 'block';
-        });
-        menuItem.addEventListener('focusout', function(e) {
-            if (!menuItem.contains(e.relatedTarget)) {
+    // Improved: Show/hide submenu on hover and focus for accessibility
+    function setupDropdown() {
+        document.querySelectorAll('.main-menu-item').forEach(function (menuItem) {
+            var submenu = menuItem.querySelector('.main-submenu');
+            if (!submenu) return;
+            menuItem.addEventListener('mouseenter', function () {
+                submenu.style.display = 'block';
+            });
+            menuItem.addEventListener('mouseleave', function () {
                 submenu.style.display = 'none';
-            }
+            });
+            menuItem.addEventListener('focusin', function () {
+                submenu.style.display = 'block';
+            });
+            menuItem.addEventListener('focusout', function (e) {
+                if (!menuItem.contains(e.relatedTarget)) {
+                    submenu.style.display = 'none';
+                }
+            });
         });
-    });
-}
-setupDropdown();
+    }
+
+    setupDropdown();
 </script>
 
 </body>

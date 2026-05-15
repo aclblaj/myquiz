@@ -1,0 +1,65 @@
+# Build artifacts
+target/
+*.war
+*.jar
+
+# IDE files
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.settings/
+.project
+.classpath
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+README.md
+*.md
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+
+# Maven wrapper (if not needed)
+.mvn/wrapper/maven-wrapper.jar
+
+# Node modules (if any frontend build tools)
+node_modules/
+npm-debug.log*
+
+# Environment files (sensitive data)
+.env.local
+.env.production
+
+# SSL certificates
+ssl/
+*.pem
+*.key
+*.crt
+
+# Database dumps (large files)
+*.sql.gz
+myquiz_backup.sql
+
+# Test results
+test-results/
+coverage/
+
+# IDE temp files
+*~
+*.swp
+*.swo

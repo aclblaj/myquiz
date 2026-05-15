@@ -1,10 +1,13 @@
 package com.unitbv.myquiz.app.controller;
 
 import com.unitbv.myquiz.api.dto.*;
+import com.unitbv.myquiz.api.dto.AuthorUpsertDto;
 import com.unitbv.myquiz.api.interfaces.AuthorApi;
 import com.unitbv.myquiz.api.settings.ControllerSettings;
 import com.unitbv.myquiz.app.services.AuthorService;
-import com.unitbv.myquiz.app.services.QuizAuthorService;
+import com.unitbv.myquiz.app.services.CourseService;
+import com.unitbv.myquiz.app.services.QuestionBankAuthorService;
+import com.unitbv.myquiz.app.services.QuestionBankService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -24,13 +27,15 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/authors")
 @CrossOrigin(origins = "${FRONTEND_URL}")
-@Tag(name = "Authors", description = "Author management operations - Manage quiz authors and their contributions")
+@Tag(name = "Authors", description = "Author management operations - Manage questionBank authors and their contributions")
 public class AuthorController implements AuthorApi {
 
     private static final Logger log = LoggerFactory.getLogger(AuthorController.class);
 
     private final AuthorService authorService;
-    private final QuizAuthorService quizAuthorService;
+    private final QuestionBankAuthorService questionBankAuthorService;
+    private final QuestionBankService questionBankService;
+    private final CourseService courseService;
 
     @Override
     public ResponseEntity<List<AuthorDto>> getAllAuthors() {
@@ -48,18 +53,17 @@ public class AuthorController implements AuthorApi {
     }
 
     @Override
-    public ResponseEntity<AuthorDto> createAuthor(@RequestBody AuthorDto authorDto) {
-        log.info("Creating new author: {}", authorDto.getName());
-        AuthorDto dto = authorService.saveAuthorDto(authorDto);
+    public ResponseEntity<AuthorDto> createAuthor(@RequestBody AuthorUpsertDto authorUpsertDto) {
+        log.info("Creating new author: {}", authorUpsertDto.getName());
+        AuthorDto dto = authorService.saveAuthorDto(authorUpsertDto.toAuthorDto(null));
         return ResponseEntity.status(201).body(dto);
     }
 
     @Override
-    public ResponseEntity<AuthorDto> updateAuthor(Long id, @RequestBody AuthorDto authorDto) {
+    public ResponseEntity<AuthorDto> updateAuthor(Long id, @RequestBody AuthorUpsertDto authorUpsertDto) {
         log.info("Updating author id: {}", id);
-        authorDto.setId(id);
-        AuthorDto existingAuthorDto = authorService.saveAuthorDto(authorDto);
-        return ResponseEntity.ok(existingAuthorDto);
+        AuthorDto dto = authorService.saveAuthorDto(authorUpsertDto.toAuthorDto(id));
+        return ResponseEntity.ok(dto);
     }
 
     @Override
@@ -72,63 +76,77 @@ public class AuthorController implements AuthorApi {
     }
 
     @Override
-    public ResponseEntity<AuthorFilterDto> listAuthors(@RequestBody AuthorFilterInputDto filterInput) {
+    public ResponseEntity<AuthorFilterResponseDto> listAuthors(@RequestBody AuthorFilterRequestDto filterInput) {
         log.info("AuthorController.listAuthors - filter authors, {}", filterInput);
-        AuthorFilterDto authorFilterDto = new AuthorFilterDto();
-        List<String> courses = authorService.getCourseNames();
+        AuthorFilterResponseDto authorFilterDto = new AuthorFilterResponseDto();
+        List<CourseInfo> courses = courseService.getAllCourses().stream().map(CourseInfo::from).toList();
         log.info("Available courses: {}", courses);
 
-        // Use getFirst() for better readability
-        String selectedCourse = courses.stream().findFirst().orElse("");
-        Object requestCourse = filterInput.getCourse();
-        if (requestCourse != null) {
-            selectedCourse = requestCourse.toString();
+        Long selectedCourseId = filterInput.getCourseId();
+        String selectedCourse = null;
+        if (selectedCourseId != null) {
+            selectedCourse = courseService.getCourseName(selectedCourseId);
+        } else if (filterInput.getCourse() != null) {
+            selectedCourse = filterInput.getCourse();
+            String selectedCourseName = selectedCourse;
+            selectedCourseId = courses.stream()
+                    .filter(c -> c.getName() != null && c.getName().equalsIgnoreCase(selectedCourseName))
+                    .map(CourseInfo::getId)
+                    .findFirst()
+                    .orElse(null);
         }
 
-        List<AuthorDto> authorDtos = new ArrayList<>();
         int pageNo = filterInput.getPage() != null ? filterInput.getPage() : 1;
         int pageSize = filterInput.getPageSize() != null ? filterInput.getPageSize() : ControllerSettings.PAGE_SIZE;
-        log.info("Selected course: {}, page {}, pageSize {}", selectedCourse, pageNo, pageSize);
+        Long questionBankId = filterInput.getQuestionBankId();
+        log.info("Selected courseId: {}, selected course: {}, questionBankId: {}, page {}, pageSize {}", selectedCourseId, selectedCourse, questionBankId, pageNo, pageSize);
 
-        Page<AuthorDto> page = authorService.findPaginatedFiltered(selectedCourse, filterInput.getAuthorId(), pageNo, pageSize, "name", "desc");
-        log.info("Found {} authors for course {}", page.getTotalElements(), selectedCourse);
-        String finalSelectedCourse = selectedCourse;
-        page.getContent().forEach(authorDto -> authorDtos.add(
-                authorService.getAuthorDTO(authorDto.getId(), finalSelectedCourse)));
+        Page<AuthorDto> page = authorService.findPaginatedFiltered(selectedCourse, filterInput.getAuthorId(), questionBankId, pageNo, pageSize, "name", "desc");
+        log.info("Found {} authors for course {} and questionBankId {}", page.getTotalElements(), selectedCourse, questionBankId);
+        List<AuthorDto> authorDtos = page.getContent();
 
         log.info("Prepared {} author DTOs for response", authorDtos.size());
 
-        List<AuthorInfo> authorList = quizAuthorService.getAuthorDtosByCourse(selectedCourse);
+        List<AuthorInfo> authorList = questionBankAuthorService.getAuthorDtosByCourse(selectedCourse);
 
-        authorFilterDto.setPageNo(pageNo);
+        // Get question banks list for the selected course
+        List<QuestionBankInfo> questionBanks = new ArrayList<>();
+        if (selectedCourse != null && !selectedCourse.isEmpty()) {
+            questionBanks = questionBankService.getQuestionBankInfoByCourse(selectedCourse);
+        }
+
+        authorFilterDto.setPage(pageNo);
         authorFilterDto.setAuthors(authorDtos);
-        authorFilterDto.setAuthorList(authorList);
+        authorFilterDto.setAuthorOptions(authorList);
         authorFilterDto.setCourses(courses);
         authorFilterDto.setSelectedCourse(selectedCourse);
-        authorFilterDto.setTotalItems(page.getTotalElements());
+        authorFilterDto.setSelectedCourseId(selectedCourseId);
+        authorFilterDto.setQuestionBanks(questionBanks);
+        authorFilterDto.setSelectedQuestionBankId(questionBankId);
+        authorFilterDto.setTotalElements(page.getTotalElements());
         authorFilterDto.setTotalPages(page.getTotalPages());
 
         return ResponseEntity.ok(authorFilterDto);
     }
 
     @Override
-    public ResponseEntity<AuthorDataDto> getQuestionsForAuthorName(@PathVariable String authorName) {
+    public ResponseEntity<AuthorFormDataDto> getQuestionsForAuthorName(@PathVariable String authorName) {
         log.info("AuthorController.getQuestions - authorName={}", authorName);
         AuthorDto author = authorService.getAuthorByName(authorName);
         if (author == null) return ResponseEntity.notFound().build();
-        AuthorDataDto authorDataDto = authorService.prepareAuthorData(author.getName());
+        AuthorFormDataDto authorDataDto = authorService.prepareAuthorData(author.getName());
         return ResponseEntity.ok(authorDataDto);
     }
 
     @Override
-    public ResponseEntity<AuthorDataDto> getQuestionsForAuthorId(@PathVariable Long authorId) {
+    public ResponseEntity<AuthorFormDataDto> getQuestionsForAuthorId(@PathVariable Long authorId) {
         log.info("AuthorController.getQuestions - authorId={}", authorId);
         AuthorDto authorDto = authorService.getAuthorById(authorId);
         log.info("AuthorController.getQuestions - author={}", authorDto);
         if (authorDto == null) {
             return ResponseEntity.notFound().build();
         }
-        AuthorDataDto authorDataDto = authorService.prepareAuthorData(authorDto.getName());
+        AuthorFormDataDto authorDataDto = authorService.prepareAuthorData(authorDto.getName());
         return ResponseEntity.ok(authorDataDto);
     }
 
@@ -149,7 +167,7 @@ public class AuthorController implements AuthorApi {
     @GetMapping("/{id}/details")
     @Operation(
         summary = "Get Author Details",
-        description = "Retrieve comprehensive information about an author including questions, quizzes, and statistics"
+        description = "Retrieve comprehensive information about an author including questions, questionBanks, and statistics"
     )
     @ApiResponses(value = {
         @ApiResponse(responseCode = "200", description = "Author details retrieved successfully"),
@@ -166,3 +184,4 @@ public class AuthorController implements AuthorApi {
     }
 
 }
+

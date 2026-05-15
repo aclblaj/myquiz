@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Access Denied - MyQuiz</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+    <style>
+        .error-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 60vh;
+            padding: 2rem;
+            text-align: center;
+        }
+        .error-icon {
+            font-size: 5rem;
+            margin-bottom: 1rem;
+        }
+        .error-title {
+            font-size: 2.5rem;
+            color: #d32f2f;
+            margin-bottom: 1rem;
+        }
+        .error-code {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 1.5rem;
+        }
+        .error-message {
+            font-size: 1.1rem;
+            color: #333;
+            margin-bottom: 2rem;
+            max-width: 600px;
+        }
+        .error-actions {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+    </style>
+</head>
+<body>
+    <div th:insert="~{fragments::menu}"></div>
+
+    <div class="error-container">
+        <div class="error-icon">🚫</div>
+        <h1 class="error-title">Access Denied</h1>
+        <p class="error-code">Error 403 - Forbidden</p>
+        <p class="error-message">
+            You don't have permission to access this resource.
+            If you believe this is an error, please contact your system administrator.
+        </p>
+        <div class="error-actions">
+            <a th:href="@{/}" class="btn btn-outline">↩️ Return to Home</a>
+            <a th:href="@{/help}" class="btn btn-info">❓ Get Help</a>
+        </div>
+    </div>
+</body>
+</html>

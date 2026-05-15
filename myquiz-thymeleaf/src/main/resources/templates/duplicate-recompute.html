@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Duplicate Management</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+
+<div th:insert="~{fragments::menu}"></div>
+
+<div class="container mt-3 list-page-compact">
+    <h2 class="list-page-title">Duplicate Comparison &amp; Management</h2>
+
+    <!-- Success/Error Messages -->
+    <div th:if="${message != null}" class="list-success-message" th:text="${message}"></div>
+    <div th:if="${errorMessage != null}" class="list-error-message" th:text="${errorMessage}"></div>
+
+    <!-- Main Control Panel -->
+    <div class="form-container mt-3">
+        <h3>Compare &amp; Manage Duplicates</h3>
+
+        <form id="duplicateForm" method="post" th:action="@{/duplicate-management/recompute}" class="form-fields">
+
+            <!-- Hidden scope action (for auto-cascade submit) -->
+            <input type="hidden" id="hiddenAction" name="action" value="loadCascade"/>
+
+            <!-- Course Selection -->
+            <div class="form-field">
+                <label for="courseSelect">1. Select Course:</label>
+                <select id="courseSelect" name="courseId" class="searchfilter-select"
+                        onchange="onCourseChange(this)">
+                    <option value="">-- Select a course --</option>
+                    <option th:each="course : ${courses}"
+                            th:value="${course.id}"
+                            th:text="${course.course}"
+                            th:selected="${course.id == selectedCourseId}"></option>
+                </select>
+            </div>
+
+            <!-- Question Bank Selection (shown after course is selected) -->
+            <div class="form-field" th:if="${selectedCourseId != null}">
+                <label for="questionBankSelect">2. Select Question Bank <span class="form-optional">(optional – narrows scope)</span>:</label>
+                <select id="questionBankSelect" name="questionBankId" class="searchfilter-select"
+                        onchange="onQuestionBankChange(this)">
+                    <option value="">-- All question banks --</option>
+                    <option th:each="qb : ${questionBanks}"
+                            th:value="${qb.id}"
+                            th:text="${qb.name}"
+                            th:selected="${qb.id == selectedQuestionBankId}"></option>
+                </select>
+            </div>
+
+            <!-- Author Selection (shown after question bank is selected) -->
+            <div class="form-field" th:if="${selectedQuestionBankId != null}">
+                <label for="authorSelect">3. Select Author <span class="form-optional">(optional – narrows scope further)</span>:</label>
+                <select id="authorSelect" name="authorId" class="searchfilter-select">
+                    <option value="">-- All authors --</option>
+                    <option th:each="author : ${questionBankAuthors}"
+                            th:value="${author.id}"
+                            th:text="${author.name}"
+                            th:selected="${author.id == selectedAuthorId}"></option>
+                </select>
+            </div>
+
+            <!-- Scope indicator -->
+            <div class="form-field scope-indicator" th:if="${selectedCourseId != null}">
+                <span class="scope-label">🎯 Computation scope: </span>
+                <span th:if="${selectedAuthorId != null}" th:text="'Author #' + ${selectedAuthorId} + ' in Question Bank #' + ${selectedQuestionBankId}"></span>
+                <span th:if="${selectedAuthorId == null and selectedQuestionBankId != null}" th:text="'Question Bank #' + ${selectedQuestionBankId}"></span>
+                <span th:if="${selectedAuthorId == null and selectedQuestionBankId == null}" th:text="'Full course #' + ${selectedCourseId}"></span>
+            </div>
+
+            <!-- Strategy Selection -->
+            <div class="form-field">
+                <label for="strategySelect">Comparison Strategy:</label>
+                <select id="strategySelect" name="strategy" required class="searchfilter-select">
+                    <option value="levenshtein" th:selected="${selectedStrategy == 'levenshtein'}">
+                        🔤 Levenshtein Distance - Allows small variations
+                    </option>
+                    <option value="jaro-winkler" th:selected="${selectedStrategy == 'jaro-winkler'}">
+                        ⚖️ Jaro-Winkler - Advanced similarity with prefix weighting
+                    </option>
+                    <option value="string-equality" th:selected="${selectedStrategy == 'string-equality'}">
+                        ✓ Exact Match - Requires exact text match (case-insensitive)
+                    </option>
+                </select>
+                <small class="form-hint">
+                    Levenshtein: Most lenient, finds variations<br>
+                    Jaro-Winkler: Balanced, good for typos<br>
+                    Exact Match: Strictest, only exact matches
+                </small>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="form-actions">
+                <button type="button" class="btn btn-new"
+                        th:disabled="${selectedCourseId == null}"
+                        onclick="submitWithAction('recompute')">
+                    🔄 Run Duplicate Recompute
+                </button>
+                <button type="button" class="btn btn-info"
+                        th:disabled="${selectedCourseId == null}"
+                        onclick="submitWithAction('statistics')">
+                    📊 View Statistics
+                </button>
+                <button type="button" class="btn btn-delete"
+                        th:disabled="${selectedCourseId == null}"
+                        onclick="confirmAndClear()">
+                    🗑️ Clear All Duplicates
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Recompute Results -->
+    <div th:if="${recomputeResult != null}" class="form-container mt-3">
+        <h3>📈 Recompute Results</h3>
+        <div class="recompute-feedback-box">
+            <div class="recompute-feedback-header">🔄 Duplicate Recompute Completed</div>
+            <div class="recompute-feedback-grid">
+                <div class="recompute-feedback-item">
+                    <div class="recompute-feedback-key">Course</div>
+                    <div class="recompute-feedback-value" th:text="${recomputeResult.courseName}"></div>
+                </div>
+                <div class="recompute-feedback-item">
+                    <div class="recompute-feedback-key">Total Questions</div>
+                    <div class="recompute-feedback-value" th:text="${recomputeResult.totalQuestions}"></div>
+                </div>
+                <div class="recompute-feedback-item">
+                    <div class="recompute-feedback-key">Multichoice Questions</div>
+                    <div class="recompute-feedback-value" th:text="${recomputeResult.multichoiceQuestions}"></div>
+                </div>
+                <div class="recompute-feedback-item">
+                    <div class="recompute-feedback-key">True/False Questions</div>
+                    <div class="recompute-feedback-value" th:text="${recomputeResult.truefalseQuestions}"></div>
+                </div>
+                <div class="recompute-feedback-item">
+                    <div class="recompute-feedback-key">Duplicate Links Removed</div>
+                    <div class="recompute-feedback-value" th:text="${recomputeResult.duplicateLinksRemoved}"></div>
+                </div>
+                <div class="recompute-feedback-item">
+                    <div class="recompute-feedback-key">Duplicate Errors Removed</div>
+                    <div class="recompute-feedback-value" th:text="${recomputeResult.duplicateErrorsRemoved}"></div>
+                </div>
+                <div class="recompute-feedback-item">
+                    <div class="recompute-feedback-key">Duplicate Errors Created</div>
+                    <div class="recompute-feedback-value" th:text="${recomputeResult.duplicateErrorsCreated}"></div>
+                </div>
+                <div class="recompute-feedback-item">
+                    <div class="recompute-feedback-key">Duration</div>
+                    <div class="recompute-feedback-value" th:text="${recomputeResult.durationMs + ' ms'}"></div>
+                </div>
+                <div class="recompute-feedback-item">
+                    <div class="recompute-feedback-key">Started At</div>
+                    <div class="recompute-feedback-value" th:text="${#temporals.format(recomputeResult.startedAt, 'yyyy-MM-dd HH:mm:ss')}"></div>
+                </div>
+                <div class="recompute-feedback-item">
+                    <div class="recompute-feedback-key">Ended At</div>
+                    <div class="recompute-feedback-value" th:text="${#temporals.format(recomputeResult.endedAt, 'yyyy-MM-dd HH:mm:ss')}"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Duplicate Statistics -->
+    <div th:if="${statistics != null}" class="form-container mt-3">
+        <h3>📊 Duplicate Statistics</h3>
+        <div class="statistics-box">
+            <div class="statistics-item">
+                <div class="statistics-label">Course Name</div>
+                <div class="statistics-value" th:text="${statistics.courseName}"></div>
+            </div>
+            <div class="statistics-item">
+                <div class="statistics-label">Total Questions</div>
+                <div class="statistics-value" th:text="${statistics.totalQuestions}"></div>
+            </div>
+            <div class="statistics-item">
+                <div class="statistics-label">Questions with Duplicate Errors</div>
+                <div class="statistics-value" th:text="${statistics.questionsWithDuplicateErrors}"></div>
+            </div>
+            <div class="statistics-item">
+                <div class="statistics-label">Total Duplicate Links</div>
+                <div class="statistics-value" th:text="${statistics.duplicateLinks}"></div>
+            </div>
+            <div th:if="${statistics.totalQuestions > 0}" class="statistics-item">
+                <div class="statistics-label">Duplicate Error Percentage</div>
+                <div class="statistics-value"
+                     th:text="${#numbers.formatDecimal(statistics.questionsWithDuplicateErrors * 100.0 / statistics.totalQuestions, 1, 2) + '%'}"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clear Result -->
+    <div th:if="${clearResult != null}" class="form-container mt-3">
+        <h3>🗑️ Clear Duplicates Result</h3>
+        <div class="result-box">
+            <div class="result-message">
+                <span th:text="${'Cleared ' + clearResult + ' duplicate links'}"></span>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    function onCourseChange(select) {
+        // Reset dependent dropdowns and cascade-load question banks
+        const form = document.getElementById('duplicateForm');
+        const qbSelect = document.getElementById('questionBankSelect');
+        if (qbSelect) qbSelect.value = '';
+        const authorSelect = document.getElementById('authorSelect');
+        if (authorSelect) authorSelect.value = '';
+        document.getElementById('hiddenAction').value = 'loadCascade';
+        form.submit();
+    }
+
+    function onQuestionBankChange(select) {
+        // Cascade-load authors for the selected question bank
+        const form = document.getElementById('duplicateForm');
+        const authorSelect = document.getElementById('authorSelect');
+        if (authorSelect) authorSelect.value = '';
+        document.getElementById('hiddenAction').value = 'loadCascade';
+        form.submit();
+    }
+
+    function submitWithAction(action) {
+        document.getElementById('hiddenAction').value = action;
+        document.getElementById('duplicateForm').submit();
+    }
+
+    function confirmAndClear() {
+        if (confirm('Are you sure you want to clear all duplicate links for the selected scope? This action can be undone by running recompute again.')) {
+            submitWithAction('clear');
+        }
+    }
+</script>
+
+<style>
+    .form-optional {
+        font-size: 0.85em;
+        color: #888;
+        font-weight: normal;
+    }
+
+    .scope-indicator {
+        background: #e8f4fd;
+        border-left: 4px solid #007bff;
+        padding: 0.5rem 1rem;
+        border-radius: 3px;
+        margin-bottom: 0.5rem;
+    }
+
+    .scope-label {
+        font-weight: bold;
+        color: #333;
+    }
+
+    .form-hint {
+        font-size: 0.9em;
+        color: #666;
+        display: block;
+        margin-top: 0.5rem;
+        line-height: 1.4;
+    }
+
+    .statistics-box {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+        padding: 1.5rem;
+        background: #f5f5f5;
+        border-radius: 4px;
+    }
+
+    .statistics-item {
+        background: white;
+        padding: 1rem;
+        border-left: 4px solid #007bff;
+        border-radius: 3px;
+    }
+
+    .statistics-label {
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 0.5rem;
+        font-size: 0.9em;
+    }
+
+    .statistics-value {
+        font-size: 1.5em;
+        color: #007bff;
+        font-weight: bold;
+    }
+
+    .result-box {
+        background: #e8f5e9;
+        padding: 1rem;
+        border-left: 4px solid #4caf50;
+        border-radius: 3px;
+    }
+
+    .result-message {
+        color: #2e7d32;
+        font-weight: 500;
+    }
+</style>
+
+</body>
+</html>
+

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Permission Management - MyQuiz</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+    <div th:insert="~{fragments::menu}"></div>
+
+    <div class="container list-page-compact">
+        <h1 class="list-page-title">Permission Management</h1>
+
+        <div th:if="${error}" class="error-message" th:text="${error}"></div>
+
+        <div class="info-box">
+            <p>Permissions are system-defined and cannot be created or deleted.
+               They can be assigned to roles through the Role Management interface.</p>
+        </div>
+
+        <div class="table-container">
+            <table class="styled-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Permission Name</th>
+                        <th>Description</th>
+                        <th>Resource</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="permission : ${permissions}">
+                        <td th:text="${permission.id}">1</td>
+                        <td><strong th:text="${permission.name}">READ_COURSE</strong></td>
+                        <td th:text="${permission.description}">Allows viewing courses</td>
+                        <td>
+                            <span class="badge badge-resource" th:text="${permission.resource}">COURSE</span>
+                        </td>
+                        <td>
+                            <span class="badge" th:classappend="${permission.action == 'READ' ? 'badge-read' : 'badge-modify'}"
+                                  th:text="${permission.action}">READ</span>
+                        </td>
+                    </tr>
+                    <tr th:if="${permissions == null or permissions.isEmpty()}">
+                        <td colspan="5" class="list-empty-message">No permissions found</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="permissions-summary">
+            <h2>Permission Summary</h2>
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <h3>READ Permissions</h3>
+                    <p>Allow viewing and listing resources</p>
+                    <span class="count" th:text="${permissions != null ? permissions.size() : 0}">15</span>
+                </div>
+                <div class="summary-card">
+                    <h3>MODIFY Permissions</h3>
+                    <p>Allow creating, editing, and deleting resources</p>
+                    <span class="count" th:text="${permissions != null ? permissions.size() : 0}">15</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="actions">
+            <a th:href="@{/admin/roles}" class="btn btn-questions">⚙️ Manage Roles</a>
+            <a th:href="@{/}" class="btn btn-outline">↩️ Back to Home</a>
+        </div>
+    </div>
+</body>
+</html>

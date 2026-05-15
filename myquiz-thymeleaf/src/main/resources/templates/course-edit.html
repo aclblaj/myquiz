@@ -36,15 +36,11 @@
                         <input type="text" id="semester" th:field="*{semester}" class="form-input" placeholder="e.g., 1, 2" />
                     </div>
                 </div>
-                <div class="form-group">
-                    <label for="study_year" class="form-label">Study Year:</label>
-                    <input type="text" id="study_year" th:field="*{studyYear}" class="form-input" placeholder="e.g., 1, 2, 3" />
-                </div>
             </div>
 
             <div class="form-actions">
                 <button type="submit" class="btn btn-save" th:text="${course.id != null ? '💾 Update Course' : '➕ Create Course'}">Save</button>
-                <a th:href="@{'/'}" class="btn btn-cancel">❌ Cancel</a>
+                <a th:href="@{'/'}" class="btn btn-cancel">✖️ Cancel</a>
             </div>
         </form>
     </div>
