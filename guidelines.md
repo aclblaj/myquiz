@@ -2606,3 +2606,150 @@ WHERE pg_depend.deptype = 'a'
 - `data/VERIFICATION-CHECKLIST.md` - Implementation verification checklist
 
 ---
+
+## 19. Operations Runbook (Moved from README)
+
+This section is the operational source of truth. Keep `README.md` concise and place detailed run/DB troubleshooting steps here.
+
+### 19.1 Run Manually (Local Development)
+
+Because service defaults differ between modules, verify active property values before running. The commands below are a working baseline for local PostgreSQL on `localhost:5432`.
+
+**1. Initialize database once:**
+
+```powershell
+psql -U postgres -c "CREATE DATABASE myquiz;"
+psql -h localhost -p 5432 -U postgres -d myquiz -f data/init-database.sql
+```
+
+**2. Build modules from repository root:**
+
+```powershell
+mvn clean install
+```
+
+**3. Start services in separate terminals (recommended order):**
+
+```powershell
+# Terminal 1 - IAM
+cd myquiz-iam
+$env:SPRING_DATASOURCE_URL="jdbc:postgresql://localhost:5432/myquiz"
+$env:SPRING_DATASOURCE_USERNAME="myquiz_user"
+$env:SPRING_DATASOURCE_PASSWORD="myquiz_password"
+$env:IAM_PORT="8888"
+mvn spring-boot:run
+```
+
+```powershell
+# Terminal 2 - Auth
+cd myquiz-auth
+$env:SPRING_DATASOURCE_URL="jdbc:postgresql://localhost:5432/myquiz"
+$env:SPRING_DATASOURCE_USERNAME="myquiz_user"
+$env:SPRING_DATASOURCE_PASSWORD="myquiz_password"
+$env:AUTH_PORT="8090"
+$env:MYQUIZ_API_BASE_URL="http://localhost:8888/api"
+mvn spring-boot:run
+```
+
+```powershell
+# Terminal 3 - App API
+cd myquiz-app
+$env:SPRING_DATASOURCE_URL="jdbc:postgresql://localhost:5432/myquiz"
+$env:SPRING_DATASOURCE_USERNAME="myquiz_user"
+$env:SPRING_DATASOURCE_PASSWORD="myquiz_password"
+$env:SERVER_PORT="8082"
+mvn spring-boot:run
+```
+
+```powershell
+# Terminal 4 - Thymeleaf UI
+cd myquiz-thymeleaf
+$env:SERVER_PORT="8080"
+$env:MYQUIZ_API_BASE_URL="http://localhost:8082/api"
+$env:AUTH_API_URL="http://localhost:8090/api/auth"
+mvn spring-boot:run
+```
+
+**4. Verify access:**
+- UI: `http://localhost:8080`
+- API: `http://localhost:8082/api`
+- Swagger: `http://localhost:8082/swagger-ui.html`
+
+### 19.2 Run with Docker
+
+In this repository, core services are in the `dev` profile.
+
+```powershell
+mvn clean install
+docker-compose --profile dev up -d --build
+```
+
+**Notes:**
+- `data/init-database.sql` runs automatically on first container startup (empty volume).
+- To force re-initialization: `docker-compose down -v` then start again.
+- Host ports: UI `8080`, API `8082`, DB `5433`, Adminer `8083`.
+
+Useful commands:
+
+```powershell
+docker-compose --profile dev ps
+docker-compose logs -f myquiz-app
+docker exec -it myquiz-postgres psql -U myquiz_user -d myquiz
+docker-compose down
+```
+
+### 19.3 SQL Scripts and When to Use Them
+
+Current scripts in `data/`:
+
+- `data/init-database.sql` - Initial schema/roles/admin setup for a clean DB.
+- `data/test-data/insert-dummy-courses.sql` - Optional sample courses.
+- `data/test-data/insert-dummy-quizzes.sql` - Optional sample quizzes.
+- `data/verification/verify-role-permission-system.sql` - Verifies RBAC wiring.
+- `data/verification/verify-extended-statistics-permission.sql` - Verifies statistics permission setup.
+- `data/verification/fix-admin-password.sql` - Resets/repairs admin password state.
+- `data/fix-study-year-constraint.sql` - Repairs study-year DB constraint.
+
+Example script execution (host DB connection):
+
+```powershell
+psql -h localhost -p 5433 -U myquiz_user -d myquiz -f data/verification/verify-role-permission-system.sql
+```
+
+Example script execution (inside Docker container):
+
+```powershell
+Get-Content data\verification\verify-role-permission-system.sql | docker exec -i myquiz-postgres psql -U myquiz_user -d myquiz
+```
+
+### 19.4 Ollama (Optional AI Integration)
+
+- Run Ollama on the host machine (`http://localhost:11434`).
+- Start stack with AI-enabled configuration:
+
+```powershell
+docker-compose --profile dev --profile ai up -d
+```
+
+- Quick checks:
+
+```powershell
+curl http://localhost:11434/api/tags
+curl http://localhost:8082/api/ollama/status
+```
+
+### 19.5 Common Operations Issues
+
+**Issue: Core services are not reachable after `docker-compose up`**
+- Cause: `dev` profile was not enabled.
+- Fix: `docker-compose --profile dev up -d --build`.
+
+**Issue: DB scripts seem ignored in Docker**
+- Cause: initialization scripts only run when the PostgreSQL volume is empty.
+- Fix: `docker-compose down -v` and start again.
+
+**Issue: Manual run fails with connection to `postgres:5432`**
+- Cause: some modules default to Docker hostnames.
+- Fix: set `SPRING_DATASOURCE_URL` to `jdbc:postgresql://localhost:5432/myquiz` before `mvn spring-boot:run`.
+
+
