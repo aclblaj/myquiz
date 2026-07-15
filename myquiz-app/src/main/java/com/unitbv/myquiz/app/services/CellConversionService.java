@@ -354,13 +354,16 @@ public class CellConversionService {
     }
 
     /**
-     * Remove answer enumerations (A., B., 1., 2., etc.).
+     * Remove standalone answer enumerations (A., B., 1., 2., (A), (1), etc.)
+     * only when they appear as list prefixes (start of text or after whitespace).
+     * This avoids altering abbreviations inside multi-character parentheses, e.g. (SA), (LOC).
      */
     private String removeEnumerations(String text) {
         if (text == null || text.isEmpty()) {
             return "";
         }
-        return text.replaceAll("[A-Da-d1-4]\\.|[A-Da-d1-4]\\)", "");
+
+        return text.replaceAll("(^|\\s)\\(?[A-Da-d1-4][\\.)](?=\\s|$)", "$1");
     }
 
     /**

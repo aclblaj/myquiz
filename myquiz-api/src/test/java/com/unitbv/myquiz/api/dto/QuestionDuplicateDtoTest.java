@@ -25,8 +25,9 @@ class QuestionDuplicateDtoTest {
         dto.setType(QuestionType.MULTICHOICE);
         dto.setCourse("RC");
         dto.setQuestionBankName("Quiz 1");
-        dto.setAuthorName("Author 1");
+        dto.setAuthor(AuthorInfo.builder().id(1L).name("Author 1").initials("A1").build());
         dto.setRow(7);
+        dto.setCause("Title: 'test' found as substring into 'test extended'");
 
         String json = objectMapper.writeValueAsString(dto);
 
@@ -35,6 +36,7 @@ class QuestionDuplicateDtoTest {
         assertTrue(json.contains("\"response2\":\"A2\""));
         assertTrue(json.contains("\"response3\":\"A3\""));
         assertTrue(json.contains("\"response4\":\"A4\""));
+        assertTrue(json.contains("\"cause\":\"Title: 'test' found as substring into 'test extended'\""));
     }
 
     @Test
@@ -42,9 +44,10 @@ class QuestionDuplicateDtoTest {
         QuestionDuplicateDto dto = new QuestionDuplicateDto();
         dto.setType(QuestionType.TRUEFALSE);
         dto.setResponse1("TRUE");
+        dto.setCause("Text: 'test' found as substring into 'test extended'");
 
         assertEquals(QuestionType.TRUEFALSE, dto.getType());
         assertEquals("TRUE", dto.getResponse1());
+        assertEquals("Text: 'test' found as substring into 'test extended'", dto.getCause());
     }
 }
-

@@ -32,14 +32,14 @@ public enum DuplicateComparisonStrategy {
 
     public static DuplicateComparisonStrategy fromAlgorithmName(String algorithmName) {
         if (algorithmName == null) {
-            return LEVENSHTEIN;
+            return STRING_EQUALITY;
         }
         for (DuplicateComparisonStrategy strategy : values()) {
             if (strategy.algorithmName.equalsIgnoreCase(algorithmName)) {
                 return strategy;
             }
         }
-        return LEVENSHTEIN;
+        return STRING_EQUALITY;
     }
 }
 

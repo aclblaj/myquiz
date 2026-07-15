@@ -7,7 +7,7 @@
 </head>
 <body>
 
-<div th:insert="~{fragments::menu}"></div>
+<div th:insert="~{fragments/navigation::menu}"></div>
 
 <div class="container mt-3">
     <h2 th:text="${course.id != null ? '✏️ Edit Course: ' + course.course : '➕ Create New Course'}">Course Management</h2>
@@ -40,7 +40,7 @@
 
             <div class="form-actions">
                 <button type="submit" class="btn btn-save" th:text="${course.id != null ? '💾 Update Course' : '➕ Create Course'}">Save</button>
-                <a th:href="@{'/'}" class="btn btn-cancel">✖️ Cancel</a>
+                <a th:href="@{'/courses'}" class="btn btn-cancel">✖️ Cancel</a>
             </div>
         </form>
     </div>

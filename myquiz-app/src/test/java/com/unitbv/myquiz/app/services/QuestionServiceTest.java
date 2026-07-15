@@ -1,6 +1,5 @@
 package com.unitbv.myquiz.app.services;
 
-import com.unitbv.myquiz.api.dto.ArchiveUploadResult;
 import com.unitbv.myquiz.api.dto.CourseDto;
 import com.unitbv.myquiz.api.types.QuestionType;
 import com.unitbv.myquiz.api.types.StudyYear;
@@ -19,7 +18,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.annotation.Commit;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Propagation;
@@ -28,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.File;
 import java.net.URL;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -93,7 +92,7 @@ class QuestionServiceTest {
     CourseService courseService;
 
     @Autowired
-    UploadService uploadService;
+    FileService fileService;
 
     @Autowired
     JdbcTemplate jdbcTemplate;
@@ -513,34 +512,40 @@ class QuestionServiceTest {
         );
         logger.atInfo().addArgument(courseDto.getCourse()).log("Course created/verified: {}");
 
-        MockMultipartFile archiveMultipartFile = new MockMultipartFile(
-                "archive",
-                archiveFileName,
-                "application/zip",
-                Files.readAllBytes(archiveFile.toPath())
-        );
-
-        ArchiveUploadResult result = uploadService.processArchiveUpload(
-                archiveMultipartFile,
-                courseDto.getId(),
+        QuestionBank questionBank = questionBankService.createQuestionBank(
+                courseDto.getCourse(),
                 ServiceTestData.ARCHIVE_QUESTION_BANK,
                 StudyYear.Y2026_2027
         );
+        assertNotNull(questionBank, "QuestionBank should be created successfully");
 
-        assertNotNull(
-                result,
-                "Archive processing should return a result"
-        );
-        assertEquals(
-                ServiceTestData.ARCHIVE_QUESTION_BANK,
-                result.questionBankName(),
-                "QuestionBank name should match the requested questionBank"
-        );
-        assertTrue(
-                result.filesProcessed() >= 0,
-                "Processed files count should be non-negative"
-        );
-        logger.atInfo().addArgument(result.toMessage()).log("Archive processing completed: {}");
+        Path extractedDir = Files.createTempDirectory("myquiz-archive-test-");
+        try {
+            int extractedFiles = fileService.unzipAndRenameExcelFiles(
+                    archiveFile.toPath(),
+                    extractedDir
+            );
+            assertTrue(
+                    extractedFiles >= 0,
+                    "Extracted files count should be non-negative"
+            );
+
+            int parsedFiles = questionService.parseExcelFilesFromFolder(
+                    questionBank,
+                    extractedDir.toFile(),
+                    0
+            );
+            assertTrue(
+                    parsedFiles >= 0,
+                    "Parsed files count should be non-negative"
+            );
+            logger.atInfo()
+                  .addArgument(extractedFiles)
+                  .addArgument(parsedFiles)
+                  .log("Archive processing completed: extracted={}, parsed={}");
+        } finally {
+            fileService.removeDir(extractedDir.toString());
+        }
 
     }
 

@@ -7,7 +7,7 @@
     <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
 </head>
 <body>
-<div th:insert="~{fragments::menu}"></div>
+<div th:insert="~{fragments/navigation::menu}"></div>
 
 <div class="container list-page-compact">
     <h1 class="list-page-title">Data Management Dashboard</h1>
@@ -37,10 +37,12 @@
     <div class="form-container">
         <h3>Cleanup</h3>
         <p>Delete all questionBank/application data while keeping auth data unchanged.</p>
-        <a th:if="${menuPermissions['canCleanDatabase']}"
-           th:href="@{/admin/data/deleteall}"
-           class="btn btn-delete"
-           th:onclick="return confirm('Are you sure you want to delete all the database records?')">🗑️ Delete all</a>
+        <form th:if="${menuPermissions['canCleanDatabase']}" method="post" th:action="@{/admin/data/deleteall}">
+            <input type="hidden" th:if="${_csrf != null}"
+                   th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <button type="submit" class="btn btn-delete"
+                    onclick="return confirm('Are you sure you want to delete all the database records?')">🗑️ Delete all</button>
+        </form>
         <p th:if="${!menuPermissions['canCleanDatabase']}" class="list-empty-message">You do not have permission to run cleanup.</p>
     </div>
 </div>

@@ -73,7 +73,7 @@ public class QuestionCorrectionDto {
         copy.setText(src.getText());
         copy.setAnswerReferenceText(src.getAnswerReferenceText());
         copy.setChapter(src.getChapter());
-        copy.setAuthorName(src.getAuthorName());
+        copy.setAuthor(src.getAuthor());
         copy.setCourse(src.getCourse());
         copy.setQuestionBankName(src.getQuestionBankName());
         copy.setType(src.getType());

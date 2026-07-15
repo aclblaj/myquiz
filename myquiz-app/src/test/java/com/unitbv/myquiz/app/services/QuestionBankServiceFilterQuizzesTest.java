@@ -5,6 +5,7 @@ import com.unitbv.myquiz.api.dto.QuestionBankFilterResponseDto;
 import com.unitbv.myquiz.api.types.StudyYear;
 import com.unitbv.myquiz.app.entities.Course;
 import com.unitbv.myquiz.app.entities.QuestionBank;
+import com.unitbv.myquiz.app.mapper.QuestionDuplicateMapper;
 import com.unitbv.myquiz.app.mapper.QuestionMapper;
 import com.unitbv.myquiz.app.repositories.AuthorRepository;
 import com.unitbv.myquiz.app.repositories.QuestionBankAuthorRepository;
@@ -50,6 +51,8 @@ class QuestionBankServiceFilterQuizzesTest {
     @Mock
     private QuestionMapper questionMapper;
     @Mock
+    private QuestionDuplicateMapper questionDuplicateMapper;
+    @Mock
     private QuestionDuplicationService questionDuplicationService;
 
     private QuestionBankService questionBankService;
@@ -57,8 +60,8 @@ class QuestionBankServiceFilterQuizzesTest {
     @BeforeEach
     void setUp() {
         questionBankService = new QuestionBankService(
-                questionBankRepository, questionBankAuthorRepository, questionRepository, questionErrorRepository, authorRepository, courseService,
-                                                      questionMapper
+                questionBankRepository, questionBankAuthorRepository, questionRepository, questionErrorRepository, questionDuplicateRepository, authorRepository, courseService,
+                                                      questionMapper, questionDuplicateMapper
         );
     }
 

@@ -44,6 +44,14 @@ public final class MyUtil {
     public static final String ERROR_WRONG_FILE_TYPE = "Wrong file type";
     public static final String USER_NAME_NOT_DETECTED = "Max Mustermann";
 
+    public static boolean isDuplicateValidationError(String description) {
+        if (description == null || description.isBlank()) {
+            return false;
+        }
+        return description.startsWith(REFORMULATE_QUESTION_TITLE_ALREADY_EXISTS)
+                || description.startsWith(REFORMULATE_QUESTION_ANSWER_ALREADY_EXISTS);
+    }
+
     /**
      * Private constructor to prevent instantiation of this utility class.
      */

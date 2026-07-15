@@ -80,7 +80,11 @@ public class OllamaService {
                 throw new RuntimeException("Ollama API returned error: " + response.statusCode());
             }
 
-        } catch (IOException | InterruptedException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            logger.error("Ollama API call interrupted", e);
+            throw new RuntimeException("Failed to call Ollama API", e);
+        } catch (IOException e) {
             logger.error("Error calling Ollama API", e);
             throw new RuntimeException("Failed to call Ollama API", e);
         }

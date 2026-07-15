@@ -1,6 +1,7 @@
 package com.unitbv.myquiz.app.controller;
 
 import com.unitbv.myquiz.api.interfaces.SystemApi;
+import com.unitbv.myquiz.api.settings.ControllerSettings;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,14 +32,6 @@ import java.util.Optional;
 public class SystemController implements SystemApi {
     private static final Logger logger = LoggerFactory.getLogger(SystemController.class);
 
-    private static final String STATUS_KEY = "status";
-    private static final String TIMESTAMP_KEY = "timestamp";
-    private static final String ERROR_KEY = "error";
-    private static final String UP = "UP";
-    private static final String DOWN = "DOWN";
-    private static final String SERVICE_KEY = "service";
-    private static final String MYQUIZ_APP = "myquiz-app";
-
     private final Optional<DataSource> dataSource;
     private final Optional<BuildProperties> buildProperties;
 
@@ -48,16 +41,16 @@ public class SystemController implements SystemApi {
         Map<String, Object> response = new HashMap<>();
 
         try {
-            response.put(STATUS_KEY, UP);
-            response.put(SERVICE_KEY, MYQUIZ_APP);
-            response.put(TIMESTAMP_KEY, OffsetDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+            response.put(ControllerSettings.STATUS_KEY, ControllerSettings.UP);
+            response.put(ControllerSettings.SERVICE_KEY, "myquiz-app");
+            response.put(ControllerSettings.TIMESTAMP_KEY, OffsetDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
             response.put("application", "myquiz");
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error during health check", e);
-            response.put(STATUS_KEY, DOWN);
-            response.put(ERROR_KEY, e.getMessage());
+            response.put(ControllerSettings.STATUS_KEY, ControllerSettings.DOWN);
+            response.put(ControllerSettings.ERROR_KEY, e.getMessage());
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
         }
     }
@@ -68,8 +61,8 @@ public class SystemController implements SystemApi {
         Map<String, Object> response = new HashMap<>();
 
         try {
-            response.put(TIMESTAMP_KEY, OffsetDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
-            response.put(SERVICE_KEY, MYQUIZ_APP);
+            response.put(ControllerSettings.TIMESTAMP_KEY, OffsetDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+            response.put(ControllerSettings.SERVICE_KEY, "myquiz-app");
             response.put("javaVersion", System.getProperty("java.version"));
             response.put("osName", System.getProperty("os.name"));
             response.put("osVersion", System.getProperty("os.version"));
@@ -84,7 +77,7 @@ public class SystemController implements SystemApi {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error retrieving system info", e);
-            response.put(ERROR_KEY, e.getMessage());
+            response.put(ControllerSettings.ERROR_KEY, e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
@@ -97,7 +90,7 @@ public class SystemController implements SystemApi {
         try {
             if (dataSource.isEmpty()) {
                 logger.debug("DataSource not configured");
-                response.put(STATUS_KEY, "UNAVAILABLE");
+                response.put(ControllerSettings.STATUS_KEY, "UNAVAILABLE");
                 response.put("message", "DataSource not configured");
                 return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
             }
@@ -105,22 +98,22 @@ public class SystemController implements SystemApi {
             // Try to get a connection to verify database connectivity
             try (var connection = dataSource.get().getConnection()) {
                 if (connection != null && !connection.isClosed()) {
-                    response.put(STATUS_KEY, UP);
+                    response.put(ControllerSettings.STATUS_KEY, ControllerSettings.UP);
                     response.put("databaseProductName", connection.getMetaData().getDatabaseProductName());
                     response.put("databaseVersion", connection.getMetaData().getDatabaseMajorVersion() + "." + connection.getMetaData().getDatabaseMinorVersion());
-                    response.put(TIMESTAMP_KEY, OffsetDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+                    response.put(ControllerSettings.TIMESTAMP_KEY, OffsetDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
                     return ResponseEntity.ok(response);
                 }
             }
 
-            response.put(STATUS_KEY, DOWN);
-            response.put(ERROR_KEY, "Failed to establish database connection");
+            response.put(ControllerSettings.STATUS_KEY, ControllerSettings.DOWN);
+            response.put(ControllerSettings.ERROR_KEY, "Failed to establish database connection");
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
 
         } catch (Exception e) {
             logger.error("Error checking database status", e);
-            response.put(STATUS_KEY, DOWN);
-            response.put(ERROR_KEY, e.getMessage());
+            response.put(ControllerSettings.STATUS_KEY, ControllerSettings.DOWN);
+            response.put(ControllerSettings.ERROR_KEY, e.getMessage());
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(response);
         }
     }
@@ -148,18 +141,19 @@ public class SystemController implements SystemApi {
             memoryMetrics.put("nonHeapCommitted", nonHeapMemoryUsage.getCommitted());
 
             response.put("memory", memoryMetrics);
-            response.put(TIMESTAMP_KEY, OffsetDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+            response.put(ControllerSettings.TIMESTAMP_KEY, OffsetDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
             response.put("uptime", ManagementFactory.getRuntimeMXBean().getUptime());
             response.put("processorCount", Runtime.getRuntime().availableProcessors());
 
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error retrieving metrics", e);
-            response.put(ERROR_KEY, e.getMessage());
+            response.put(ControllerSettings.ERROR_KEY, e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }
 }
+
 
 
 

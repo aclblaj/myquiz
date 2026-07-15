@@ -1,175 +1,99 @@
-# Question Duplication Detection and Validation
-
+﻿# Duplicate Management Software Design
 ## 1. Overview
-
-This document defines how duplicate detection works in MyQuiz for questions inside the same course.
-
-The current behavior compares uploaded or edited questions against existing questions already present in that course and records duplicate links and duplicate-related errors.
-
+This document defines the duplicate-management feature used to recompute, inspect, clear, and persist duplicate-analysis results.
+Duplicate management operates on question data and supports three scopes:
+- course
+- question bank
+- author within question bank/course context
 ## 2. Functional Scope
-
-- Duplicate checks run for questions that belong to a single course.
-- The comparison target is always the course dataset, not global data across all courses.
-- The service supports both MULTICHOICE and TRUEFALSE questions.
-- Duplicate recomputation clears previous duplicate links and duplicate-related errors before rebuilding them.
-
-## 3. Matching Rules
-
-### 3.1 Core Rule
-
-For every current question, candidate questions are selected from the same course and same question type.
-
-### 3.2 Self-Exclusion Rule
-
-- A question is never compared with itself.
-- The same question identifier cannot be used as both source and candidate.
-
-### 3.3 Title Rule
-
-A title is treated as duplicate when at least one of these conditions is true:
-
-- current title contains candidate title
-- candidate title contains current title
-- configured similarity metric classifies both titles as similar
-
-### 3.4 Answer Rule
-
-For multichoice answers, each normalized answer from the current question is compared against candidate answers using:
-
-- exact match
-- bidirectional substring inclusion (A contains B or B contains A)
-- configured similarity metric
-
-### 3.5 Text Rule
-
-For true/false questions, text content follows the same semantics as title comparison:
-
-- bidirectional substring inclusion
-- configurable similarity metric
-
-### 3.6 Missing Answer Rule
-
-- Multichoice requires all answer slots.
-- True/false requires a valid response value.
-- Missing required answer data creates missing-answer errors and skips duplicate matching for that question.
-
-## 4. Similarity Strategy Architecture
-
-### 4.1 Base Class
-
-Duplicate matching uses one shared base strategy class:
-
-- `AbstractQuestionSimilarityStrategy`
-
-This base class centralizes:
-
-- algorithm naming
-- threshold handling
-- generic `isSimilar` decision
-
-### 4.2 Implementations
-
-Two implementations are available:
-
-- `LevenshteinQuestionSimilarityStrategy`
-- `JaroWinklerQuestionSimilarityStrategy`
-
-### 4.3 Selection
-
-- The default algorithm is configurable with `myquiz.duplicates.similarity.algorithm`.
-- Recompute can explicitly request `levenshtein` or `jaro-winkler`.
-- If an unknown algorithm name is requested, the service falls back to `levenshtein`.
-
-## 5. Service Responsibilities
-
-Primary service:
-
-- `QuestionDuplicationService`
-
-Main responsibilities:
-
-- normalize text fields used for matching
-- compare current questions against same-course candidates
-- avoid self-comparison and duplicate pair reinsertion
-- persist duplicate links
-- create duplicate error records when matching rules are met
-- clear previous duplicate state during full recompute
-
-## 6. Data and Persistence
-
-### 6.1 Duplicate Links
-
-- Stored in `QuestionDuplicate`.
-- Links are canonicalized as lower-id to higher-id pairs to prevent mirrored duplicates.
-
-### 6.2 Error Records
-
-- Stored in `QuestionError`.
-- Duplicate prefixes are reused for title and answer duplicate messaging.
-
-### 6.3 Recompute Cleanup
-
-Before full recomputation for a course:
-
-- remove duplicate links for course question ids
-- remove duplicate-related question errors for course question ids
-- run a full duplicate rebuild by question type
-
-## 7. Integration Flows
-
-### 7.1 Upload Integration
-
-After upload parsing, duplicate detection runs for the affected course and question bank.
-
-### 7.2 Course Recompute Integration
-
-Course-level duplicate recomputation is used for maintenance and consistency checks. It can execute with the default similarity algorithm or an explicitly requested algorithm.
-
+### 2.1 Main Features
+- recompute duplicate links using a selected comparison strategy
+- view duplicate statistics for a selected scope
+- clear duplicate links and related duplicate-validation errors for a scope
+- save recompute results to persistent history
+- list and delete recompute history entries
+### 2.2 Main End-to-End Calls
+| Operation | Template | Thymeleaf Route | Backend Route | Service Entry Point |
+|---|---|---|---|---|
+| Open page | `duplicate-recompute.html` | `GET /duplicate-management` | history and lookup endpoints | `CourseService` history/lookup methods |
+| Recompute | `duplicate-recompute.html` | `POST /duplicate-management/recompute` | `POST /api/courses/recompute-with-strategy` | `CourseService.recomputeDuplicates...` |
+| Statistics | `duplicate-recompute.html` | `POST /duplicate-management/recompute` | `GET /api/courses/duplicate-statistics` | `CourseService.getDuplicateStatistics...` |
+| Clear duplicates | `duplicate-recompute.html` | `POST /duplicate-management/recompute` | `POST /api/courses/clear-duplicates` | `CourseService.clearDuplicates...` |
+| Save history | `duplicate-recompute.html` | `POST /duplicate-management/history/save` | `POST /api/courses/recompute-history` | `CourseService.saveRecomputeHistory(...)` |
+| Delete history | `duplicate-recompute.html` | `POST /duplicate-management/history/{id}/delete` | `DELETE /api/courses/recompute-history/{id}` | `CourseService.deleteRecomputeHistoryEntry(...)` |
+## 3. Architecture
+### 3.1 Main Components
+- `ThyDuplicateManagementController`
+- `CourseController` duplicate endpoints
+- `CourseService` duplicate orchestration
+- duplicate DTOs in `myquiz-api`
+- recompute-history persistence
+### 3.2 Scope Cascade Model
+The page loads scope options in a cascade:
+1. course
+2. question bank within course
+3. author within question bank
+## 4. Data Model and DTOs
+Primary contracts include:
+- `CourseDuplicateRecomputeResultDto`
+- `DuplicateStatisticsDto`
+- `DuplicateRecomputeHistoryDto`
+- lightweight course/question-bank/author lookup DTOs for filters
+## 5. Flows
+### 5.1 Recompute
+1. User selects scope and strategy.
+2. Thymeleaf posts `action=recompute`.
+3. Backend dispatches by scope to course/question-bank/author recompute logic.
+4. Existing duplicate links and duplicate-related errors in scope are cleared.
+5. Duplicate detection is rerun.
+6. Result DTO is rendered and can be saved to history.
+### 5.2 Statistics
+1. User selects scope and posts `action=statistics`.
+2. Backend returns `DuplicateStatisticsDto` for the same scope.
+3. UI renders a statistics panel without mutating data.
+### 5.3 Clear
+1. User posts `action=clear`.
+2. Backend deletes duplicate links and duplicate-validation errors for the selected scope.
+3. Cleared count is returned to the UI.
+### 5.4 History Save/Delete
+- save path serializes current result metrics into `DuplicateRecomputeHistoryDto`
+- delete path removes one persisted history record by id
+## 6. Permissions and Security
+- page access requires a valid session
+- backend authorization remains the source of truth for duplicate-management operations
+- unauthorized/forbidden API responses invalidate session and redirect to login in Thymeleaf flow
+## 7. UI, API, and Service Responsibilities
+### 7.1 Thymeleaf Layer
+- populate cascade filter model
+- dispatch action-specific requests
+- preserve scope selection across requests
+- render history, result, statistics, and clear-result sections
+### 7.2 API Layer
+- expose duplicate recompute/statistics/clear/history endpoints under course-oriented routes
+- validate required parameters such as strategy and scope anchors where needed
+### 7.3 Service Layer
+- select the correct scope-specific duplicate computation path
+- create/delete persistent recompute-history entries
+- compute duplicate counts and duplicate-error counts
 ## 8. Validation and Error Handling
-
-- Empty author list or blank course input results in safe no-op behavior and warning logs.
-- Service failures do not leave partially recomputed duplicate links when transaction boundaries are respected.
-- Duplicate pair persistence ignores already existing links.
-
-## 9. Performance Notes
-
-- Candidate normalization is cached lazily per recompute run.
-- Answer matching uses a fast exact-intersection path before similarity checks.
-- Bidirectional substring checks are retained because they are required by business rules.
-- Similarity metric checks are applied after fast paths to reduce overhead.
-
-## 10. Test Coverage Expectations
-
-The duplicate module should be covered with:
-
-- unit tests for matching behavior and self-exclusion
-- recompute tests that validate cleanup + rebuild behavior
-- integration test using existing database data to compare Levenshtein and Jaro-Winkler outcomes for one course (example `BD`)
-
-## 11. Author Operations
-
-### Create / Update
-
-Authors create or update questions through upload and editor flows. Duplicate checks run against existing course questions.
-
-### View / List
-
-Authors and admins can inspect duplicate-related errors and duplicate links in question detail/error flows.
-
-### Delete / Archive
-
-When duplicates are removed or recomputed, obsolete duplicate links and duplicate-related errors are cleaned automatically.
-
-### Permissions and Roles
-
-Duplicate management follows course and question management permissions from the auth and core security design.
-
-## 12. Related Documentation
-
-- `prompt/upload-sd.md`
+- missing or invalid scope parameters should fail fast as bad requests
+- session expiry returns the user to login
+- Thymeleaf falls back to a safe page render with error message when action processing fails
+- history deletion surfaces not-found as a user-visible message rather than silent failure
+## 9. Key Decisions
+- keep duplicate-management UI consolidated into one page with action-based posts
+- keep recompute history explicit and user-triggered rather than automatic
+- support scope narrowing from course to question bank to author for operational control
+- keep duplicate strategy user-selectable through `DuplicateComparisonStrategy`
+## 10. Implementation Notes
+- Thymeleaf controller:
+  - `myquiz-thymeleaf/src/main/java/com/unitbv/myquiz/thy/controller/ThyDuplicateManagementController.java`
+- Backend controller:
+  - `myquiz-app/src/main/java/com/unitbv/myquiz/app/controller/CourseController.java`
+- Main service:
+  - `myquiz-app/src/main/java/com/unitbv/myquiz/app/services/CourseService.java`
+- Template:
+  - `myquiz-thymeleaf/src/main/resources/templates/duplicate-recompute.html`
+Related docs:
 - `prompt/question-sd.md`
-- `prompt/author-error-sd.md`
-- `prompt/data-cleanup-sd.md`
-
-
-
+- `prompt/question-bank-sd.md`

@@ -41,7 +41,6 @@ import java.util.List;
 @Controller
 public class ThyUploadController {
     private static final Logger log = LoggerFactory.getLogger(ThyUploadController.class);
-    private static final String INVALID_STUDY_YEAR_MESSAGE = "Please select a valid study year";
     private final SessionService sessionService;
     private final RestTemplate restTemplate;
     @Value("${MYQUIZ_API_BASE_URL}")
@@ -58,22 +57,7 @@ public class ThyUploadController {
         String redirect = sessionService.validateSessionOrRedirect();
         if (redirect != null) return redirect;
 
-        Object loggedInUser = sessionService.getLoggedInUser();
-
-        String coursesUrl = apiBaseUrl + ControllerSettings.API_COURSES;
-        HttpEntity<Void> entity = sessionService.getAuthorizationHeader();
-
-        ResponseEntity<List<Object>> coursesResponse = restTemplate.exchange(
-                coursesUrl, HttpMethod.GET, entity, new ParameterizedTypeReference<>() {
-                }
-        );
-        List<Object> courses = coursesResponse.getBody();
-        model.addAttribute(ControllerSettings.ATTR_COURSES, courses);
-
-        List<String> templates = List.of(TemplateType.getAllTypesAsStringArray());
-        log.atInfo().addArgument(templates).log("Available templates: {}");
-        model.addAttribute(ControllerSettings.ATTR_TEMPLATES, templates);
-        model.addAttribute(ControllerSettings.ATTR_LOGGED_IN_USER, loggedInUser);
+        populateArchiveUploadModel(model);
         return ControllerSettings.VIEW_UPLOAD_EXCEL;
     }
 
@@ -83,7 +67,7 @@ public class ThyUploadController {
         if (redirect != null) return redirect;
 
         populateArchiveUploadModel(model);
-        return ControllerSettings.VIEW_UPLOAD_ARCHIVE_SINGLE;
+        return ControllerSettings.VIEW_UPLOAD_ARCHIVE;
     }
 
     @GetMapping("/archive-folder-form")
@@ -104,9 +88,10 @@ public class ThyUploadController {
         return ControllerSettings.VIEW_UPLOAD_XML;
     }
 
+    /**
+     * Populates upload views with common dropdown data (courses, templates, study years, logged user).
+     */
     private void populateArchiveUploadModel(Model model) {
-        Object loggedInUser = sessionService.getLoggedInUser();
-
         String coursesUrl = apiBaseUrl + ControllerSettings.API_COURSES;
         HttpEntity<Void> entity = sessionService.getAuthorizationHeader();
 
@@ -115,13 +100,13 @@ public class ThyUploadController {
                 }
         );
         List<Object> courses = coursesResponse.getBody();
-        model.addAttribute(ControllerSettings.ATTR_COURSES, courses);
-        model.addAttribute(ControllerSettings.ATTR_LOGGED_IN_USER, loggedInUser);
+        model.addAttribute(ControllerSettings.ATTR_COURSES, courses != null ? courses : List.of());
+        model.addAttribute(ControllerSettings.ATTR_LOGGED_IN_USER, sessionService.getLoggedInUser());
 
         List<String> templates = List.of(TemplateType.getAllTypesAsStringArray());
         log.atInfo().addArgument(templates).log("Available templates: {}");
         model.addAttribute(ControllerSettings.ATTR_TEMPLATES, templates);
-        model.addAttribute("studyYears", StudyYear.values());
+        model.addAttribute(ControllerSettings.ATTR_STUDY_YEARS, StudyYear.values());
     }
 
     @PostMapping("/excel-file")
@@ -134,50 +119,40 @@ public class ThyUploadController {
             String uploadUrl = apiBaseUrl + ControllerSettings.API_UPLOAD_EXCEL;
 
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-            body.add("file", new MultipartFileResource(file));
-            body.add("username", username);
-            body.add("courseId", Long.valueOf(courseId));
-            body.add("name", name);
-            body.add("template", template);
+            body.add(ControllerSettings.FIELD_FILE, new MultipartFileResource(file));
+            body.add(ControllerSettings.FIELD_USERNAME, username);
+            body.add(ControllerSettings.ATTR_COURSE_ID, Long.valueOf(courseId));
+            body.add(ControllerSettings.FIELD_NAME, name);
+            body.add(ControllerSettings.FIELD_TEMPLATE, template);
 
             // Create multipart request with authorization
             HttpEntity<MultiValueMap<String, Object>> requestEntity = sessionService.createMultipartRequest(body);
 
             ResponseEntity<String> response = restTemplate.postForEntity(uploadUrl, requestEntity, String.class);
-            model.addAttribute(ControllerSettings.ATTR_MESSAGE, "Excel file uploaded successfully. " + response.getBody());
+            model.addAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_UPLOAD_EXCEL_SUCCESS_PREFIX + response.getBody());
         } catch (HttpClientErrorException.Forbidden ex) {
             log.atError().log("403 Forbidden on excel upload");
             sessionService.invalidateCurrentSession();
-            model.addAttribute(ControllerSettings.ATTR_MESSAGE, "Session expired. Please log in again.");
+            model.addAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_SESSION_EXPIRED_LOGIN_AGAIN);
             return ControllerSettings.VIEW_REDIRECT_AUTH_LOGIN;
         } catch (Exception e) {
             log.atError().setCause(e).addArgument(e.getMessage()).log("Excel file upload failed: {}");
-            model.addAttribute(ControllerSettings.ATTR_MESSAGE, "Excel file upload failed: " + e.getMessage());
+            model.addAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_UPLOAD_EXCEL_FAILED_PREFIX + e.getMessage());
         }
         return ControllerSettings.VIEW_SUCCESS;
     }
 
     @PostMapping("/archive-file")
-    public String handleArchiveUpload(@RequestParam("archive") MultipartFile archive, @RequestParam("courseId") String courseId, @RequestParam("questionBank") String questionBank,
-                                      @RequestParam("studyYear") StudyYear studyYear, Model model) {
+    public String handleArchiveUpload(@RequestParam("archive") MultipartFile archive, @RequestParam(ControllerSettings.ATTR_COURSE_ID) String courseId, @RequestParam("questionBank") String questionBank,
+                                      @RequestParam(ControllerSettings.ATTR_STUDY_YEAR) StudyYear studyYear, Model model) {
         String redirect = sessionService.validateSessionOrRedirect();
-        if (redirect != null) return redirect;
+        if (redirect != null) {
+            return redirect;
+        }
 
-        // Validate required fields
-        if (archive == null || archive.isEmpty()) {
-            model.addAttribute(ControllerSettings.ATTR_MESSAGE, "Archive file is required");
-            return ControllerSettings.VIEW_SUCCESS;
-        }
-        if (courseId == null || courseId.isBlank()) {
-            model.addAttribute(ControllerSettings.ATTR_MESSAGE, "Course ID is required");
-            return ControllerSettings.VIEW_SUCCESS;
-        }
-        if (questionBank == null || questionBank.isBlank()) {
-            model.addAttribute(ControllerSettings.ATTR_MESSAGE, "QuestionBank name is required");
-            return ControllerSettings.VIEW_SUCCESS;
-        }
-        if (studyYear == null) {
-            model.addAttribute(ControllerSettings.ATTR_MESSAGE, INVALID_STUDY_YEAR_MESSAGE);
+        String validationError = validateArchiveUploadRequest(archive, courseId, questionBank, studyYear);
+        if (validationError != null) {
+            model.addAttribute(ControllerSettings.ATTR_MESSAGE, validationError);
             return ControllerSettings.VIEW_SUCCESS;
         }
 
@@ -185,57 +160,84 @@ public class ThyUploadController {
             String uploadUrl = apiBaseUrl + ControllerSettings.API_UPLOAD_ARCHIVE;
             log.atInfo().addArgument(uploadUrl).log("Upload URL: {}");
 
-            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-            body.add("archive", new MultipartFileResource(archive));
-            body.add("courseId", Long.valueOf(courseId));
-            body.add("questionBankName", questionBank);
-            body.add("studyYear", studyYear.name());
-
-            HttpEntity<MultiValueMap<String, Object>> requestEntity = sessionService.createMultipartRequest(body);
+            HttpEntity<MultiValueMap<String, Object>> requestEntity = sessionService.createMultipartRequest(buildArchiveUploadBody(archive, courseId, questionBank, studyYear));
             ResponseEntity<String> response = restTemplate.postForEntity(uploadUrl, requestEntity, String.class);
 
-            model.addAttribute(ControllerSettings.ATTR_MESSAGE, "Archive uploaded successfully. " + response.getBody());
+            model.addAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_UPLOAD_ARCHIVE_SUCCESS_PREFIX + response.getBody());
             return ControllerSettings.VIEW_SUCCESS;
 
         } catch (HttpClientErrorException.Forbidden e) {
             log.atError().log("403 Forbidden on archive upload");
             sessionService.invalidateCurrentSession();
-            model.addAttribute(ControllerSettings.ATTR_MESSAGE, "Session expired. Please log in again.");
+            model.addAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_SESSION_EXPIRED_LOGIN_AGAIN);
             return ControllerSettings.VIEW_REDIRECT_AUTH_LOGIN;
         } catch (HttpClientErrorException e) {
             log.atError().setCause(e).addArgument(e.getStatusCode()).addArgument(e.getMessage()).log("HTTP error on archive upload: {} - {}");
-            model.addAttribute(ControllerSettings.ATTR_MESSAGE, "Archive upload failed: " + e.getStatusCode() + " - " + e.getMessage());
+            model.addAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_UPLOAD_ARCHIVE_FAILED_PREFIX + e.getStatusCode() + " - " + e.getMessage());
             return ControllerSettings.VIEW_SUCCESS;
         } catch (IOException e) {
             log.atError().setCause(e).addArgument(e.getMessage()).log("IOException on archive upload: {}");
-            model.addAttribute(ControllerSettings.ATTR_MESSAGE, "Archive file upload failed: " + e.getMessage());
+            model.addAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_UPLOAD_ARCHIVE_IO_FAILED_PREFIX + e.getMessage());
             return ControllerSettings.VIEW_SUCCESS;
         } catch (Exception e) {
             log.atError().setCause(e).addArgument(e.getMessage()).log("Unexpected error on archive upload: {}");
-            model.addAttribute(ControllerSettings.ATTR_MESSAGE, "Archive upload failed with unexpected error: " + e.getMessage());
+            model.addAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_UPLOAD_ARCHIVE_UNEXPECTED_FAILED_PREFIX + e.getMessage());
             return ControllerSettings.VIEW_SUCCESS;
         }
     }
 
+    /**
+     * Validates the archive upload request and returns an error message when invalid.
+     */
+    private String validateArchiveUploadRequest(MultipartFile archive, String courseId, String questionBank, StudyYear studyYear) {
+        if (archive == null || archive.isEmpty()) {
+            return ControllerSettings.MSG_UPLOAD_ARCHIVE_REQUIRED;
+        }
+        if (courseId == null || courseId.isBlank()) {
+            return ControllerSettings.MSG_UPLOAD_COURSE_ID_REQUIRED;
+        }
+        if (questionBank == null || questionBank.isBlank()) {
+            return ControllerSettings.MSG_UPLOAD_QUESTION_BANK_REQUIRED;
+        }
+        if (studyYear == null) {
+            return ControllerSettings.MSG_UPLOAD_INVALID_STUDY_YEAR;
+        }
+        return null;
+    }
+
+    /**
+     * Builds the multipart request body for archive upload.
+     */
+    private MultiValueMap<String, Object> buildArchiveUploadBody(MultipartFile archive, String courseId, String questionBank, StudyYear studyYear) throws IOException {
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add(ControllerSettings.FIELD_ARCHIVE, new MultipartFileResource(archive));
+        body.add(ControllerSettings.ATTR_COURSE_ID, Long.valueOf(courseId));
+        body.add(ControllerSettings.ATTR_QUESTION_BANK_NAME, questionBank);
+        body.add(ControllerSettings.ATTR_STUDY_YEAR, studyYear.name());
+        return body;
+    }
+
     @PostMapping("/archive-folder")
-    public String handleArchiveFolderUpload(@RequestParam("archives") MultipartFile[] archives, @RequestParam("studyYear") StudyYear studyYear, Model model) {
+    public String handleArchiveFolderUpload(@RequestParam("archives") MultipartFile[] archives, @RequestParam(ControllerSettings.ATTR_STUDY_YEAR) StudyYear studyYear, Model model) {
         String redirect = sessionService.validateSessionOrRedirect();
-        if (redirect != null) return redirect;
+        if (redirect != null) {
+            return redirect;
+        }
 
         populateArchiveUploadModel(model);
 
         if (archives == null || archives.length == 0) {
-            model.addAttribute(ControllerSettings.ATTR_MESSAGE, "Please select a folder containing ZIP archives");
+            model.addAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_UPLOAD_ARCHIVE_FOLDER_SELECT);
             return ControllerSettings.VIEW_UPLOAD_ARCHIVE_FOLDER;
         }
         if (studyYear == null) {
-            model.addAttribute(ControllerSettings.ATTR_MESSAGE, INVALID_STUDY_YEAR_MESSAGE);
+            model.addAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_UPLOAD_INVALID_STUDY_YEAR);
             return ControllerSettings.VIEW_UPLOAD_ARCHIVE_FOLDER;
         }
 
         List<MultipartFile> nonEmptyArchives = Arrays.stream(archives).filter(file -> file != null && !file.isEmpty()).toList();
         if (nonEmptyArchives.isEmpty()) {
-            model.addAttribute(ControllerSettings.ATTR_MESSAGE, "Please select at least one archive file");
+            model.addAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_UPLOAD_ARCHIVE_FOLDER_ONE_FILE);
             return ControllerSettings.VIEW_UPLOAD_ARCHIVE_FOLDER;
         }
 
@@ -245,16 +247,16 @@ public class ThyUploadController {
 
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
             for (MultipartFile archive : nonEmptyArchives) {
-                body.add("archives", new MultipartFileResource(archive));
+                body.add(ControllerSettings.FIELD_ARCHIVES, new MultipartFileResource(archive));
             }
-            body.add("studyYear", studyYear.name());
+            body.add(ControllerSettings.ATTR_STUDY_YEAR, studyYear.name());
 
             HttpEntity<MultiValueMap<String, Object>> requestEntity = sessionService.createMultipartRequest(body);
             ResponseEntity<ArchiveFolderUploadResultDto> response = restTemplate.exchange(uploadUrl, HttpMethod.POST, requestEntity, ArchiveFolderUploadResultDto.class);
 
             ArchiveFolderUploadResultDto result = response.getBody();
             if (result == null) {
-                model.addAttribute(ControllerSettings.ATTR_MESSAGE, "Folder upload finished with empty response");
+                model.addAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_UPLOAD_ARCHIVE_FOLDER_EMPTY_RESPONSE);
                 return ControllerSettings.VIEW_UPLOAD_ARCHIVE_FOLDER;
             }
 
@@ -264,46 +266,48 @@ public class ThyUploadController {
         } catch (HttpClientErrorException.Forbidden e) {
             log.atError().log("403 Forbidden on archive folder upload");
             sessionService.invalidateCurrentSession();
-            model.addAttribute(ControllerSettings.ATTR_MESSAGE, "Session expired. Please log in again.");
+            model.addAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_SESSION_EXPIRED_LOGIN_AGAIN);
             return ControllerSettings.VIEW_REDIRECT_AUTH_LOGIN;
         } catch (HttpClientErrorException e) {
             log.atError().setCause(e).addArgument(e.getStatusCode()).addArgument(e.getMessage()).log("HTTP error on archive folder upload: {} - {}");
-            model.addAttribute(ControllerSettings.ATTR_MESSAGE, "Archive folder upload failed: " + e.getStatusCode() + " - " + e.getMessage());
+            model.addAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_UPLOAD_ARCHIVE_FOLDER_FAILED_PREFIX + e.getStatusCode() + " - " + e.getMessage());
             return ControllerSettings.VIEW_UPLOAD_ARCHIVE_FOLDER;
         } catch (IOException e) {
             log.atError().setCause(e).addArgument(e.getMessage()).log("IOException on archive folder upload: {}");
-            model.addAttribute(ControllerSettings.ATTR_MESSAGE, "Archive folder upload failed due to file read error: " + e.getMessage());
+            model.addAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_UPLOAD_ARCHIVE_FOLDER_IO_FAILED_PREFIX + e.getMessage());
             return ControllerSettings.VIEW_UPLOAD_ARCHIVE_FOLDER;
         } catch (Exception e) {
             log.atError().setCause(e).addArgument(e.getMessage()).log("Archive folder upload failed: {}");
-            model.addAttribute(ControllerSettings.ATTR_MESSAGE, "Folder upload failed with unexpected error: " + e.getMessage());
+            model.addAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_UPLOAD_ARCHIVE_FOLDER_UNEXPECTED_FAILED_PREFIX + e.getMessage());
             return ControllerSettings.VIEW_UPLOAD_ARCHIVE_FOLDER;
         }
     }
 
     @PostMapping("/xml-file")
-    public String handleXmlUpload(@RequestParam("xml") MultipartFile xml, @RequestParam("courseId") String courseId,
-                                  @RequestParam("questionBank") String questionBank, @RequestParam("studyYear") StudyYear studyYear,
+    public String handleXmlUpload(@RequestParam("xml") MultipartFile xml, @RequestParam(ControllerSettings.ATTR_COURSE_ID) String courseId,
+                                  @RequestParam("questionBank") String questionBank, @RequestParam(ControllerSettings.ATTR_STUDY_YEAR) StudyYear studyYear,
                                   Model model) {
         String redirect = sessionService.validateSessionOrRedirect();
-        if (redirect != null) return redirect;
+        if (redirect != null) {
+            return redirect;
+        }
 
         populateArchiveUploadModel(model);
 
         if (xml == null || xml.isEmpty()) {
-            model.addAttribute(ControllerSettings.ATTR_MESSAGE, "XML file is required");
+            model.addAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_UPLOAD_XML_REQUIRED);
             return ControllerSettings.VIEW_UPLOAD_XML;
         }
         if (courseId == null || courseId.isBlank()) {
-            model.addAttribute(ControllerSettings.ATTR_MESSAGE, "Course ID is required");
+            model.addAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_UPLOAD_COURSE_ID_REQUIRED);
             return ControllerSettings.VIEW_UPLOAD_XML;
         }
         if (questionBank == null || questionBank.isBlank()) {
-            model.addAttribute(ControllerSettings.ATTR_MESSAGE, "QuestionBank name is required");
+            model.addAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_UPLOAD_QUESTION_BANK_REQUIRED);
             return ControllerSettings.VIEW_UPLOAD_XML;
         }
         if (studyYear == null) {
-            model.addAttribute(ControllerSettings.ATTR_MESSAGE, INVALID_STUDY_YEAR_MESSAGE);
+            model.addAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_UPLOAD_INVALID_STUDY_YEAR);
             return ControllerSettings.VIEW_UPLOAD_XML;
         }
 
@@ -311,39 +315,42 @@ public class ThyUploadController {
             String uploadUrl = apiBaseUrl + ControllerSettings.API_UPLOAD_XML;
 
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-            body.add("xml", new MultipartFileResource(xml));
-            body.add("courseId", Long.valueOf(courseId));
-            body.add("questionBankName", questionBank);
-            body.add("studyYear", studyYear.name());
+            body.add(ControllerSettings.FIELD_XML, new MultipartFileResource(xml));
+            body.add(ControllerSettings.ATTR_COURSE_ID, Long.valueOf(courseId));
+            body.add(ControllerSettings.ATTR_QUESTION_BANK_NAME, questionBank);
+            body.add(ControllerSettings.ATTR_STUDY_YEAR, studyYear.name());
 
             HttpEntity<MultiValueMap<String, Object>> requestEntity = sessionService.createMultipartRequest(body);
             ResponseEntity<String> response = restTemplate.postForEntity(uploadUrl, requestEntity, String.class);
 
-            model.addAttribute(ControllerSettings.ATTR_MESSAGE, "XML uploaded successfully. " + response.getBody());
+            model.addAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_UPLOAD_XML_SUCCESS_PREFIX + response.getBody());
             return ControllerSettings.VIEW_SUCCESS;
         } catch (HttpClientErrorException.Forbidden e) {
             log.atError().log("403 Forbidden on XML upload");
             sessionService.invalidateCurrentSession();
-            model.addAttribute(ControllerSettings.ATTR_MESSAGE, "Session expired. Please log in again.");
+            model.addAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_SESSION_EXPIRED_LOGIN_AGAIN);
             return ControllerSettings.VIEW_REDIRECT_AUTH_LOGIN;
         } catch (HttpClientErrorException e) {
             log.atError().setCause(e).addArgument(e.getStatusCode()).addArgument(e.getMessage()).log("HTTP error on XML upload: {} - {}");
-            model.addAttribute(ControllerSettings.ATTR_MESSAGE, "XML upload failed: " + e.getStatusCode() + " - " + e.getMessage());
+            model.addAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_UPLOAD_XML_FAILED_PREFIX + e.getStatusCode() + " - " + e.getMessage());
             return ControllerSettings.VIEW_UPLOAD_XML;
         } catch (IOException e) {
             log.atError().setCause(e).addArgument(e.getMessage()).log("IOException on XML upload: {}");
-            model.addAttribute(ControllerSettings.ATTR_MESSAGE, "XML upload failed due to file read error: " + e.getMessage());
+            model.addAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_UPLOAD_XML_IO_FAILED_PREFIX + e.getMessage());
             return ControllerSettings.VIEW_UPLOAD_XML;
         } catch (Exception e) {
             log.atError().setCause(e).addArgument(e.getMessage()).log("Unexpected error on XML upload: {}");
-            model.addAttribute(ControllerSettings.ATTR_MESSAGE, "XML upload failed with unexpected error: " + e.getMessage());
+            model.addAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_UPLOAD_XML_UNEXPECTED_FAILED_PREFIX + e.getMessage());
             return ControllerSettings.VIEW_UPLOAD_XML;
         }
     }
 
+    /**
+     * Builds a human-readable status log for archive-folder upload processing.
+     */
     private String buildFolderStatusMessage(ArchiveFolderUploadResultDto result) {
         StringBuilder message = new StringBuilder();
-        message.append("Folder processing started. Total archives: ").append(result.getTotalArchives()).append("\n");
+        message.append(ControllerSettings.MSG_UPLOAD_FOLDER_PROCESSING_STARTED_PREFIX).append(result.getTotalArchives()).append("\n");
 
         for (ArchiveFolderItemDto item : result.getItems()) {
             message.append(item.getIndex()).append("/").append(item.getTotal()).append(" - ").append(item.getArchiveName()).append(" [").append(item.getStatus()).append("]");
@@ -353,8 +360,11 @@ public class ThyUploadController {
             message.append("\n");
         }
 
-        message.append("Ready. Processed ").append(result.getProcessedArchives()).append(" archive(s) from ").append(result.getTotalArchives()).append(" (Skipped: ").append(
-                result.getSkippedArchives()).append(", Failed: ").append(result.getFailedArchives()).append(").");
+        message.append(ControllerSettings.MSG_UPLOAD_FOLDER_READY_PREFIX).append(result.getProcessedArchives())
+                .append(ControllerSettings.MSG_UPLOAD_FOLDER_READY_MIDDLE).append(result.getTotalArchives())
+                .append(ControllerSettings.MSG_UPLOAD_FOLDER_READY_SKIPPED).append(result.getSkippedArchives())
+                .append(ControllerSettings.MSG_UPLOAD_FOLDER_READY_FAILED).append(result.getFailedArchives())
+                .append(ControllerSettings.MSG_UPLOAD_FOLDER_READY_SUFFIX);
         return message.toString();
     }
 }

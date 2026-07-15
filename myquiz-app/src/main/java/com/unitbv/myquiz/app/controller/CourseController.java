@@ -2,8 +2,10 @@ package com.unitbv.myquiz.app.controller;
 
 import com.unitbv.myquiz.api.dto.CourseDto;
 import com.unitbv.myquiz.api.dto.CourseDuplicateRecomputeResultDto;
+import com.unitbv.myquiz.api.dto.DuplicateRecomputeHistoryDto;
 import com.unitbv.myquiz.api.dto.DuplicateStatisticsDto;
 import com.unitbv.myquiz.api.interfaces.CourseApi;
+import com.unitbv.myquiz.api.settings.ControllerSettings;
 import com.unitbv.myquiz.app.services.CourseService;
 import com.unitbv.myquiz.app.services.ExportService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,7 +37,6 @@ import java.util.List;
 @Tag(name = "Courses", description = "Course management operations - Manage academic courses")
 public class CourseController implements CourseApi {
     private static final Logger log = LoggerFactory.getLogger(CourseController.class);
-    private static final String PERMISSION_EXPORT_XML = "EXPORT_XML";
     private final CourseService courseService;
     private final ExportService exportService;
 
@@ -158,7 +159,7 @@ public class CourseController implements CourseApi {
             return false;
         }
         return auth.getAuthorities().stream()
-            .anyMatch(authority -> PERMISSION_EXPORT_XML.equals(authority.getAuthority()));
+            .anyMatch(authority -> ControllerSettings.PERMISSION_EXPORT_XML.equals(authority.getAuthority()));
     }
 
     @PostMapping("/{id}/recompute-duplicates")
@@ -266,4 +267,109 @@ public class CourseController implements CourseApi {
         }
     }
 
+    // ---- Recompute History endpoints ----
+
+    @GetMapping("/recompute-history")
+    @Operation(summary = "Get duplicate recompute history",
+               description = "Returns all saved duplicate recompute history entries ordered by date descending")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "History retrieved successfully"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public ResponseEntity<List<DuplicateRecomputeHistoryDto>> getRecomputeHistory() {
+        try {
+            List<DuplicateRecomputeHistoryDto> history = courseService.getRecomputeHistory();
+            return ResponseEntity.ok(history);
+        } catch (Exception e) {
+            log.atError().setCause(e).log("Failed to retrieve recompute history");
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @PostMapping("/recompute-history")
+    @Operation(summary = "Save a duplicate recompute history entry",
+               description = "Persists a completed recompute result as a history record")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "History entry saved successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid input"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public ResponseEntity<DuplicateRecomputeHistoryDto> saveRecomputeHistory(
+            @RequestBody DuplicateRecomputeHistoryDto historyDto) {
+        if (historyDto == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        try {
+            CourseDuplicateRecomputeResultDto result = buildResultFromHistoryDto(historyDto);
+            DuplicateRecomputeHistoryDto saved = courseService.saveRecomputeHistory(
+                    result,
+                    historyDto.getStrategy(),
+                    historyDto.getCourseId(),
+                    historyDto.getQuestionBankId(),
+                    historyDto.getAuthorId());
+            return ResponseEntity.ok(saved);
+        } catch (Exception e) {
+            log.atError().setCause(e).log("Failed to save recompute history entry");
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @DeleteMapping("/recompute-history/{id}")
+    @Operation(summary = "Delete a duplicate recompute history entry",
+               description = "Deletes a history record by its ID")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "204", description = "History entry deleted successfully"),
+        @ApiResponse(responseCode = "404", description = "History entry not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public ResponseEntity<Void> deleteRecomputeHistoryEntry(@PathVariable Long id) {
+        try {
+            courseService.deleteRecomputeHistoryEntry(id);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalArgumentException e) {
+            log.atWarn().addArgument(id).addArgument(e.getMessage())
+                .log("Could not delete recompute history entry id='{}': {}");
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.atError().setCause(e).addArgument(id)
+                .log("Failed to delete recompute history entry id='{}'");
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    private CourseDuplicateRecomputeResultDto buildResultFromHistoryDto(DuplicateRecomputeHistoryDto dto) {
+        CourseDuplicateRecomputeResultDto result = new CourseDuplicateRecomputeResultDto();
+        result.setCourseId(dto.getCourseId());
+        result.setCourseName(dto.getCourseName());
+        result.setTotalQuestions(dto.getTotalQuestions());
+        result.setMultichoiceQuestions(dto.getMultichoiceQuestions());
+        result.setTruefalseQuestions(dto.getTruefalseQuestions());
+        result.setDuplicateLinksRemoved(dto.getDuplicateLinksRemoved());
+        result.setDuplicateErrorsRemoved(dto.getDuplicateErrorsRemoved());
+        result.setDuplicateErrorsCreated(dto.getDuplicateErrorsCreated());
+        result.setStartedAt(dto.getStartedAt());
+        result.setEndedAt(dto.getEndedAt());
+        result.setDurationMs(dto.getDurationMs());
+        return result;
+    }
+
+    @PostMapping("/create-defaults")
+    @Operation(
+        summary = "Create Default Courses",
+        description = "Create all default courses that don't already exist in the database"
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Default courses created successfully"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public ResponseEntity<Integer> createDefaultCourses() {
+        try {
+            int createdCount = courseService.createDefaultCourses();
+            log.info("Created {} default courses", createdCount);
+            return ResponseEntity.ok(createdCount);
+        } catch (Exception e) {
+            log.atError().setCause(e).log("Failed to create default courses");
+            return ResponseEntity.internalServerError().build();
+        }
+    }
 }

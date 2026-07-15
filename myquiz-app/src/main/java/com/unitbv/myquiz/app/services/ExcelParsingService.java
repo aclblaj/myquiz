@@ -8,7 +8,6 @@ import com.unitbv.myquiz.app.entities.Question;
 import com.unitbv.myquiz.app.entities.QuestionBank;
 import com.unitbv.myquiz.app.entities.QuestionBankAuthor;
 import com.unitbv.myquiz.app.repositories.QuestionBankAuthorRepository;
-import com.unitbv.myquiz.app.repositories.QuestionErrorRepository;
 import com.unitbv.myquiz.app.util.FileValidator;
 import com.unitbv.myquiz.app.util.InputTemplate;
 import org.apache.poi.ss.usermodel.Row;
@@ -53,16 +52,14 @@ public class ExcelParsingService {
     private final CellConversionService cellConversionService;
     private final QuestionErrorService questionErrorService;
     private final QuestionBankAuthorRepository questionBankAuthorRepository;
-    private final QuestionErrorRepository questionErrorRepository;
     private final AuthorService authorService;
 
     public ExcelParsingService(QuestionWeightValidationService weightValidationService, CellConversionService cellConversionService, QuestionErrorService questionErrorService,
-                               QuestionBankAuthorRepository questionBankAuthorRepository, QuestionErrorRepository questionErrorRepository, AuthorService authorService) {
+                               QuestionBankAuthorRepository questionBankAuthorRepository, AuthorService authorService) {
         this.weightValidationService = weightValidationService;
         this.cellConversionService = cellConversionService;
         this.questionErrorService = questionErrorService;
         this.questionBankAuthorRepository = questionBankAuthorRepository;
-        this.questionErrorRepository = questionErrorRepository;
         this.authorService = authorService;
     }
 
@@ -287,7 +284,7 @@ public class ExcelParsingService {
             }
 
             int questionCount = questionBankAuthor.getQuestions() != null ? questionBankAuthor.getQuestions().size() : 0;
-            int errorCount = (int) questionErrorRepository.countByQuestionQuestionBankAuthorId(questionBankAuthor.getId());
+            int errorCount = questionErrorService.countVisibleErrorsForQuestionBankAuthor(questionBankAuthor.getId());
             logger.atInfo().addArgument(filePath.getFileName()).addArgument(questionBankAuthor.getAuthor().getName()).addArgument(questionCount).addArgument(errorCount).log(
                     "File '{}' | author '{}' | questions extracted: {} | errors: {}");
 

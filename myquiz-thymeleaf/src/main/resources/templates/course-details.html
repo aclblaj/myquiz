@@ -6,11 +6,11 @@
     <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
 </head>
 <body>
-<div th:insert="~{fragments::menu}"></div>
+<div th:insert="~{fragments/navigation::menu}"></div>
 
 <div class="container mt-3 list-page-compact">
     <h2 class="list-page-title">🎓 Course Details</h2>
-    <div th:replace="~{fragments :: recompute-feedback(${message})}"></div>
+    <div th:replace="~{fragments/forms :: recompute-feedback(${message})}"></div>
 
     <div th:if="${course != null}" class="form-container">
         <h3>Course Information</h3>
@@ -61,7 +61,7 @@
             </tbody>
         </table>
 
-        <div th:replace="~{fragments :: course-actions(${course}, ${course.course}, ${null}, ${null}, ${null}, 'form-actions')}"></div>
+        <div th:replace="~{fragments/forms :: course-actions(${course}, ${course.course}, ${null}, ${null}, ${null}, 'form-actions', ${true})}"></div>
 
         <div class="form-actions">
             <a th:if="${menuPermissions['canExportXml']}" th:href="@{'/courses/' + ${course.id} + '/export-xml'}" class="btn btn-export-xml" target="_blank">Export XML</a>

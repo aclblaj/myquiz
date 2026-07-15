@@ -42,9 +42,9 @@ public class QuestionDto {
     @JsonProperty("chapter")
     private String chapter;
 
-    @Schema(description = "Author name")
-    @JsonProperty("authorName")
-    private String authorName;
+    @Schema(description = "Author info")
+    @JsonProperty("author")
+    private AuthorInfo author;
 
     @Schema(description = "QuestionBank name")
     @JsonProperty("questionBankName")

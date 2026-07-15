@@ -1,12 +1,14 @@
 package com.unitbv.myquiz.app.mapper;
 
+import com.unitbv.myquiz.api.dto.AuthorInfo;
+import com.unitbv.myquiz.app.entities.Author;
 import com.unitbv.myquiz.app.entities.Question;
 import com.unitbv.myquiz.api.dto.QuestionDto;
 import org.mapstruct.*;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", imports = {AuthorInfo.class, Author.class})
 public interface QuestionMapper {
-    @Mapping(target = "authorName", source = "questionBankAuthor.author.name")
+    @Mapping(target = "author", expression = "java(question.getQuestionBankAuthor() != null && question.getQuestionBankAuthor().getAuthor() != null ? AuthorInfo.builder().id(question.getQuestionBankAuthor().getAuthor().getId()).name(question.getQuestionBankAuthor().getAuthor().getName()).initials(question.getQuestionBankAuthor().getAuthor().getInitials()).build() : null)")
     @Mapping(target = "questionBankName", source = "questionBankAuthor.questionBank.name")
     @Mapping(target = "questionBankId", source = "questionBankAuthor.questionBank.id")
     @Mapping(target = "course", source = "questionBankAuthor.questionBank.course.course")
@@ -17,6 +19,7 @@ public interface QuestionMapper {
     @Mapping(target = "crtNo", source = "row")
     @Mapping(target = "questionErrors", ignore = true)
     @Mapping(target = "answersReference", ignore = true)
+    @Mapping(target = "questionBankAuthor", ignore = true)
     Question toEntity(QuestionDto dto);
 
     // Helper method to map answerReferenceText after the main mapping

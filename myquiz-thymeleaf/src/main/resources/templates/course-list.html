@@ -7,12 +7,12 @@
 </head>
 <body>
 
-<div th:insert="~{fragments::menu}"></div>
+<div th:insert="~{fragments/navigation::menu}"></div>
 
 <div class="container mt-3 list-page-compact">
     <h2 class="list-page-title">Courses</h2>
 
-    <div th:replace="~{fragments :: recompute-feedback(${message})}"></div>
+    <div th:replace="~{fragments/forms :: recompute-feedback(${message})}"></div>
 
     <div th:if="${message != null and !#strings.contains(message, 'Recompute started:')}" class="list-success-message" th:text="${message}"></div>
 
@@ -55,7 +55,7 @@
                        min="1"
                        class="searchfilter-select searchfilter-select-small" />
             </div>
-            <button type="submit" class="btn-filter">🔍 Filter Courses</button>
+            <button type="submit" class="btn-filter">🔍 Filter</button>
         </form>
     </div>
 
@@ -77,14 +77,17 @@
         </thead>
         <tbody>
         <tr th:each="course : ${courses}" class="data-row">
-            <td th:text="${course.id}"></td>
+            <td>
+                <a th:if="${course.id != null}" th:href="@{'/courses/' + ${course.id}}" th:text="${course.id}">1</a>
+                <span th:if="${course.id == null}">-</span>
+            </td>
             <td th:text="${course.course}"></td>
             <td th:text="${course.description}"></td>
             <td th:text="${course.universityYear}"></td>
             <td th:text="${course.semester}"></td>
             <td th:text="${course.questionBankCount}"></td>
             <td>
-                <div th:replace="~{fragments :: course-actions(${course}, ${selectedCourseId}, ${selectedYear}, ${currentPage}, ${pageSize}, 'action-cell')}"></div>
+                <div th:replace="~{fragments/forms :: course-actions(${course}, ${selectedCourseId}, ${selectedYear}, ${currentPage}, ${pageSize}, 'action-cell', ${false})}"></div>
             </td>
         </tr>
         <tr th:if="${#lists.isEmpty(courses)}" class="empty-row">

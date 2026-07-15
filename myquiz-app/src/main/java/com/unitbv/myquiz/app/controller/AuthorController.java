@@ -3,7 +3,8 @@ package com.unitbv.myquiz.app.controller;
 import com.unitbv.myquiz.api.dto.*;
 import com.unitbv.myquiz.api.dto.AuthorUpsertDto;
 import com.unitbv.myquiz.api.interfaces.AuthorApi;
-import com.unitbv.myquiz.api.settings.ControllerSettings;
+import com.unitbv.myquiz.api.util.PaginationParams;
+import com.unitbv.myquiz.api.util.PaginationSupport;
 import com.unitbv.myquiz.app.services.AuthorService;
 import com.unitbv.myquiz.app.services.CourseService;
 import com.unitbv.myquiz.app.services.QuestionBankAuthorService;
@@ -96,8 +97,9 @@ public class AuthorController implements AuthorApi {
                     .orElse(null);
         }
 
-        int pageNo = filterInput.getPage() != null ? filterInput.getPage() : 1;
-        int pageSize = filterInput.getPageSize() != null ? filterInput.getPageSize() : ControllerSettings.PAGE_SIZE;
+        PaginationParams pagination = PaginationSupport.normalize(filterInput.getPage(), filterInput.getPageSize());
+        int pageNo = pagination.page();
+        int pageSize = pagination.pageSize();
         Long questionBankId = filterInput.getQuestionBankId();
         log.info("Selected courseId: {}, selected course: {}, questionBankId: {}, page {}, pageSize {}", selectedCourseId, selectedCourse, questionBankId, pageNo, pageSize);
 
@@ -184,4 +186,3 @@ public class AuthorController implements AuthorApi {
     }
 
 }
-

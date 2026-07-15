@@ -6,7 +6,7 @@
     <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
 </head>
 <body>
-<div th:insert="~{fragments::menu}"></div>
+<div th:insert="~{fragments/navigation::menu}"></div>
 
 <div class="container mt-3">
     <h2>📝 Multiple Choice Question Editor</h2>
@@ -51,6 +51,7 @@
                         <th style="background:#fde68a;color:#92400e;width:60px;">Row</th>
                         <th style="background:#fde68a;color:#92400e;">Title</th>
                         <th style="background:#fde68a;color:#92400e;">Text</th>
+                        <th style="background:#fde68a;color:#92400e;">Cause</th>
                         <th style="background:#fde68a;color:#92400e;">Author</th>
                         <th style="background:#fde68a;color:#92400e;">Question Bank</th>
                         <th style="background:#fde68a;color:#92400e;width:130px;">Action</th>
@@ -61,7 +62,15 @@
                         <td th:text="${dup.row}"></td>
                         <td th:text="${dup.title}"></td>
                         <td class="text-cell" th:text="${dup.text}"></td>
-                        <td th:text="${dup.authorName}"></td>
+                        <td class="text-cell" th:text="${dup.cause}"></td>
+                        <td>
+                            <a th:if="${dup.author != null and dup.author.id != null}"
+                               th:href="@{/authors/{id}/details(id=${dup.author.id})}"
+                               th:text="${dup.author.initials != null and !dup.author.initials.isBlank() ? dup.author.initials : dup.author.name}"
+                               th:title="${dup.author.name}"></a>
+                            <span th:if="${dup.author == null or dup.author.id == null}"
+                                  th:text="${dup.author != null ? (dup.author.initials != null and !dup.author.initials.isBlank() ? dup.author.initials : dup.author.name) : '-'}"></span>
+                        </td>
                         <td th:text="${dup.questionBankName}"></td>
                         <td class="action-cell">
                             <a th:href="@{'/questions/' + ${dup.questionId}}" class="btn btn-info btn-small">👁️ View</a>
@@ -90,7 +99,7 @@
                         </div>
                         <div class="form-group">
                             <label for="authorName" class="form-label">Author Name:</label>
-                            <input type="text" id="authorName" th:field="*{authorName}" placeholder="Author name" class="form-input" />
+                            <input type="text" id="authorName" th:field="*{author.name}" placeholder="Author name" class="form-input" />
                         </div>
                     </div>
                     <div class="form-grid-2col">
@@ -175,10 +184,7 @@
                     <button type="submit" class="btn btn-save">💾 Save Question</button>
                     <a th:href="@{/questions(type='MULTICHOICE')}" class="btn btn-new">➕ New</a>
                     <button type="button" class="btn btn-info" onclick="loadSampleQuestion()">🧪 Sample</button>
-                    <a th:if="${question.id != null}" th:href="${questionDuplicatesUrl != null ? questionDuplicatesUrl : '/questions/' + question.id + '/duplicates'}" class="btn btn-questions">🔀 Duplicates</a>
-                    <a th:if="${question.id != null}" th:href="${questionCorrectionUrl != null ? questionCorrectionUrl : '/questions/' + question.id + '/correction'}" class="btn btn-questionBank-edit">🤖 AI Correct</a>
-                    <span th:if="${question.id == null}" class="btn btn-outline disabled" title="Save the question first to enable AI correction">🤖 AI Correct</span>
-                    <button type="button" class="btn btn-delete" onclick="deleteQuestion()" th:if="${question.id != null}">🗑️ Delete</button>
+                    <th:block th:insert="~{fragments/forms :: question-actions(${question}, ${currentPage}, ${pageSize}, ${selectedCourseId}, ${selectedAuthorId}, ${selectedQuestionBankId}, ${selectedType})}"></th:block>
                     <a th:href="${backToQuestionsUrl != null ? backToQuestionsUrl : '/questions'}" class="btn btn-cancel">✖️ Cancel</a>
                 </div>
             </form>
@@ -186,13 +192,13 @@
     </div>
 </div>
 <script th:inline="javascript">
-    function deleteQuestion() {
+    function deleteQuestion(questionId) {
         if (confirm('Are you sure you want to delete this question? This action cannot be undone.')) {
-            const questionId = document.querySelector('input[name="id"]').value;
-            if (questionId) {
+            const id = questionId || document.querySelector('input[name="id"]').value;
+            if (id) {
                 const form = document.createElement('form');
                 form.method = 'POST';
-                form.action = '/questions/' + questionId;
+                form.action = '/questions/' + id;
 
                 const methodInput = document.createElement('input');
                 methodInput.type = 'hidden';
@@ -218,7 +224,7 @@
             document.getElementById('text').value = q.text || '';
             document.getElementById('answerReferenceText').value = q.answerReferenceText || '';
             document.getElementById('chapter').value = q.chapter || '';
-            document.getElementById('authorName').value = q.authorName || '';
+            document.getElementById('authorName').value = (q.author && q.author.name) ? q.author.name : (q.authorName || '');
             document.getElementById('course').value = q.course || '';
             document.getElementById('questionBankName').value = q.questionBankName || '';
             document.getElementById('response1').value = q.response1 || '';

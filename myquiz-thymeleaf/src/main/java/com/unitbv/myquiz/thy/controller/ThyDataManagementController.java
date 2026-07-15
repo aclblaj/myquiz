@@ -32,8 +32,6 @@ import java.io.IOException;
 @RequestMapping("/admin/data")
 public class ThyDataManagementController {
     private static final Logger log = LoggerFactory.getLogger(ThyDataManagementController.class);
-    private static final String ATTR_ERROR = "error";
-    private static final String REDIRECT_DATA_DASHBOARD = "redirect:/admin/data";
 
     private final SessionService sessionService;
     private final RestTemplate restTemplate;
@@ -54,34 +52,41 @@ public class ThyDataManagementController {
             return redirect;
         }
         model.addAttribute(ControllerSettings.ATTR_LOGGED_IN_USER, sessionService.getLoggedInUser());
-        return "admin/data-management";
+        return ControllerSettings.VIEW_DATA_MANAGEMENT;
     }
 
     @GetMapping("/export-sql")
     public void exportSql(HttpServletResponse response) throws IOException {
         String redirect = sessionService.validateSessionOrRedirect();
         if (redirect != null) {
-            response.sendRedirect("/auth/login");
+            response.sendRedirect(ControllerSettings.PATH_AUTH_LOGIN);
             return;
         }
 
         HttpEntity<Void> request = sessionService.createAuthorizedRequest();
         try {
-            ResponseEntity<byte[]> apiResponse = restTemplate.exchange(apiBaseUrl + "/data/export-sql", HttpMethod.GET, request, byte[].class);
-
-            response.setContentType("application/sql; charset=UTF-8");
-            String disposition = apiResponse.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION);
-            response.setHeader(HttpHeaders.CONTENT_DISPOSITION, disposition != null ? disposition : "attachment; filename=myquiz_backup.sql");
-
-            byte[] body = apiResponse.getBody();
-            if (body != null) {
-                StreamUtils.copy(body, response.getOutputStream());
-            }
+            ResponseEntity<byte[]> apiResponse = restTemplate.exchange(apiBaseUrl + ControllerSettings.API_DATA_EXPORT_SQL, HttpMethod.GET, request, byte[].class);
+            writeSqlExportResponse(response, apiResponse);
         } catch (HttpClientErrorException.Forbidden e) {
-            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Access denied");
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, ControllerSettings.MSG_ACCESS_DENIED);
         } catch (Exception e) {
             log.atError().setCause(e).log("SQL export failed");
-            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "Export failed");
+            response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, ControllerSettings.MSG_EXPORT_FAILED);
+        }
+    }
+
+    /**
+     * Writes SQL export API response to the servlet output stream.
+     */
+    private void writeSqlExportResponse(HttpServletResponse response, ResponseEntity<byte[]> apiResponse) throws IOException {
+        response.setContentType(ControllerSettings.CONTENT_TYPE_SQL_UTF8);
+        String disposition = apiResponse.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION);
+        String defaultDisposition = ControllerSettings.HEADER_ATTACHMENT_FILENAME_PREFIX + ControllerSettings.FILE_MYQUIZ_BACKUP_SQL;
+        response.setHeader(HttpHeaders.CONTENT_DISPOSITION, disposition != null ? disposition : defaultDisposition);
+
+        byte[] body = apiResponse.getBody();
+        if (body != null) {
+            StreamUtils.copy(body, response.getOutputStream());
         }
     }
 
@@ -93,8 +98,8 @@ public class ThyDataManagementController {
         }
 
         if (file == null || file.isEmpty()) {
-            redirectAttributes.addFlashAttribute(ATTR_ERROR, "Please select a SQL file to import.");
-            return REDIRECT_DATA_DASHBOARD;
+            redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_ERROR, ControllerSettings.MSG_SQL_FILE_REQUIRED);
+            return ControllerSettings.VIEW_REDIRECT_ADMIN_DATA;
         }
 
         try {
@@ -102,22 +107,31 @@ public class ThyDataManagementController {
             body.add("file", new MultipartFileResource(file));
 
             HttpEntity<MultiValueMap<String, Object>> request = sessionService.createMultipartRequest(body);
-            ResponseEntity<String> apiResponse = restTemplate.exchange(apiBaseUrl + "/data/import-sql", HttpMethod.POST, request, String.class);
+            ResponseEntity<String> apiResponse = restTemplate.exchange(apiBaseUrl + ControllerSettings.API_DATA_IMPORT_SQL, HttpMethod.POST, request, String.class);
 
-            redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_MESSAGE, apiResponse.getBody() != null ? apiResponse.getBody() : "SQL backup imported successfully");
+            redirectAttributes.addFlashAttribute(
+                    ControllerSettings.ATTR_MESSAGE,
+                    apiResponse.getBody() != null ? apiResponse.getBody() : ControllerSettings.MSG_SQL_BACKUP_IMPORTED_SUCCESS
+            );
         } catch (HttpClientErrorException.Forbidden e) {
-            redirectAttributes.addFlashAttribute(ATTR_ERROR, "Access denied for restore operation.");
+            redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_ERROR, ControllerSettings.MSG_ACCESS_DENIED_RESTORE);
         } catch (HttpClientErrorException.BadRequest e) {
-            redirectAttributes.addFlashAttribute(ATTR_ERROR, "Invalid SQL backup file.");
+            redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_ERROR, ControllerSettings.MSG_INVALID_SQL_BACKUP_FILE);
         } catch (Exception e) {
             log.atError().setCause(e).log("SQL import failed");
-            redirectAttributes.addFlashAttribute(ATTR_ERROR, "Import failed: " + e.getMessage());
+            redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_ERROR, ControllerSettings.MSG_IMPORT_FAILED_PREFIX + e.getMessage());
         }
 
-        return REDIRECT_DATA_DASHBOARD;
+        return ControllerSettings.VIEW_REDIRECT_ADMIN_DATA;
     }
 
     @GetMapping("/deleteall")
+    public String deleteAllDataGet(RedirectAttributes redirectAttributes) {
+        redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_ERROR, ControllerSettings.MSG_DELETE_ALL_POST_ONLY);
+        return ControllerSettings.VIEW_REDIRECT_ADMIN_DATA;
+    }
+
+    @PostMapping("/deleteall")
     public String deleteAllData(RedirectAttributes redirectAttributes) {
         String redirect = sessionService.validateSessionOrRedirect();
         if (redirect != null) {
@@ -126,16 +140,16 @@ public class ThyDataManagementController {
 
         try {
             HttpEntity<Void> request = sessionService.createAuthorizedRequest();
-            restTemplate.exchange(apiBaseUrl + "/data/deleteall", HttpMethod.DELETE, request, Void.class);
-            redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_MESSAGE, "All questionBank data deleted successfully. Users, roles, and permissions were preserved.");
+            restTemplate.exchange(apiBaseUrl + ControllerSettings.API_DATA_DELETE_ALL, HttpMethod.DELETE, request, Void.class);
+            redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_DATA_DELETED_SUCCESS);
         } catch (HttpClientErrorException.Forbidden e) {
-            redirectAttributes.addFlashAttribute(ATTR_ERROR, "Access denied for cleanup operation.");
+            redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_ERROR, ControllerSettings.MSG_ACCESS_DENIED_CLEANUP);
         } catch (Exception e) {
             log.atError().setCause(e).log("Delete-all failed");
-            redirectAttributes.addFlashAttribute(ATTR_ERROR, "Delete all failed: " + e.getMessage());
+            redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_ERROR, ControllerSettings.MSG_DELETE_ALL_FAILED_PREFIX + e.getMessage());
         }
 
-        return REDIRECT_DATA_DASHBOARD;
+        return ControllerSettings.VIEW_REDIRECT_ADMIN_DATA;
     }
 }
 

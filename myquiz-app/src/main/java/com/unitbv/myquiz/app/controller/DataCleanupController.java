@@ -1,6 +1,7 @@
 package com.unitbv.myquiz.app.controller;
 
 import com.unitbv.myquiz.api.interfaces.DataCleanupApi;
+import com.unitbv.myquiz.api.settings.ControllerSettings;
 import com.unitbv.myquiz.app.services.DataCleanupService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
@@ -31,15 +33,12 @@ import java.util.Map;
 @Tag(name = "Data Management", description = "Data cleanup and management operations")
 public class DataCleanupController implements DataCleanupApi {
     private static final Logger log = LoggerFactory.getLogger(DataCleanupController.class);
-    private static final String PERMISSION_CLEAN_DATABASE = "CLEAN_DATABASE";
-    private static final String PERMISSION_BACKUP_DATABASE = "BACKUP_DATABASE";
-    private static final String PERMISSION_RESTORE_DATABASE = "RESTORE_DATABASE";
 
     private final DataCleanupService dataCleanupService;
 
     @Override
     public ResponseEntity<Void> deleteAllData() {
-        if (!hasPermission(PERMISSION_CLEAN_DATABASE)) {
+        if (!hasPermission(ControllerSettings.PERMISSION_CLEAN_DATABASE)) {
             return ResponseEntity.status(403).build();
         }
         log.info("DELETE /api/data/deleteall - Deleting all questionBanks data");
@@ -68,7 +67,7 @@ public class DataCleanupController implements DataCleanupApi {
 
     @Override
     public ResponseEntity<byte[]> exportSqlBackup() {
-        if (!hasPermission(PERMISSION_BACKUP_DATABASE)) {
+        if (!hasPermission(ControllerSettings.PERMISSION_BACKUP_DATABASE)) {
             return ResponseEntity.status(403).build();
         }
 
@@ -78,7 +77,7 @@ public class DataCleanupController implements DataCleanupApi {
             String timestamp = OffsetDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
             String fileName = "myQuestionBanks_backup_" + timestamp + ".sql";
 
-            return ResponseEntity.ok().contentType(MediaType.APPLICATION_OCTET_STREAM).header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + fileName).body(sql.getBytes());
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_OCTET_STREAM).header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + fileName).body(sql.getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {
             log.error("Error exporting SQL backup: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
@@ -87,7 +86,7 @@ public class DataCleanupController implements DataCleanupApi {
 
     @Override
     public ResponseEntity<String> importSqlBackup(MultipartFile file) {
-        if (!hasPermission(PERMISSION_RESTORE_DATABASE)) {
+        if (!hasPermission(ControllerSettings.PERMISSION_RESTORE_DATABASE)) {
             return ResponseEntity.status(403).body("Access denied");
         }
 

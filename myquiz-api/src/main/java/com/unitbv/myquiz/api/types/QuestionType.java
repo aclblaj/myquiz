@@ -1,13 +1,20 @@
 package com.unitbv.myquiz.api.types;
 
 public enum QuestionType {
-    UNKNOWN(0),
-    MULTICHOICE(1),
-    TRUEFALSE(2);
-    final int value;
+    UNKNOWN(0, "UN"),
+    MULTICHOICE(1, "MC"),
+    TRUEFALSE(2, "TF");
 
-    QuestionType(int value) {
+    final int value;
+    final String acronym;
+
+    QuestionType(int value, String acronym) {
         this.value = value;
+        this.acronym = acronym;
+    }
+
+    public String getAcronym() {
+        return acronym;
     }
 
     public static QuestionType fromInteger(Integer value) {

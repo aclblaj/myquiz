@@ -1,422 +1,226 @@
-# Quiz Software Design Operations Handling
+# Question Bank Software Design
 
-## 1. Create DTOs in `myquiz-api` Module
-**Inputs:** Requirements for quiz filtering and pagination
-**Outputs:**
-- `QuizFilterInputDto` (fields: page, pageSize, course, quizId, authorId, etc.)
-- `QuizFilterDto` (fields: quizzes, totalElements, totalPages, currentPage, pageSize)
+## 1. Overview
 
-## 2. Quiz Operations
+This document defines the current Question Bank design across:
 
-| Section | Operation                | UI Template           | Thymeleaf Endpoint           | Backend Endpoint                | Service Action                    |
-|---------|--------------------------|----------------------|------------------------------|----------------------------------|------------------------------------|
-| 2.1.1   | List Quizzes             | quiz-list.html       | GET /quizzes                 | POST /api/quizzes/filter         | QuizService.filterQuizzes()        |
-| 2.1.2   | Delete Quiz              | quiz-list.html       | POST /quizzes/{id}/delete    | DELETE /api/quizzes/{id}         | QuizService.deleteQuiz()           |
-| 2.2.1   | View Quiz Details        | quiz-details.html    | GET /quizzes/{id}            | GET /api/quizzes/{id}            | QuizService.getQuizById()          |
-| 2.2.2   | View Extended Details    | quiz-details.html    | GET /quizzes/{id}/details    | GET /api/quizzes/{id}/details    | QuizService.getQuizDetailsById()   |
-| 2.3.1   | View Quiz Statistics     | quiz-statistics.html | GET /quizzes/{id}/statistics | GET /api/quizzes/{id}/statistics | QuizService.getQuizStatistics()    |
-| 2.4     | Create Quiz              | quiz-create.html     | POST /quizzes                | POST /api/quizzes                | QuizService.createQuiz()           |
-| 2.5     | Update Quiz              | quiz-edit.html       | POST /quizzes/{id}/edit      | PUT /api/quizzes/{id}            | QuizService.updateQuiz()           |
+- `myquiz-thymeleaf` UI and page flow
+- `myquiz-app` REST API and business services
+- `myquiz-api` contracts (DTOs and API interface)
 
-For each quiz operation, the flow cascades from UI template to Thymeleaf Controller, to backend endpoint, to service action. Each item below details steps, inputs, outputs, and possible errors.
+Question Bank functionality covers listing, filtering, details, extended export view, create/update/delete, statistics, and export (CSV/XML).
 
-### 2.1 Actions from quiz-list.html
-#### 2.1.1 List Quizzes (with Filtering & Pagination)
-- **Step 1: UI Template**
-  - Template: `quiz-list.html`
-  - Action: User selects filters/pagination and submits form
-  - Input: filter fields (page, pageSize, course, quizId, authorId)
-  - Output: Filtered/paginated quiz list
-  - Errors: Invalid filter values, empty result
-- **Step 2: Thymeleaf Controller Endpoint**
-  - Endpoint: `GET /quizzes` (ThyQuizController)
-  - Action: Receives filter params, calls backend via RestTemplate
-  - Input: filter params
-  - Output: QuizFilterDto
-  - Errors: Backend error, invalid params
-- **Step 3: Backend Endpoint**
-  - Endpoint: `POST /api/quizzes/filter`
-  - Action: Filters quizzes
-  - Input: QuizFilterInputDto
-  - Output: QuizFilterDto
-  - Errors: Validation error, DB error
-- **Step 4: Service Action**
-  - Service: QuizService.filterQuizzes()
-  - Input: QuizFilterInputDto
-  - Output: QuizFilterDto
-  - Errors: Data access error
+## 2. Functional Scope
 
-#### 2.1.2 Delete Quiz
+### 2.1 Core Operations
 
-This operation performs a comprehensive cascade delete of a quiz and all its related data, including cleanup of orphaned authors.
+- List and filter question banks by course with pagination.
+- View question bank details (`question-bank-details.html`).
+- View extended grouped export view (`question-bank-extended-details.html`).
+- Create and update question banks.
+- Delete question banks and clean orphaned authors.
+- Export MC and TF CSV plus XML.
+- View per-author statistics for one question bank.
 
-- **Step 1: UI Template**
-  - Template: `quiz-list.html` (delete button)
-  - Action: User clicks delete button for a quiz
-  - Input: quizId
-  - Output: Quiz deleted confirmation
-  - Errors: Quiz not found, deletion failed
-  - **Guidelines:**
-    - Show confirmation dialog before deletion
-    - Display warning about cascade deletion of all related data
-    - Redirect to quiz list after successful deletion
-    - Show error message if deletion fails
+### 2.2 Main End-to-End Calls
 
-- **Step 2: Thymeleaf Controller Endpoint**
-  - Endpoint: `POST /quizzes/{id}/delete` (ThyQuizController)
-  - Action: Calls backend to delete quiz
-  - Input: quizId (Long)
-  - Output: Redirect to quiz list with status message
-  - Errors: Backend error, quiz not found
-  - **Guidelines:**
-    - Validate quizId is not null
-    - Use RestTemplate to call DELETE endpoint
-    - Handle exceptions gracefully
-    - Add success/error message to redirect attributes
-    - Log deletion attempts
+| Operation | Template | Thymeleaf Endpoint | Backend Endpoint | Service Entry Point |
+|---|---|---|---|---|
+| List/filter | `question-bank-list.html` | `GET /question-banks`, `GET /question-banks/course/id/{courseId}` | `POST /api/question-banks/filter` | `QuestionBankService.filterQuestionBanks(...)` |
+| View details | `question-bank-details.html` | `GET /question-banks/{id}` | `GET /api/question-banks/{id}` | `QuestionBankService.getQuestionBankById(...)` |
+| View extended | `question-bank-extended-details.html` | `GET /question-banks/{id}/extended` | `GET /api/question-banks/{id}/extended` | `QuestionBankService.getQuestionBankExtendedById(...)` |
+| Create | `question-bank-editor.html` | `POST /question-banks`, `POST /question-banks/save` | `POST /api/question-banks` | `QuestionBankService.createQuestionBank(...)` |
+| Update | `question-bank-editor.html` | `POST /question-banks/edit/{id}`, `POST /question-banks/save` | `PUT /api/question-banks/{id}` | `QuestionBankService.updateQuestionBank(...)` |
+| Delete | `question-bank-list.html` | `POST /question-banks/delete/{id}` | `DELETE /api/question-banks/{id}` | `QuestionBankService.deleteQuestionBankById(...)` |
+| Statistics | `question-bank-statistics.html` | `GET /question-banks/{id}/statistics` | `GET /api/question-banks/{id}/statistics` | `QuestionBankController.getQuestionBankStatistics(...)` |
+| Export MC | list/details actions | `GET /question-banks/{id}/export-mc` | `GET /api/question-banks/{id}/export-mc` | `QuestionBankController.exportQuestionBankToCsv(...)` |
+| Export TF | list/details actions | `GET /question-banks/{id}/export-tf` | `GET /api/question-banks/{id}/export-tf` | `QuestionBankController.exportQuestionBankToCsvTF(...)` |
+| Export XML | list/details actions | `GET /question-banks/{id}/export-xml` | `GET /api/question-banks/{id}/export-xml` | `QuestionBankController.exportQuestionBankToXml(...)` |
 
-- **Step 3: Backend Endpoint**
-  - Endpoint: `DELETE /api/quizzes/{id}` (QuizController)
-  - Action: Delegates to service to delete quiz with cascade
-  - Input: quizId (Long, @PathVariable)
-  - Output: ResponseEntity<Void> with 204 (No Content) on success, 404 on not found
-  - Errors: 404 (quiz not found), 500 (internal server error)
-  - **Guidelines:**
-    - Document with Swagger/OpenAPI annotations
-    - Return 204 No Content on successful deletion
-    - Return 404 Not Found if quiz doesn't exist
-    - Catch and log all exceptions
-    - Use try-catch to handle service exceptions
+Legacy compatibility note: `GET /question-banks/{id}/delete` still exists in `ThyQuestionBankController` and also calls the same backend delete endpoint.
 
-- **Step 4: Service Action**
-  - Service: QuizService.deleteQuizById(Long id)
-  - Input: quizId (Long)
-  - Output: void (throws exception on error)
-  - Errors: EntityNotFoundException, DataAccessException
-  - **Cascade Deletion Sequence:**
-    1. **Find all QuizAuthor entries** for this quiz (with questions and errors loaded)
-    2. **For each QuizAuthor:**
-       - a. **Delete all Questions** associated with the QuizAuthor
-         - Use QuestionRepository with QuestionSpecification to find questions
-         - Call questionRepository.deleteAll(questions)
-         - Log number of questions deleted per author
-       - b. **Delete all QuizErrors** associated with the QuizAuthor
-         - Use QuizErrorRepository.findByQuizAuthorId()
-         - Call quizErrorRepository.deleteAll(errors)
-         - Log number of errors deleted per author
-    3. **Delete all QuizAuthor entries** for this quiz
-       - Use QuizAuthorRepository.deleteAllByQuizId(id)
-       - Log deletion of QuizAuthor entries
-    4. **Delete the Quiz** itself
-       - Use QuizRepository.deleteById(id)
-       - Log quiz deletion
-    5. **Clean up orphaned Authors** (authors with no remaining quiz contributions)
-       - For each author from deleted QuizAuthor entries:
-         - Check remaining contributions: quizAuthorRepository.countByAuthor(author)
-         - If count == 0, delete the author: authorRepository.delete(author)
-         - Log whether author was deleted or kept
-  - **Guidelines:**
-    - Use @Transactional annotation to ensure atomicity
-    - Log each major step for debugging and audit trail
-    - Handle each deletion step with proper error handling
-    - Ensure all related data is deleted before deleting the quiz
-    - Clean up orphaned authors to maintain database integrity
-    - Use batch operations where possible for performance
-  - **Transaction Management:**
-    - All deletions must occur within a single transaction
-    - If any step fails, entire transaction is rolled back
-    - Ensures database consistency
-  - **Performance Considerations:**
-    - Eager load questions and errors with QuizAuthor to minimize queries
-    - Use batch delete operations
-    - Log execution time for large datasets
-  - **Audit Trail:**
-    - Log quiz ID being deleted
-    - Log number of QuizAuthor entries found
-    - Log number of questions deleted per author
-    - Log number of errors deleted per author
-    - Log authors deleted vs kept
-    - Log completion of deletion process
+## 3. Architecture
 
-### 2.2 Actions from quiz-details.html
-#### 2.2.1 View Quiz Details
-- **Step 1: UI Template**
-  - Template: `quiz-details.html`
-  - Action: User clicks on quiz to view details
-  - Input: quizId
-  - Output: Quiz details
-  - Errors: Quiz not found
-- **Step 2: Thymeleaf Controller Endpoint**
-  - Endpoint: `GET /quizzes/{id}` (ThyQuizController)
-  - Action: Calls backend for quiz details
-  - Input: quizId
-  - Output: QuizDto
-  - Errors: Backend error, quiz not found
-- **Step 3: Backend Endpoint**
-  - Endpoint: `GET /api/quizzes/{id}`
-  - Action: Fetches quiz details
-  - Input: quizId
-  - Output: QuizDto
-  - Errors: Not found, DB error
-- **Step 4: Service Action**
-  - Service: QuizService.getQuizById()
-  - Input: quizId
-  - Output: QuizDto
-  - Errors: Data access error
+### 3.1 Module Responsibilities
 
-#### 2.2.2 View Extended Quiz Details
-- **Step 1: UI Template**
-  - Template: `quiz-details.html`
-  - Action: User requests extended details
-  - Input: quizId
-  - Output: Extended quiz details
-  - Errors: Quiz not found
-- **Step 2: Thymeleaf Controller Endpoint**
-  - Endpoint: `GET /quizzes/{id}/details` (ThyQuizController)
-  - Action: Calls backend for extended details
-  - Input: quizId
-  - Output: QuizDetailsDto
-  - Errors: Backend error, quiz not found
-- **Step 3: Backend Endpoint**
-  - Endpoint: `GET /api/quizzes/{id}/details`
-  - Action: Fetches extended details
-  - Input: quizId
-  - Output: QuizDetailsDto
-  - Errors: Not found, DB error
-- **Step 4: Service Action**
-  - Service: QuizService.getQuizDetailsById()
-  - Input: quizId
-  - Output: QuizDetailsDto
-  - Errors: Data access error
+- `myquiz-thymeleaf`
+  - `ThyQuestionBankController` orchestrates session checks, API calls, redirects, and model attributes.
+  - Templates render list/details/editor/statistics/extended views.
+- `myquiz-app`
+  - `QuestionBankController` exposes `/api/question-banks` REST endpoints.
+  - `QuestionBankService` implements filtering, retrieval, and transactional delete logic.
+  - `ExportService` generates XML payloads.
+- `myquiz-api`
+  - `QuestionBankApi` defines REST contract and OpenAPI-level operation metadata.
+  - DTOs define payload structure between modules.
 
-### 2.3 Actions from quiz-statistics.html
-#### 2.3.1 View Quiz Statistics
-- **Step 1: UI Template**
-  - Template: `quiz-statistics.html`
-  - Action: User requests quiz statistics
-  - Input: quizId
-  - Output: Quiz statistics
-  - Errors: Quiz not found, statistics unavailable
-- **Step 2: Thymeleaf Controller Endpoint**
-  - Endpoint: `GET /quizzes/{id}/statistics` (ThyQuizController)
-  - Action: Calls backend for quiz statistics
-  - Input: quizId
-  - Output: QuizStatisticsDto
-  - Errors: Backend error, statistics not found
-- **Step 3: Backend Endpoint**
-  - Endpoint: `GET /api/quizzes/{id}/statistics`
-  - Action: Fetches quiz statistics
-  - Input: quizId
-  - Output: QuizStatisticsDto
-  - Errors: Not found, DB error
-- **Step 4: Service Action**
-  - Service: QuizService.getQuizStatistics()
-  - Input: quizId
-  - Output: QuizStatisticsDto
-  - Errors: Data access error
+### 3.2 Persistence Topology
 
-### 2.4 Create Quiz
-- **Step 1: UI Template**
-  - Template: `quiz-create.html`
-  - Action: User submits new quiz form
-  - Input: QuizDto fields
-  - Output: Quiz created confirmation
-  - Errors: Validation error
-- **Step 2: Thymeleaf Controller Endpoint**
-  - Endpoint: `POST /quizzes` (ThyQuizController)
-  - Action: Calls backend to create quiz
-  - Input: QuizDto
-  - Output: Created QuizDto
-  - Errors: Backend error, validation error
-- **Step 3: Backend Endpoint**
-  - Endpoint: `POST /api/quizzes`
-  - Action: Creates quiz
-  - Input: QuizDto
-  - Output: QuizDto
-  - Errors: Validation error, DB error
-- **Step 4: Service Action**
-  - Service: QuizService.createQuiz()
-  - Input: QuizDto
-  - Output: QuizDto
-  - Errors: Data access error
+Question Bank flow depends on these relationships:
 
-### 2.5 Update Quiz
-- **Step 1: UI Template**
-  - Template: `quiz-edit.html`
-  - Action: User submits edit form
-  - Input: QuizDto fields
-  - Output: Quiz updated confirmation
-  - Errors: Validation error
-- **Step 2: Thymeleaf Controller Endpoint**
-  - Endpoint: `POST /quizzes/{id}/edit` (ThyQuizController)
-  - Action: Calls backend to update quiz
-  - Input: QuizDto
-  - Output: Updated QuizDto
-  - Errors: Backend error, validation error
-- **Step 3: Backend Endpoint**
-  - Endpoint: `PUT /api/quizzes/{id}`
-  - Action: Updates quiz
-  - Input: QuizDto
-  - Output: QuizDto
-  - Errors: Validation error, DB error
-- **Step 4: Service Action**
-  - Service: QuizService.updateQuiz()
-  - Input: QuizDto
-  - Output: QuizDto
-  - Errors: Data access error
+- `QuestionBank` (root aggregate for UI operations)
+- `QuestionBankAuthor` (join-like contribution entity with `author`, `questionBank`, source, template type)
+- `Question` (owned by `QuestionBankAuthor`)
+- `QuestionError` (owned by `Question`)
+- `QuestionDuplicate` (cross-question duplicate links)
+- `Author` (candidate for orphan cleanup after deletion)
 
-## 3. QuizAuthor Relationship Management
+## 4. Data Model and DTOs
 
-The QuizAuthor entity represents the many-to-many relationship between Quiz and Author, with additional context like source file and template type. This entity is central to quiz deletion and author lifecycle management.
+### 4.1 API Contract DTOs Used in This Feature
 
-### 3.1 QuizAuthor Entity Structure
+- `QuestionBankDto`
+  - Basic identity and metadata (`id`, `name`, `course`, `studyYear`)
+  - Derived counts (`mcQuestionsCount`, `tfQuestionsCount`, `numberOfDuplicates`, `noAuthors`)
+  - Embedded details lists for details view (`questionsMultichoice`, `questionsTruefalse`, `authors`)
+- `QuestionBankFilterRequestDto`
+  - `page`, `pageSize`, `courseId`
+- `QuestionBankFilterResponseDto`
+  - `questionBanks`, `totalElements`, `totalPages`, `page`, `pageSize`, `courses`
+- `QuestionBankExportDto`
+  - `questionBank` + `authorSections`
+- `QuestionBankExportAuthorSectionDto`
+  - Author block in extended export: author profile, MC/TF questions, errors, duplicates
+- `QuestionBankStatisticsDto`
+  - `questionBank` + per-author aggregates (`mcCount`, `tfCount`, `errorCount`)
 
-**Relationships:**
-- **ManyToOne** to Author (many QuizAuthors can reference one Author)
-- **ManyToOne** to Quiz (many QuizAuthors can reference one Quiz)
-- **OneToMany** to Question (one QuizAuthor has many Questions)
-- **OneToMany** to QuizError (one QuizAuthor has many QuizErrors)
+### 4.2 Service Output Characteristics
 
-**Key Fields:**
-- `id` (Long): Primary key
-- `author` (Author): The author who contributed questions
-- `quiz` (Quiz): The quiz this contribution belongs to
-- `source` (String): Original source file path
-- `templateType` (TemplateType): Template used for questions
-- `questions` (Set<Question>): Questions contributed by this author to this quiz
-- `quizErrors` (Set<QuizError>): Errors associated with this contribution
+- Counts shown in list/detail are computed from `Question` data filtered by question bank.
+- Duplicate count is derived from linked rows in `question_duplicate` intersected with the question bank question IDs.
+- Extended export sections are grouped by `QuestionBankAuthor` and sorted by author name.
 
-### 3.2 QuizAuthor Repository Methods
+## 5. Flows
 
-**Key Methods Used in Delete Operations:**
-- `findWithQuestionsAndQuizErrorsByQuizId(Long quizId)`: Eager loads all QuizAuthor entries with their questions and errors for a quiz
-- `deleteAllByQuizId(Long quizId)`: Deletes all QuizAuthor entries for a specific quiz
-- `countByAuthor(Author author)`: Counts remaining quiz contributions for an author (used for orphan detection)
+### 5.1 List and Filter
 
-### 3.3 Orphaned Author Detection and Cleanup
+1. UI hits `GET /question-banks` (or course-specific routes).
+2. `ThyQuestionBankController.renderQuestionBankList(...)` builds `QuestionBankFilterRequestDto`.
+3. Thymeleaf calls `POST /api/question-banks/filter`.
+4. Backend service applies paging guards, optional course filter, and maps DTO counts.
+5. Response includes both page data and courses for dropdown rendering.
 
-**Definition:** An orphaned author is an author who has no remaining QuizAuthor entries (no quiz contributions).
+Failure behavior:
 
-**Detection Logic:**
-```java
-Long remainingContributions = quizAuthorRepository.countByAuthor(author);
-if (remainingContributions == 0) {
-    // Author is orphaned - safe to delete
-}
-```
+- Unauthorized/forbidden API responses invalidate session and redirect to login.
+- Bad filter request path retries once with safe defaults.
+- Generic failures render list view with fallback empty model and error message.
 
-**Cleanup Process:**
-1. Collect all authors from QuizAuthor entries being deleted
-2. After deleting QuizAuthor entries, check each author
-3. If author has zero remaining contributions, delete the author
-4. Log all deletion decisions for audit trail
+### 5.2 View Details and Extended Details
 
-**Benefits:**
-- Maintains database integrity
-- Prevents accumulation of unused author records
-- Automatic cleanup reduces manual maintenance
-- Preserves authors who contribute to other quizzes
+Details (`/question-banks/{id}`):
 
-## 4. Author Operations
+1. Thymeleaf calls `GET /api/question-banks/{id}`.
+2. Backend builds `QuestionBankDto` with question lists, counts, authors, and source summary.
 
-### Create / Update
-- Authors create and update quizzes through `quiz-create.html` and `quiz-edit.html`.
-- Quiz creation associates quizzes with courses and authors; updates must preserve author attribution and related question links.
+Extended (`/question-banks/{id}/extended`):
 
-### View / List
-- Authors can view and filter their quizzes via `quiz-list.html`, including pagination and filtering by course and author.
-- Quiz details and statistics views (`quiz-details.html`, `quiz-statistics.html`) expose quiz performance and composition from the author’s perspective.
+1. Thymeleaf calls `GET /api/question-banks/{id}/extended`.
+2. Service builds `QuestionBankExportDto`.
+3. Author sections include:
+   - questions grouped by type
+   - non-duplicate validation errors
+   - deduplicated duplicate question projections
 
-### Delete / Archive
-- Authors can request quiz deletion from `quiz-list.html`; the system performs cascade deletion of related questions, quiz-author links, and errors according to business rules.
-- Any future archive/soft-delete mechanism must maintain author history and avoid data loss for reporting.
+### 5.3 Create and Update
 
-### Permissions & Roles
-- Only authenticated authors can manage their own quizzes.
-- Administrators may manage quizzes for all authors, including deletion and statistics.
+- Create path persists or reuses existing question bank by name/course/study year.
+- Update path rewrites course/name/study year and returns refreshed basic DTO.
+- Thymeleaf uses editor form routes (`/new`, `/edit/{id}`, `/save`) and redirects to list with flash messages.
 
-## 5. Ensure Consistency Across Calls
-**Inputs:** All quiz list display calls
-**Outputs:**
-- All quiz list views use the same filtering and pagination logic
-- Duplicate logic refactored to use DTOs and controller methods
+### 5.4 Delete (Transactional Cleanup)
 
-## 6. Test and Validate the Flow
-**Inputs:** UI actions, backend responses
-**Outputs:**
-- Pagination and filtering work as expected
-- Backend returns correct paginated/filter data
-- All quiz list views use unified flow
-- Delete operations maintain referential integrity
-- Orphaned authors are properly cleaned up
+Deletion in `QuestionBankService.deleteQuestionBankById(...)` runs in one transaction:
 
-## 7. Quiz List UI Enhancements
+1. Verify question bank exists.
+2. Load all `QuestionBankAuthor` rows for that question bank with author data.
+3. Collect deletion scope (`questionBankAuthorIds`, authors to re-check).
+4. Delete questions for each contribution block.
+5. Delete related question errors.
+6. Delete `QuestionBankAuthor` entries.
+7. Delete question bank root row.
+8. Remove orphaned authors that have zero remaining contributions.
 
-### 7.1 Button Styling Improvements
+Design intent:
 
-Enhanced quiz-list.html with consistent button icons and styling:
+- Keep referential integrity.
+- Preserve authors that still contribute to other question banks.
+- Log per-step timing and counts.
 
-**Added Icons:**
-- 📝 Questions button
-- 👁️ Details button
-- ✏️ Edit button
-- 🗑️ Delete button
-- 📥 CSV MC button (green gradient)
-- 📥 CSV TF button (green gradient)
-- 👥 Authors button
+### 5.5 Export and Statistics
 
-**Button Classes:**
-- `btn-edit` - Orange gradient for edit/view actions
-- `btn-info` - Orange gradient for info actions
-- `btn-delete` - Red gradient for delete actions
-- `btn-new` - Green gradient for export/download actions
+- CSV exports are generated in API endpoints and streamed by Thymeleaf download routes.
+- XML export delegates generation to `ExportService` and requires explicit permission.
+- Statistics endpoint aggregates question type counts and error counts per author.
 
-**CSS Standards:**
-All buttons use gradient styling from `styles.css`:
-```css
-.btn-new {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    color: #ffffff;
-    border: none;
-    font-weight: 600;
-}
-```
+## 6. Permissions and Security
 
-### 7.2 Filter and Navigation
+- XML export is permission-gated in API by `EXPORT_XML` authority.
+- Thymeleaf controller checks session/JWT presence before API forwarding.
+- Unauthorized and forbidden responses trigger session invalidation and redirect to login for protected pages.
 
-**Quiz List Filtering:**
-- ✅ Course dropdown filter
-- ✅ Page size selector (5, 10, 20, 50)
-- ✅ Current page input
-- ✅ Filter button with gradient styling
+## 7. UI, API, and Service Responsibilities
 
-**Pagination Controls:**
-- ⏮️ First page button
-- ⬅️ Previous page button
-- Page X of Y display
-- ➡️ Next page button
-- ⏭️ Last page button
+### 7.1 Thymeleaf Controller (`ThyQuestionBankController`)
 
-**Disabled States:**
-- First/Previous disabled on page 1
-- Next/Last disabled on last page
-- Visual feedback with reduced opacity
+- Session validation, fallback redirects, and user feedback messages.
+- API orchestration with `RestTemplate`.
+- Mapping request parameters (`page`, `pageSize`, `courseId`) to filter DTO.
+- Streaming downloaded content to browser for CSV/XML exports.
 
-### 7.3 Quiz Details Page
+### 7.2 REST Controller (`QuestionBankController`)
 
-Enhanced quiz-details.html with:
-- Consistent button styling matching quiz-list
-- All action buttons have appropriate icons
-- Export buttons use green gradient (btn-new class)
-- Navigation breadcrumbs
-- Proper spacing and alignment
+- Endpoint publishing under `/api/question-banks`.
+- HTTP status mapping (`200`, `201`, `204`, `404`, `500`, `403`).
+- Response DTO construction delegation to service layer.
 
-## 8. Related Documentation
-- See `question-sd.md` for Question service details and QuestionSpecification usage
-- See `author-sd.md` for Author operations and lifecycle management
-- See `upload-sd.md` for how QuizAuthor entries are created during file upload
-- See `style-sd.md` for UI/UX standards and CSS classes
+### 7.3 Service Layer (`QuestionBankService`)
 
----
+- Core business logic for create/update/delete/filter.
+- DTO enrichment with counts and grouped extended structures.
+- Transaction boundaries for destructive operations.
+- Duplicate count and author-orphan cleanup calculations.
 
-**Note:** Follow project guidelines and best practices for DTOs, controller design, endpoint publishing, and template integration.
+### 7.4 Repository and Specification Layer
+
+- `QuestionSpecification` and `QuestionBankSpecification` encode filter logic.
+- `QuestionBankAuthorSpecification` supports selective fetch strategy.
+- Repository calls back service projections and cleanup operations.
+
+## 8. Validation and Error Handling
+
+Validation and guard rails in current implementation:
+
+- Null or invalid filter input in service throws `IllegalArgumentException`.
+- Page/pageSize are normalized to positive defaults.
+- Not found question banks are surfaced as `404` in controller flows.
+- Delete flow explicitly fails fast when question bank does not exist.
+- UI routes return safe fallback pages with error messages on backend exceptions.
+
+## 9. Key Decisions
+
+- Use DTO-driven filter API (`POST /filter`) to support expandable filter contracts.
+- Keep delete operation in service-level transaction to avoid partial cleanup.
+- Return course dropdown data together with list filter response to minimize extra round-trips.
+- Keep extended details as a dedicated endpoint to avoid overloading default details payloads.
+- Keep XML authorization check in backend controller where authority context is guaranteed.
+
+## 10. Implementation Notes
+
+- Canonical API contract: `myquiz-api/src/main/java/com/unitbv/myquiz/api/interfaces/QuestionBankApi.java`
+- REST controller: `myquiz-app/src/main/java/com/unitbv/myquiz/app/controller/QuestionBankController.java`
+- Service logic: `myquiz-app/src/main/java/com/unitbv/myquiz/app/services/QuestionBankService.java`
+- Thymeleaf controller: `myquiz-thymeleaf/src/main/java/com/unitbv/myquiz/thy/controller/ThyQuestionBankController.java`
+- Main templates:
+  - `myquiz-thymeleaf/src/main/resources/templates/question-bank-list.html`
+  - `myquiz-thymeleaf/src/main/resources/templates/question-bank-details.html`
+  - `myquiz-thymeleaf/src/main/resources/templates/question-bank-extended-details.html`
+  - `myquiz-thymeleaf/src/main/resources/templates/question-bank-editor.html`
+  - `myquiz-thymeleaf/src/main/resources/templates/question-bank-statistics.html`
+
+Related docs:
+
+- `prompt/question-sd.md`
+- `prompt/author-sd.md`
+- `prompt/upload-sd.md`
+- `prompt/style-sd.md`

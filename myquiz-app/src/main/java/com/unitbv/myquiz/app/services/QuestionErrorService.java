@@ -6,6 +6,8 @@ import com.unitbv.myquiz.api.dto.QuestionErrorFilterResponseDto;
 import com.unitbv.myquiz.api.dto.CourseInfo;
 import com.unitbv.myquiz.api.settings.ControllerSettings;
 import com.unitbv.myquiz.api.types.QuestionType;
+import com.unitbv.myquiz.api.util.PaginationParams;
+import com.unitbv.myquiz.api.util.PaginationSupport;
 import com.unitbv.myquiz.app.entities.Question;
 import com.unitbv.myquiz.app.entities.QuestionBankAuthor;
 import com.unitbv.myquiz.app.entities.QuestionError;
@@ -84,11 +86,12 @@ public class QuestionErrorService {
     public QuestionErrorFilterResponseDto getAuthorErrors(String selectedCourse, Long selectedCourseId, String selectedAuthor, Long selectedQuestionBankId, Integer page, Integer pageSize) {
         List<QuestionError> all = selectedQuestionBankId != null ? questionErrorRepository.findByQuestionQuestionBankAuthorQuestionBankId(selectedQuestionBankId) : questionErrorRepository.findAll();
 
-        List<QuestionError> filtered = all.stream().filter(error -> matchCourse(error, selectedCourse)).filter(error -> matchAuthor(error, selectedAuthor)).sorted(
+        List<QuestionError> filtered = all.stream().filter(this::isVisibleError).filter(error -> matchCourse(error, selectedCourse)).filter(error -> matchAuthor(error, selectedAuthor)).sorted(
                 Comparator.comparing(QuestionError::getRowNumber, Comparator.nullsLast(Integer::compareTo))).toList();
 
-        int safePage = (page != null && page > 0) ? page : 1;
-        int safePageSize = (pageSize != null && pageSize > 0) ? pageSize : ControllerSettings.PAGE_SIZE;
+        PaginationParams pagination = PaginationSupport.normalize(page, pageSize);
+        int safePage = pagination.page();
+        int safePageSize = pagination.pageSize();
         int from = Math.min((safePage - 1) * safePageSize, filtered.size());
         int to = Math.min(from + safePageSize, filtered.size());
 
@@ -129,7 +132,7 @@ public class QuestionErrorService {
         if (questionBankId == null) {
             throw new IllegalArgumentException("QuestionBank ID cannot be null");
         }
-        return questionErrorRepository.findByQuestionQuestionBankAuthorQuestionBankId(questionBankId).stream().map(this::mapToQuestionErrorDto).sorted(
+        return questionErrorRepository.findByQuestionQuestionBankAuthorQuestionBankId(questionBankId).stream().filter(this::isVisibleError).map(this::mapToQuestionErrorDto).sorted(
                 Comparator.comparing(QuestionErrorDto::getRow, Comparator.nullsLast(Integer::compareTo))).toList();
     }
 
@@ -137,14 +140,17 @@ public class QuestionErrorService {
         if (authorId == null || questionBankId == null) {
             throw new IllegalArgumentException("Author ID and QuestionBank ID cannot be null");
         }
-        return (int) questionErrorRepository.countByQuestionQuestionBankAuthorAuthorIdAndQuestionQuestionBankAuthorQuestionBankId(authorId, questionBankId);
+        return (int) questionErrorRepository.findByQuestionQuestionBankAuthorQuestionBankIdAndQuestionQuestionBankAuthorAuthorId(questionBankId, authorId)
+                .stream()
+                .filter(this::isVisibleError)
+                .count();
     }
 
     public List<QuestionErrorDto> getErrorsByQuestionBankAndAuthor(Long questionBankId, Long authorId) {
         if (questionBankId == null || authorId == null) {
             throw new IllegalArgumentException("QuestionBank ID and Author ID cannot be null");
         }
-        return questionErrorRepository.findByQuestionQuestionBankAuthorQuestionBankIdAndQuestionQuestionBankAuthorAuthorId(questionBankId, authorId).stream().map(this::mapToQuestionErrorDto).sorted(
+        return questionErrorRepository.findByQuestionQuestionBankAuthorQuestionBankIdAndQuestionQuestionBankAuthorAuthorId(questionBankId, authorId).stream().filter(this::isVisibleError).map(this::mapToQuestionErrorDto).sorted(
                 Comparator.comparing(QuestionErrorDto::getRow, Comparator.nullsLast(Integer::compareTo))).toList();
     }
 
@@ -152,7 +158,7 @@ public class QuestionErrorService {
         if (questionBankAuthorId == null) {
             throw new IllegalArgumentException("QuestionBankAuthor ID cannot be null");
         }
-        return questionErrorRepository.findByQuestionQuestionBankAuthorId(questionBankAuthorId).stream().map(this::mapToQuestionErrorDto).sorted(
+        return questionErrorRepository.findByQuestionQuestionBankAuthorId(questionBankAuthorId).stream().filter(this::isVisibleError).map(this::mapToQuestionErrorDto).sorted(
                 Comparator.comparing(QuestionErrorDto::getRow, Comparator.nullsLast(Integer::compareTo))).toList();
     }
 
@@ -183,11 +189,21 @@ public class QuestionErrorService {
         if (id == null) {
             throw new IllegalArgumentException("Error ID cannot be null");
         }
-        return questionErrorRepository.findById(id).map(this::mapToQuestionErrorDto).orElse(null);
+        return questionErrorRepository.findById(id).filter(this::isVisibleError).map(this::mapToQuestionErrorDto).orElse(null);
     }
 
     public List<QuestionErrorDto> getAllErrors() {
-        return questionErrorRepository.findAll().stream().map(this::mapToQuestionErrorDto).sorted(Comparator.comparing(QuestionErrorDto::getRow, Comparator.nullsLast(Integer::compareTo))).toList();
+        return questionErrorRepository.findAll().stream().filter(this::isVisibleError).map(this::mapToQuestionErrorDto).sorted(Comparator.comparing(QuestionErrorDto::getRow, Comparator.nullsLast(Integer::compareTo))).toList();
+    }
+
+    public int countVisibleErrorsForQuestionBankAuthor(Long questionBankAuthorId) {
+        if (questionBankAuthorId == null) {
+            throw new IllegalArgumentException("QuestionBankAuthor ID cannot be null");
+        }
+        return (int) questionErrorRepository.findByQuestionQuestionBankAuthorId(questionBankAuthorId)
+                .stream()
+                .filter(this::isVisibleError)
+                .count();
     }
 
     private boolean matchCourse(QuestionError error, String selectedCourse) {
@@ -232,6 +248,10 @@ public class QuestionErrorService {
         return grouped;
     }
 
+    private boolean isVisibleError(QuestionError error) {
+        return error != null && !MyUtil.isDuplicateValidationError(error.getDescription());
+    }
+
     private QuestionErrorDto mapToQuestionErrorDto(QuestionError error) {
         QuestionBankAuthor qa = error.getQuestion() != null ? error.getQuestion().getQuestionBankAuthor() : null;
         String authorName = ControllerSettings.UNKNOWN;
@@ -266,4 +286,3 @@ public class QuestionErrorService {
                 .build();
     }
 }
-

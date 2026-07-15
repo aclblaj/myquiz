@@ -7,7 +7,7 @@
 </head>
 <body>
 
-<div th:insert="~{fragments::menu}"></div>
+<div th:insert="~{fragments/navigation::menu}"></div>
 
 <div class="container mt-3 list-page-compact">
     <h2 class="list-page-title">Questions</h2>
@@ -71,7 +71,7 @@
                        min="1"
                        class="searchfilter-select searchfilter-select-small"/>
             </div>
-            <button type="submit" class="btn-filter">🔍 Filter Questions</button>
+            <button type="submit" class="btn-filter">🔍 Filter</button>
         </form>
     </div>
 
@@ -84,9 +84,9 @@
         <tr>
             <th>ID</th>
             <th>Type</th>
-            <th>Title</th>
-            <th>Chapter</th>
             <th>Course</th>
+            <th>Chapter</th>
+            <th>Title</th>
             <th>Author</th>
             <th>Question Bank</th>
             <th>Duplicates</th>
@@ -95,25 +95,28 @@
         </thead>
         <tbody>
         <tr th:each="question : ${questions}" class="data-row">
-            <td th:text="${question.id}"></td>
-            <td th:text="${question.type}"></td>
-            <td th:text="${question.title}"></td>
-            <td th:text="${question.chapter}"></td>
+            <td>
+                <a th:if="${question.id != null}"
+                   th:href="@{/questions/{id}(id=${question.id}, courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, authorId=${selectedAuthorId}, type=${selectedType}, page=${currentPage}, pageSize=${pageSize})}"
+                   th:text="${question.id}">1</a>
+                <span th:if="${question.id == null}">-</span>
+            </td>
+            <td th:text="${question.type != null ? question.type.acronym : ''}"></td>
             <td th:text="${question.course}"></td>
-            <td th:text="${question.authorName}"></td>
+            <td th:text="${question.chapter}"></td>
+            <td th:text="${question.title}"></td>
+            <td>
+                <a th:if="${question.author != null and question.author.id != null}"
+                   th:href="@{/authors/{id}/details(id=${question.author.id})}"
+                   th:text="${question.author.initials}"
+                   th:title="${question.author.name}"></a>
+                <span th:if="${question.author == null or question.author.id == null}"
+                      th:text="${question.author != null ? question.author.name : ''}"></span>
+            </td>
             <td th:text="${question.questionBankName}"></td>
             <td th:text="${question.duplicateCount}"></td>
-            <td class="action-cell">
-                <a th:href="@{/questions/{id}(id=${question.id}, courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, authorId=${selectedAuthorId}, type=${selectedType}, page=${currentPage}, pageSize=${pageSize})}"
-                   class="btn btn-info">👁️ View</a>
-                <a th:href="@{/questions/{id}/duplicates(id=${question.id}, courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, authorId=${selectedAuthorId}, type=${selectedType}, page=${currentPage}, pageSize=${pageSize})}"
-                   class="btn btn-new">🔁 Duplicates</a>
-                <a th:if="${question.id != null}"
-                   th:href="@{/questions/{id}/correction(id=${question.id}, courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, authorId=${selectedAuthorId}, type=${selectedType}, page=${currentPage}, pageSize=${pageSize})}"
-                   class="btn btn-new">🤖 AI Correct</a>
-                <span th:if="${question.id == null}" class="btn btn-outline disabled"
-                      title="AI correction is unavailable for unsaved questions">🤖 AI Correct</span>
-                <button th:onclick="|deleteQuestion(${question.id})|" class="btn btn-delete">🗑️ Delete</button>
+            <td class="action-cell"
+                th:insert="~{fragments/forms :: question-actions(${question}, ${currentPage}, ${pageSize}, ${selectedCourseId}, ${selectedAuthorId}, ${selectedQuestionBankId}, ${selectedType})}">
             </td>
         </tr>
         <tr th:if="${#lists.isEmpty(questions)}" class="empty-row">
@@ -188,7 +191,12 @@
             </thead>
             <tbody>
             <tr th:each="questionDto : ${questionBank.questionsMC}" class="data-row">
-                <td th:text="${questionDto.id}"></td>
+                <td>
+                    <a th:if="${questionDto.id != null}"
+                       th:href="@{/questions/{id}(id=${questionDto.id}, courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, authorId=${selectedAuthorId}, type=${selectedType}, page=${currentPage}, pageSize=${pageSize})}"
+                       th:text="${questionDto.id}">1</a>
+                    <span th:if="${questionDto.id == null}">-</span>
+                </td>
                 <td th:text="${questionDto.chapter}"></td>
                 <td th:text="${questionDto.row}"></td>
                 <td th:text="${questionDto.title}"></td>
@@ -202,15 +210,8 @@
                 <td th:text="${questionDto.weightResponse3}"></td>
                 <td th:text="${questionDto.weightResponse4}"></td>
                 <td th:text="${questionDto.authorName}"></td>
-                <td class="action-cell">
-                    <a th:href="@{/questions/{id}(id=${questionDto.id}, courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, authorId=${selectedAuthorId}, type=${selectedType}, page=${currentPage}, pageSize=${pageSize})}"
-                       class="btn btn-info">👁️ View</a>
-                    <a th:href="@{/questions/{id}/duplicates(id=${questionDto.id}, courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, authorId=${selectedAuthorId}, type=${selectedType}, page=${currentPage}, pageSize=${pageSize})}"
-                       class="btn btn-new">🔁 Duplicates</a>
-                    <a th:href="@{/questions/{id}/edit(id=${questionDto.id}, courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, authorId=${selectedAuthorId}, type=${selectedType}, page=${currentPage}, pageSize=${pageSize})}"
-                       class="btn btn-questionBank-edit">✏️ Edit</a>
-                    <button th:onclick="|deleteQuestion(${questionDto.id})|" class="btn btn-delete">🗑️ Delete
-                    </button>
+                <td class="action-cell"
+                    th:insert="~{fragments/forms :: question-actions(${questionDto}, ${currentPage}, ${pageSize}, ${selectedCourseId}, ${selectedAuthorId}, ${selectedQuestionBankId}, ${selectedType})}">
                 </td>
             </tr>
             <tr th:if="${questionBank.questionsMC == null or #lists.isEmpty(questionBank.questionsMC)}"
@@ -238,7 +239,12 @@
             </thead>
             <tbody>
             <tr th:each="questionDto : ${questionBank.questionsTF}" class="data-row">
-                <td th:text="${questionDto.id}"></td>
+                <td>
+                    <a th:if="${questionDto.id != null}"
+                       th:href="@{/questions/{id}(id=${questionDto.id}, courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, authorId=${selectedAuthorId}, type=${selectedType}, page=${currentPage}, pageSize=${pageSize})}"
+                       th:text="${questionDto.id}">1</a>
+                    <span th:if="${questionDto.id == null}">-</span>
+                </td>
                 <td th:text="${questionDto.chapter}"></td>
                 <td th:text="${questionDto.title}"></td>
                 <td th:text="${questionDto.row}"></td>
@@ -247,15 +253,8 @@
                 <td th:text="${questionDto.weightFalse}"></td>
                 <td th:text="${questionDto.response1}"></td>
                 <td th:text="${questionDto.authorName}"></td>
-                <td class="action-cell">
-                    <a th:href="@{/questions/{id}(id=${questionDto.id}, courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, authorId=${selectedAuthorId}, type=${selectedType}, page=${currentPage}, pageSize=${pageSize})}"
-                       class="btn btn-info">👁️ View</a>
-                    <a th:href="@{/questions/{id}/duplicates(id=${questionDto.id}, courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, authorId=${selectedAuthorId}, type=${selectedType}, page=${currentPage}, pageSize=${pageSize})}"
-                       class="btn btn-new">🔁 Duplicates</a>
-                    <a th:href="@{/questions/{id}/edit(id=${questionDto.id}, courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, authorId=${selectedAuthorId}, type=${selectedType}, page=${currentPage}, pageSize=${pageSize})}"
-                       class="btn btn-questionBank-edit">✏️ Edit</a>
-                    <button th:onclick="|deleteQuestion(${questionDto.id})|" class="btn btn-delete">🗑️ Delete
-                    </button>
+                <td class="action-cell"
+                    th:insert="~{fragments/forms :: question-actions(${questionDto}, ${currentPage}, ${pageSize}, ${selectedCourseId}, ${selectedAuthorId}, ${selectedQuestionBankId}, ${selectedType})}">
                 </td>
             </tr>
             <tr th:if="${questionBank.questionsTF == null or #lists.isEmpty(questionBank.questionsTF)}"
