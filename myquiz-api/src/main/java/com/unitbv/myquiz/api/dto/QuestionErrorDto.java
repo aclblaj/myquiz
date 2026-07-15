@@ -78,4 +78,17 @@ public class QuestionErrorDto {
         this.description = description;
         this.row = row;
     }
+
+    public String getAuthorInitials() {
+        if (authorName == null || authorName.isBlank()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (String part : authorName.trim().split("\\s+")) {
+            if (!part.isEmpty()) {
+                sb.append(Character.toUpperCase(part.charAt(0)));
+            }
+        }
+        return sb.toString();
+    }
 }

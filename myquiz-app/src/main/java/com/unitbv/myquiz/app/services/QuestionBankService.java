@@ -9,15 +9,20 @@ import com.unitbv.myquiz.api.dto.QuestionBankExportDto;
 import com.unitbv.myquiz.api.dto.QuestionBankFilterRequestDto;
 import com.unitbv.myquiz.api.dto.QuestionBankFilterResponseDto;
 import com.unitbv.myquiz.api.dto.QuestionBankInfo;
+import com.unitbv.myquiz.api.dto.QuestionDuplicateDto;
 import com.unitbv.myquiz.api.dto.QuestionErrorDto;
 import com.unitbv.myquiz.api.settings.ControllerSettings;
 import com.unitbv.myquiz.api.types.QuestionType;
 import com.unitbv.myquiz.api.types.StudyYear;
+import com.unitbv.myquiz.api.util.PaginationParams;
+import com.unitbv.myquiz.api.util.PaginationSupport;
 import com.unitbv.myquiz.app.entities.Author;
 import com.unitbv.myquiz.app.entities.Question;
 import com.unitbv.myquiz.app.entities.QuestionBank;
 import com.unitbv.myquiz.app.entities.QuestionBankAuthor;
+import com.unitbv.myquiz.app.entities.QuestionDuplicate;
 import com.unitbv.myquiz.app.entities.QuestionError;
+import com.unitbv.myquiz.app.mapper.QuestionDuplicateMapper;
 import com.unitbv.myquiz.app.mapper.QuestionMapper;
 import com.unitbv.myquiz.app.repositories.AuthorRepository;
 import com.unitbv.myquiz.app.repositories.QuestionRepository;
@@ -39,7 +44,9 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -53,22 +60,24 @@ public class QuestionBankService {
     private final QuestionBankAuthorRepository questionBankAuthorRepository;
     private final QuestionRepository questionRepository;
     private final QuestionErrorRepository questionErrorRepository;
-    @Autowired(required = false)
-    private QuestionDuplicateRepository questionDuplicateRepository;
+    private final QuestionDuplicateRepository questionDuplicateRepository;
     private final AuthorRepository authorRepository;
     private final CourseService courseService;
     private final QuestionMapper questionMapper;
+    private final QuestionDuplicateMapper questionDuplicateMapper;
 
     @Autowired
     public QuestionBankService(QuestionBankRepository questionBankRepository, QuestionBankAuthorRepository questionBankAuthorRepository, QuestionRepository questionRepository, QuestionErrorRepository questionErrorRepository,
-                               AuthorRepository authorRepository, CourseService courseService, QuestionMapper questionMapper) {
+                               QuestionDuplicateRepository questionDuplicateRepository, AuthorRepository authorRepository, CourseService courseService, QuestionMapper questionMapper, QuestionDuplicateMapper questionDuplicateMapper) {
         this.questionBankRepository = questionBankRepository;
         this.questionBankAuthorRepository = questionBankAuthorRepository;
         this.questionRepository = questionRepository;
         this.questionErrorRepository = questionErrorRepository;
+        this.questionDuplicateRepository = questionDuplicateRepository;
         this.authorRepository = authorRepository;
         this.courseService = courseService;
         this.questionMapper = questionMapper;
+        this.questionDuplicateMapper = questionDuplicateMapper;
     }
 
 
@@ -148,103 +157,20 @@ public class QuestionBankService {
         long startTime = System.currentTimeMillis();
         logger.atInfo().addArgument(id).log("Starting optimized deletion of questionBank with ID: {}");
 
-        // Step 1: Verify questionBank exists (fast check)
-        if (!questionBankRepository.existsById(id)) {
-            logger.atWarn().addArgument(id).log("QuestionBank with ID {} not found - cannot delete");
-            throw new IllegalArgumentException("QuestionBank not found with ID: " + id);
+        ensureQuestionBankExists(id);
+        List<QuestionBankAuthor> questionBankAuthors = loadQuestionBankAuthorsForDeletion(id);
+        DeletionScope scope = collectDeletionScope(questionBankAuthors);
+
+        if (!scope.questionBankAuthorIds().isEmpty()) {
+            deleteQuestionsForQuestionBankAuthors(scope.questionBankAuthorIds());
+            deleteErrorsForQuestionBankAuthors(scope.questionBankAuthorIds());
         }
 
-        // Step 2: Fetch all QuestionBankAuthor entries with authors in ONE query (eager fetch)
-        long fetchStart = System.currentTimeMillis();
-        List<QuestionBankAuthor> questionBankAuthors = questionBankAuthorRepository.findAll(
-            QuestionBankAuthorSpecification.hasQuestionBankId(id)
-                .and(QuestionBankAuthorSpecification.fetchAuthor())
-        );
-        logger.atInfo()
-              .addArgument(questionBankAuthors.size())
-              .addArgument(System.currentTimeMillis() - fetchStart)
-              .log("Found {} QuestionBankAuthor entries in {}ms");
-
-        // Collect authors for orphan check (no extra queries)
-        Set<Author> authorsToCheck = new HashSet<>();
-        List<Long> questionBankAuthorIds = new ArrayList<>();
-        for (QuestionBankAuthor questionBankAuthor : questionBankAuthors) {
-            questionBankAuthorIds.add(questionBankAuthor.getId());
-            authorsToCheck.add(questionBankAuthor.getAuthor());
-        }
-
-        if (!questionBankAuthorIds.isEmpty()) {
-            // Step 3: Batch delete all Questions for ALL questionBankAuthors (single query per QuestionBankAuthor)
-            long deleteQuestionsStart = System.currentTimeMillis();
-            int totalQuestionsDeleted = 0;
-            for (Long questionBankAuthorId : questionBankAuthorIds) {
-                Specification<Question> questionSpec = QuestionSpecification.byQuestionBankAuthorId(questionBankAuthorId);
-                List<Question> questions = questionRepository.findAll(questionSpec);
-                if (!questions.isEmpty()) {
-                    questionRepository.deleteAll(questions);
-                    totalQuestionsDeleted += questions.size();
-                }
-            }
-            logger.atInfo()
-                  .addArgument(totalQuestionsDeleted)
-                  .addArgument(System.currentTimeMillis() - deleteQuestionsStart)
-                  .log("Deleted {} questions in {}ms");
-
-            // Step 4: Batch delete all QuestionErrors for ALL questionBankAuthors (single query per QuestionBankAuthor)
-            long deleteErrorsStart = System.currentTimeMillis();
-            int totalErrorsDeleted = 0;
-            for (Long questionBankAuthorId : questionBankAuthorIds) {
-                List<QuestionError> errors = questionErrorRepository.findByQuestionQuestionBankAuthorId(questionBankAuthorId);
-                if (!errors.isEmpty()) {
-                    questionErrorRepository.deleteAll(errors);
-                    totalErrorsDeleted += errors.size();
-                }
-            }
-            logger.atInfo()
-                  .addArgument(totalErrorsDeleted)
-                  .addArgument(System.currentTimeMillis() - deleteErrorsStart)
-                  .log("Deleted {} errors in {}ms");
-        }
-
-        // Step 5: Delete all QuestionBankAuthor entries (already loaded, batch delete)
-        long deletequestionBankAuthorsStart = System.currentTimeMillis();
-        if (!questionBankAuthors.isEmpty()) {
-            questionBankAuthorRepository.deleteAll(questionBankAuthors);
-            logger.atInfo()
-                  .addArgument(questionBankAuthors.size())
-                  .addArgument(System.currentTimeMillis() - deletequestionBankAuthorsStart)
-                  .log("Deleted {} QuestionBankAuthor entries in {}ms");
-        }
-
-        // Step 6: Delete the QuestionBank itself
+        deleteQuestionBankAuthors(questionBankAuthors);
         questionBankRepository.deleteById(id);
         logger.atInfo().addArgument(id).log("Deleted questionBank with ID: {}");
 
-        // Step 7: Optimized orphaned Author cleanup
-        long cleanupStart = System.currentTimeMillis();
-        if (!authorsToCheck.isEmpty()) {
-            List<Author> authorsToDelete = new ArrayList<>();
-
-            // Batch check all authors in one pass
-            for (Author author : authorsToCheck) {
-                Long remainingContributions = questionBankAuthorRepository.count(
-                    QuestionBankAuthorSpecification.hasAuthor(author)
-                );
-                if (remainingContributions == 0) {
-                    authorsToDelete.add(author);
-                }
-            }
-
-            if (!authorsToDelete.isEmpty()) {
-                authorRepository.deleteAll(authorsToDelete);
-                logger.atInfo()
-                      .addArgument(authorsToDelete.size())
-                      .log("Deleted {} orphaned authors");
-            }
-            logger.atInfo()
-                  .addArgument(System.currentTimeMillis() - cleanupStart)
-                  .log("Author cleanup completed in {}ms");
-        }
+        cleanupOrphanedAuthors(scope.authorsToCheck());
 
         long totalTime = System.currentTimeMillis() - startTime;
         logger.atInfo()
@@ -256,6 +182,10 @@ public class QuestionBankService {
 
     @Transactional(readOnly = true)
     public QuestionBankDto getQuestionBankById(Long id) {
+        return buildQuestionBankDto(id);
+    }
+
+    private QuestionBankDto buildQuestionBankDto(Long id) {
         if (id == null) {
             throw new IllegalArgumentException("QuestionBank ID cannot be null");
         }
@@ -303,16 +233,6 @@ public class QuestionBankService {
         }
         throw new IllegalArgumentException("QuestionBank not found with ID: " + id);
     }
-
-
-    public int getCompareTo(QuestionBankDto q1, QuestionBankDto q2) {
-        if (q1 == null || q2 == null) {
-            return 0;
-        }
-        return q1.getCourse().compareTo(q2.getCourse());
-    }
-
-
     public QuestionBank updateQuestionBank(Long id, String course, String name, StudyYear studyYear) {
         Optional<QuestionBank> questionBankOptional = questionBankRepository.findById(id);
         if (questionBankOptional.isPresent()) {
@@ -342,10 +262,13 @@ public class QuestionBankService {
             dto.setName(questionBank.getName());
             dto.setCourse(questionBank.getCourseName());
             dto.setStudyYear(questionBank.getStudyYear());
-            if (questionBank.getQuestionBankAuthors() != null && !questionBank.getQuestionBankAuthors().isEmpty()) {
-                dto.setSourceFile(questionBank.getQuestionBankAuthors().iterator().next().getSource());
+            Set<QuestionBankAuthor> qbAuthors = questionBank.getQuestionBankAuthors();
+            if (qbAuthors != null && !qbAuthors.isEmpty()) {
+                dto.setSourceFile(qbAuthors.iterator().next().getSource());
             }
-            List<AuthorDto> authorDtos = questionBank.getQuestionBankAuthors().stream().map(qa -> AuthorDto.builder().id(qa.getAuthor().getId()).name(qa.getAuthor().getName()).initials(qa.getAuthor().getInitials()).build()).toList();
+            List<AuthorDto> authorDtos = qbAuthors == null ? List.of() : qbAuthors.stream()
+                    .map(qa -> AuthorDto.builder().id(qa.getAuthor().getId()).name(qa.getAuthor().getName()).initials(qa.getAuthor().getInitials()).build())
+                    .toList();
             dto.setAuthors(authorDtos);
             // Use QuestionSpecification for MC and TF questions
             var questionSpec = QuestionSpecification.byFilters(null, null, questionBank.getId(), null);
@@ -390,11 +313,9 @@ public class QuestionBankService {
             throw new IllegalArgumentException("Filter input cannot be null");
         }
 
-        int page = filterInput.getPage() != null ? filterInput.getPage() : 1;
-        int pageSize = filterInput.getPageSize() != null ? filterInput.getPageSize() : 10;
-        // Guard against invalid paging values
-        if (page <= 0) page = 1;
-        if (pageSize <= 0) pageSize = 10;
+        PaginationParams pagination = PaginationSupport.normalize(filterInput.getPage(), filterInput.getPageSize());
+        int page = pagination.page();
+        int pageSize = pagination.pageSize();
         Long courseId = filterInput.getCourseId();
 
         // Fetch all courses for the dropdown
@@ -501,7 +422,8 @@ public class QuestionBankService {
     @Transactional(readOnly = true)
     public QuestionBankExportDto getQuestionBankExtendedById(Long id) {
         QuestionBankExportDto dto = new QuestionBankExportDto();
-        dto.setQuestionBank(getQuestionBankById(id));
+        dto.setQuestionBank(buildQuestionBankDto(id));
+        String questionBankName = dto.getQuestionBank() != null ? dto.getQuestionBank().getName() : null;
 
         List<QuestionBankAuthor> questionBankAuthors = questionBankAuthorRepository.findAll(
                 QuestionBankAuthorSpecification.hasQuestionBankId(id)
@@ -514,84 +436,208 @@ public class QuestionBankService {
                         qa -> qa.getAuthor() != null ? qa.getAuthor().getName() : null,
                         Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)
                 ))
-                .map(questionBankAuthor -> {
-                    QuestionBankExportAuthorSectionDto section = new QuestionBankExportAuthorSectionDto();
-                    Author author = questionBankAuthor.getAuthor();
-                    section.setAuthor(AuthorDto.builder().id(author.getId()).name(author.getName()).initials(author.getInitials()).build());
-
-                    List<Question> authorQuestions = questionRepository.findAll(
-                            QuestionSpecification.byQuestionBankAuthorId(questionBankAuthor.getId())
-                    );
-
-                    section.setMultipleChoiceQuestions(authorQuestions.stream()
-                            .filter(question -> question.getType() == QuestionType.MULTICHOICE)
-                            .sorted(Comparator.comparingInt(Question::getCrtNo))
-                            .map(questionMapper::toDto)
-                            .toList());
-
-                    section.setTrueFalseQuestions(authorQuestions.stream()
-                            .filter(question -> question.getType() == QuestionType.TRUEFALSE)
-                            .sorted(Comparator.comparingInt(Question::getCrtNo))
-                            .map(questionMapper::toDto)
-                            .toList());
-
-                    section.setErrors(questionErrorRepository
-                            .findByQuestionQuestionBankAuthorQuestionBankIdAndQuestionQuestionBankAuthorAuthorId(id, author.getId())
-                            .stream()
-                            .sorted(Comparator
-                                    .comparing(QuestionError::getRowNumber, Comparator.nullsLast(Integer::compareTo))
-                                    .thenComparing(QuestionError::getId, Comparator.nullsLast(Long::compareTo)))
-                            .map(error -> {
-                                QuestionErrorDto errorDto = new QuestionErrorDto();
-                                errorDto.setId(error.getId());
-                                errorDto.setDescription(error.getDescription());
-                                errorDto.setRow(error.getRowNumber());
-                                errorDto.setAuthorName(author.getName());
-                                errorDto.setQuestionBankId(id);
-                                errorDto.setQuestionBankName(dto.getQuestionBank() != null ? dto.getQuestionBank().getName() : null);
-                                errorDto.setStatus(error.getStatus() != null ? error.getStatus() : ControllerSettings.ERROR_STATUS_OPEN);
-                                if (error.getQuestion() != null) {
-                                    errorDto.setQuestionId(error.getQuestion().getId());
-                                    if (error.getQuestion().getType() != null) {
-                                        errorDto.setQuestionType(error.getQuestion().getType().name());
-                                    }
-                                }
-                                return errorDto;
-                            })
-                            .toList());
-
-                    List<Long> authorQuestionIds = authorQuestions.stream()
-                            .map(Question::getId)
-                            .filter(questionId -> questionId != null)
-                            .toList();
-                    if (questionDuplicateRepository == null || authorQuestionIds.isEmpty()) {
-                        section.setDuplicateQuestions(List.of());
-                    } else {
-                        section.setDuplicateQuestions(questionDuplicateRepository
-                                .findByQuestionIdInOrDuplicateQuestionIdIn(authorQuestionIds, authorQuestionIds)
-                                .stream()
-                                .map(duplicate -> authorQuestionIds.contains(duplicate.getQuestion().getId())
-                                        ? duplicate.getQuestion()
-                                        : duplicate.getDuplicateQuestion())
-                                .distinct()
-                                .sorted(Comparator.comparingInt(Question::getCrtNo))
-                                .map(question -> {
-                                    QuestionDto duplicateDto = new QuestionDto();
-                                    duplicateDto.setId(question.getId());
-                                    duplicateDto.setTitle(question.getTitle());
-                                    duplicateDto.setText(question.getText());
-                                    duplicateDto.setRow(question.getCrtNo());
-                                    return duplicateDto;
-                                })
-                                .toList());
-                    }
-
-                    return section;
-                })
+                .map(questionBankAuthor -> buildAuthorSection(id, questionBankName, questionBankAuthor))
                 .toList();
 
         dto.setAuthorSections(authorSections);
         return dto;
     }
-}
 
+    private void ensureQuestionBankExists(Long id) {
+        if (!questionBankRepository.existsById(id)) {
+            logger.atWarn().addArgument(id).log("QuestionBank with ID {} not found - cannot delete");
+            throw new IllegalArgumentException("QuestionBank not found with ID: " + id);
+        }
+    }
+
+    private List<QuestionBankAuthor> loadQuestionBankAuthorsForDeletion(Long questionBankId) {
+        long fetchStart = System.currentTimeMillis();
+        List<QuestionBankAuthor> questionBankAuthors = questionBankAuthorRepository.findAll(
+                QuestionBankAuthorSpecification.hasQuestionBankId(questionBankId)
+                        .and(QuestionBankAuthorSpecification.fetchAuthor())
+        );
+        logger.atInfo()
+                .addArgument(questionBankAuthors.size())
+                .addArgument(System.currentTimeMillis() - fetchStart)
+                .log("Found {} QuestionBankAuthor entries in {}ms");
+        return questionBankAuthors;
+    }
+
+    private DeletionScope collectDeletionScope(List<QuestionBankAuthor> questionBankAuthors) {
+        Set<Author> authorsToCheck = new HashSet<>();
+        List<Long> questionBankAuthorIds = new ArrayList<>();
+        for (QuestionBankAuthor questionBankAuthor : questionBankAuthors) {
+            questionBankAuthorIds.add(questionBankAuthor.getId());
+            authorsToCheck.add(questionBankAuthor.getAuthor());
+        }
+        return new DeletionScope(questionBankAuthorIds, authorsToCheck);
+    }
+
+    private void deleteQuestionsForQuestionBankAuthors(List<Long> questionBankAuthorIds) {
+        long deleteQuestionsStart = System.currentTimeMillis();
+        int totalQuestionsDeleted = 0;
+        for (Long questionBankAuthorId : questionBankAuthorIds) {
+            Specification<Question> questionSpec = QuestionSpecification.byQuestionBankAuthorId(questionBankAuthorId);
+            List<Question> questions = questionRepository.findAll(questionSpec);
+            if (!questions.isEmpty()) {
+                questionRepository.deleteAll(questions);
+                totalQuestionsDeleted += questions.size();
+            }
+        }
+        logger.atInfo()
+                .addArgument(totalQuestionsDeleted)
+                .addArgument(System.currentTimeMillis() - deleteQuestionsStart)
+                .log("Deleted {} questions in {}ms");
+    }
+
+    private void deleteErrorsForQuestionBankAuthors(List<Long> questionBankAuthorIds) {
+        long deleteErrorsStart = System.currentTimeMillis();
+        int totalErrorsDeleted = 0;
+        for (Long questionBankAuthorId : questionBankAuthorIds) {
+            List<QuestionError> errors = questionErrorRepository.findByQuestionQuestionBankAuthorId(questionBankAuthorId);
+            if (!errors.isEmpty()) {
+                questionErrorRepository.deleteAll(errors);
+                totalErrorsDeleted += errors.size();
+            }
+        }
+        logger.atInfo()
+                .addArgument(totalErrorsDeleted)
+                .addArgument(System.currentTimeMillis() - deleteErrorsStart)
+                .log("Deleted {} errors in {}ms");
+    }
+
+    private void deleteQuestionBankAuthors(List<QuestionBankAuthor> questionBankAuthors) {
+        long deleteQuestionBankAuthorsStart = System.currentTimeMillis();
+        if (!questionBankAuthors.isEmpty()) {
+            questionBankAuthorRepository.deleteAll(questionBankAuthors);
+            logger.atInfo()
+                    .addArgument(questionBankAuthors.size())
+                    .addArgument(System.currentTimeMillis() - deleteQuestionBankAuthorsStart)
+                    .log("Deleted {} QuestionBankAuthor entries in {}ms");
+        }
+    }
+
+    private void cleanupOrphanedAuthors(Set<Author> authorsToCheck) {
+        long cleanupStart = System.currentTimeMillis();
+        if (authorsToCheck.isEmpty()) {
+            return;
+        }
+
+        List<Author> authorsToDelete = new ArrayList<>();
+        for (Author author : authorsToCheck) {
+            long remainingContributions = questionBankAuthorRepository.count(
+                    QuestionBankAuthorSpecification.hasAuthor(author)
+            );
+            if (remainingContributions == 0) {
+                authorsToDelete.add(author);
+            }
+        }
+
+        if (!authorsToDelete.isEmpty()) {
+            authorRepository.deleteAll(authorsToDelete);
+            logger.atInfo()
+                    .addArgument(authorsToDelete.size())
+                    .log("Deleted {} orphaned authors");
+        }
+        logger.atInfo()
+                .addArgument(System.currentTimeMillis() - cleanupStart)
+                .log("Author cleanup completed in {}ms");
+    }
+
+    private QuestionBankExportAuthorSectionDto buildAuthorSection(Long questionBankId, String questionBankName, QuestionBankAuthor questionBankAuthor) {
+        QuestionBankExportAuthorSectionDto section = new QuestionBankExportAuthorSectionDto();
+        Author author = questionBankAuthor.getAuthor();
+        section.setAuthor(AuthorDto.builder().id(author.getId()).name(author.getName()).initials(author.getInitials()).build());
+
+        List<Question> authorQuestions = questionRepository.findAll(
+                QuestionSpecification.byQuestionBankAuthorId(questionBankAuthor.getId())
+        );
+
+        section.setMultipleChoiceQuestions(mapQuestionsByType(authorQuestions, QuestionType.MULTICHOICE));
+        section.setTrueFalseQuestions(mapQuestionsByType(authorQuestions, QuestionType.TRUEFALSE));
+        section.setErrors(buildAuthorErrors(questionBankId, questionBankName, author));
+        section.setDuplicateQuestions(buildAuthorDuplicateQuestions(authorQuestions));
+        return section;
+    }
+
+    private List<QuestionDto> mapQuestionsByType(List<Question> questions, QuestionType type) {
+        return questions.stream()
+                .filter(question -> question.getType() == type)
+                .sorted(Comparator.comparingInt(Question::getCrtNo))
+                .map(questionMapper::toDto)
+                .toList();
+    }
+
+    private List<QuestionErrorDto> buildAuthorErrors(Long questionBankId, String questionBankName, Author author) {
+        return questionErrorRepository
+                .findByQuestionQuestionBankAuthorQuestionBankIdAndQuestionQuestionBankAuthorAuthorId(questionBankId, author.getId())
+                .stream()
+                .filter(error -> !MyUtil.isDuplicateValidationError(error.getDescription()))
+                .sorted(Comparator
+                        .comparing(QuestionError::getRowNumber, Comparator.nullsLast(Integer::compareTo))
+                        .thenComparing(QuestionError::getId, Comparator.nullsLast(Long::compareTo)))
+                .map(error -> mapAuthorErrorDto(error, questionBankId, questionBankName, author.getName()))
+                .toList();
+    }
+
+    private QuestionErrorDto mapAuthorErrorDto(QuestionError error, Long questionBankId, String questionBankName, String authorName) {
+        QuestionErrorDto errorDto = new QuestionErrorDto();
+        errorDto.setId(error.getId());
+        errorDto.setDescription(error.getDescription());
+        errorDto.setRow(error.getRowNumber());
+        errorDto.setAuthorName(authorName);
+        errorDto.setQuestionBankId(questionBankId);
+        errorDto.setQuestionBankName(questionBankName);
+        errorDto.setStatus(error.getStatus() != null ? error.getStatus() : ControllerSettings.ERROR_STATUS_OPEN);
+        if (error.getQuestion() != null) {
+            errorDto.setQuestionId(error.getQuestion().getId());
+            if (error.getQuestion().getType() != null) {
+                errorDto.setQuestionType(error.getQuestion().getType().name());
+            }
+        }
+        return errorDto;
+    }
+
+    private List<QuestionDuplicateDto> buildAuthorDuplicateQuestions(List<Question> authorQuestions) {
+        List<Long> authorQuestionIds = authorQuestions.stream()
+                .map(Question::getId)
+                .filter(Objects::nonNull)
+                .toList();
+        if (authorQuestionIds.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, QuestionDuplicateDto> duplicateMap = new LinkedHashMap<>();
+        questionDuplicateRepository
+                .findByQuestionIdInOrDuplicateQuestionIdIn(authorQuestionIds, authorQuestionIds)
+                .forEach(duplicateLink -> {
+                    Question duplicateQuestion = selectQuestionForAuthor(duplicateLink, authorQuestionIds);
+                    if (duplicateQuestion == null || duplicateQuestion.getId() == null) {
+                        return;
+                    }
+
+                    QuestionDuplicateDto candidate = questionDuplicateMapper.toDuplicateDto(duplicateLink, duplicateQuestion);
+                    duplicateMap.putIfAbsent(duplicateQuestion.getId(), candidate);
+                });
+
+        return duplicateMap.values().stream()
+                .sorted(Comparator
+                        .comparing(QuestionDuplicateDto::getRow, Comparator.nullsLast(Integer::compareTo))
+                        .thenComparing(QuestionDuplicateDto::getQuestionId, Comparator.nullsLast(Long::compareTo)))
+                .toList();
+    }
+
+    private record DeletionScope(List<Long> questionBankAuthorIds, Set<Author> authorsToCheck) {
+    }
+
+    private Question selectQuestionForAuthor(QuestionDuplicate duplicateLink, List<Long> authorQuestionIds) {
+        if (duplicateLink == null || duplicateLink.getQuestion() == null || duplicateLink.getDuplicateQuestion() == null) {
+            return null;
+        }
+        Long baseQuestionId = duplicateLink.getQuestion().getId();
+        if (baseQuestionId != null && authorQuestionIds.contains(baseQuestionId)) {
+            return duplicateLink.getQuestion();
+        }
+        return duplicateLink.getDuplicateQuestion();
+    }
+}

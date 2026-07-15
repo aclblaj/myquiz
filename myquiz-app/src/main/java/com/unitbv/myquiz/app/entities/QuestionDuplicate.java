@@ -1,5 +1,6 @@
 package com.unitbv.myquiz.app.entities;
 
+import com.unitbv.myquiz.api.settings.ControllerSettings;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -48,8 +49,12 @@ public class QuestionDuplicate {
     @JoinColumn(name = "duplicate_question_id", nullable = false)
     private Question duplicateQuestion;
 
+
     @Column(name = "created_at", updatable = false)
     private OffsetDateTime createdAt;
+
+    @Column(name = "status", length = 20)
+    private String status = ControllerSettings.DUPLICATE_STATUS_OPEN;
 
     @PrePersist
     protected void onCreate() {

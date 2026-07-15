@@ -7,7 +7,7 @@
 </head>
 <body>
 
-<div th:insert="~{fragments::menu}"></div>
+<div th:insert="~{fragments/navigation::menu}"></div>
 
 <div class="container mt-3 list-page-compact">
     <h2 class="list-page-title" th:text="'📖 Question Bank Details: ' + ${questionBank.name}">Question Bank Details</h2>
@@ -26,13 +26,8 @@
             <tr><th scope="row">Number of Authors</th><td th:text="${questionBank.noAuthors}">0</td></tr>
         </table>
 
+        <div class="form-actions" th:insert="~{fragments/forms :: question-bank-actions(${questionBank}, ${null}, ${10}, ${questionBank.courseId})}"></div>
         <div class="form-actions">
-            <a th:href="@{'/question-banks/edit/' + ${questionBank.id}}" class="btn btn-questionBank-edit">✏️ Edit Question Bank</a>
-            <a th:href="@{/questions(page=1, courseId=${questionBank.courseId}, questionBankId=${questionBank.id})}" class="btn btn-questions">📚 Questions</a>
-            <a th:href="@{'/authors/course/' + ${questionBank.course} + '/page/1'}" class="btn btn-authors">👥 Authors</a>
-            <a th:href="@{'/question-banks/' + ${questionBank.id} + '/export-mc'}" class="btn btn-new" target="_blank">📊 CSV MC</a>
-            <a th:href="@{'/question-banks/' + ${questionBank.id} + '/export-tf'}" class="btn btn-new" target="_blank">📊 CSV TF</a>
-            <button th:onclick="|deleteQuiz(${questionBank.id})|" class="btn btn-delete">🗑️ Delete Question Bank</button>
             <a th:href="${backToQuestionBankUrl}" class="btn btn-outline">↩️ Back to Question Banks</a>
         </div>
     </div>
@@ -51,7 +46,14 @@
                 <tr th:each="question, iterStat : ${questionBank.questionsMultichoice}" th:if="${iterStat.index < 5}">
                     <td th:text="${question.id}">N/A</td>
                     <td th:text="${question.text != null and question.text.length() > 100 ? question.text.substring(0, 100) + '...' : question.text}">N/A</td>
-                    <td th:text="${question.authorName}">N/A</td>
+                    <td>
+                        <a th:if="${question.author != null and question.author.id != null}"
+                           th:href="@{/authors/{id}/details(id=${question.author.id})}"
+                           th:text="${question.author.initials}"
+                           th:title="${question.author.name}"></a>
+                        <span th:if="${question.author == null or question.author.id == null}"
+                              th:text="${question.author != null ? question.author.name : 'N/A'}">N/A</span>
+                    </td>
                 </tr>
                 <tr th:if="${questionBank.questionsMultichoice.size() > 5}">
                     <td colspan="3" class="text-center">
@@ -76,7 +78,14 @@
                 <tr th:each="question, iterStat : ${questionBank.questionsTruefalse}" th:if="${iterStat.index < 5}">
                     <td th:text="${question.id}">N/A</td>
                     <td th:text="${question.text != null and question.text.length() > 100 ? question.text.substring(0, 100) + '...' : question.text}">N/A</td>
-                    <td th:text="${question.authorName}">N/A</td>
+                    <td>
+                        <a th:if="${question.author != null and question.author.id != null}"
+                           th:href="@{/authors/{id}/details(id=${question.author.id})}"
+                           th:text="${question.author.initials}"
+                           th:title="${question.author.name}"></a>
+                        <span th:if="${question.author == null or question.author.id == null}"
+                              th:text="${question.author != null ? question.author.name : 'N/A'}">N/A</span>
+                    </td>
                 </tr>
                 <tr th:if="${questionBank.questionsTruefalse.size() > 5}">
                     <td colspan="3" class="text-center">

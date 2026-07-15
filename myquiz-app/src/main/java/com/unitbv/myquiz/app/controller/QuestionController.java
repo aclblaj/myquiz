@@ -2,7 +2,6 @@ package com.unitbv.myquiz.app.controller;
 
 import com.unitbv.myquiz.api.dto.AuthorDto;
 import com.unitbv.myquiz.api.dto.AuthorInfo;
-import com.unitbv.myquiz.api.dto.CourseDto;
 import com.unitbv.myquiz.api.dto.CourseInfo;
 import com.unitbv.myquiz.api.dto.DuplicateUnlinkRequestDto;
 import com.unitbv.myquiz.api.dto.QuestionBankDto;
@@ -13,6 +12,8 @@ import com.unitbv.myquiz.api.dto.QuestionFilterResponseDto;
 import com.unitbv.myquiz.api.interfaces.QuestionApi;
 import com.unitbv.myquiz.api.settings.ControllerSettings;
 import com.unitbv.myquiz.api.types.QuestionType;
+import com.unitbv.myquiz.api.util.PaginationParams;
+import com.unitbv.myquiz.api.util.PaginationSupport;
 import com.unitbv.myquiz.app.entities.QuestionBankAuthor;
 import com.unitbv.myquiz.app.services.AuthorService;
 import com.unitbv.myquiz.app.services.CourseService;
@@ -42,7 +43,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/questions")
@@ -50,7 +50,7 @@ public class QuestionController implements QuestionApi {
 
     // Use SLF4J's log.info for consistency and compatibility
     private static final Logger log = LoggerFactory.getLogger(QuestionController.class);
-    private static final String LOG_QUESTION_NOT_FOUND = "Question not found with id: {}";
+    private static final String SAMPLE_CHAPTER = "Databases";
     // Use constructor injection for all dependencies
     private final QuestionService questionService;
     private final AuthorService authorService;
@@ -59,8 +59,10 @@ public class QuestionController implements QuestionApi {
     private final QuestionBankAuthorService questionBankAuthorService;
     private final QuestionCorrectionService questionCorrectionService;
 
-    public QuestionController(QuestionService questionService, AuthorService authorService, CourseService courseService, QuestionBankService questionBankService, QuestionBankAuthorService questionBankAuthorService,
-                              QuestionCorrectionService questionCorrectionService) {
+    public QuestionController(
+            QuestionService questionService, AuthorService authorService, CourseService courseService, QuestionBankService questionBankService, QuestionBankAuthorService questionBankAuthorService,
+            QuestionCorrectionService questionCorrectionService
+    ) {
         this.questionService = questionService;
         this.authorService = authorService;
         this.courseService = courseService;
@@ -75,7 +77,8 @@ public class QuestionController implements QuestionApi {
         try {
             List<QuestionDto> questions = questionService.getAllQuestions();
             return ResponseEntity.ok(questions != null ? questions : new ArrayList<>());
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             log.atError().setCause(e).log("Error getting all questions");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
@@ -88,16 +91,23 @@ public class QuestionController implements QuestionApi {
         try {
             QuestionDto question = questionService.getQuestionById(id);
             return question != null ? ResponseEntity.ok(question) : ResponseEntity.notFound().build();
-        } catch (ResourceNotFoundException e) {
-            log.atWarn().addArgument(id).log(LOG_QUESTION_NOT_FOUND);
+        }
+        catch (ResourceNotFoundException e) {
+            log.atWarn().addArgument(id).log(ControllerSettings.LOG_QUESTION_NOT_FOUND);
             return ResponseEntity.notFound().build();
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             log.atError().setCause(e).addArgument(id).log("Error getting question by id: {}");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
 
-    @PostMapping({"", "/"})
+    @PostMapping(
+            {
+                    "",
+                    "/"
+            }
+    )
     @Override
     public ResponseEntity<QuestionDto> createQuestion(@RequestBody QuestionDto questionDto) {
         log.atInfo().log("Creating new question");
@@ -112,7 +122,8 @@ public class QuestionController implements QuestionApi {
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
             }
             return ResponseEntity.status(HttpStatus.CREATED).body(createdQuestion);
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             log.atError().setCause(e).log("Error creating question");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
@@ -123,13 +134,19 @@ public class QuestionController implements QuestionApi {
     public ResponseEntity<QuestionDto> updateQuestion(@PathVariable Long id, @RequestBody QuestionDto questionDto) {
         log.atInfo().addArgument(id).log("Updating question with id: {}");
         try {
+            if (questionDto == null) {
+                log.atWarn().addArgument(id).log("Received null question data for update id: {}");
+                return ResponseEntity.badRequest().build();
+            }
             questionDto.setId(id);
             QuestionDto updatedQuestion = questionService.updateQuestion(questionDto);
             return updatedQuestion != null ? ResponseEntity.ok(updatedQuestion) : ResponseEntity.notFound().build();
-        } catch (ResourceNotFoundException e) {
-            log.atWarn().addArgument(id).log(LOG_QUESTION_NOT_FOUND);
+        }
+        catch (ResourceNotFoundException e) {
+            log.atWarn().addArgument(id).log(ControllerSettings.LOG_QUESTION_NOT_FOUND);
             return ResponseEntity.notFound().build();
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             log.atError().setCause(e).addArgument(id).log("Error updating question with id: {}");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
@@ -142,10 +159,12 @@ public class QuestionController implements QuestionApi {
         try {
             boolean deleted = questionService.deleteQuestion(id);
             return deleted ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
-        } catch (ResourceNotFoundException e) {
-            log.atWarn().addArgument(id).log(LOG_QUESTION_NOT_FOUND);
+        }
+        catch (ResourceNotFoundException e) {
+            log.atWarn().addArgument(id).log(ControllerSettings.LOG_QUESTION_NOT_FOUND);
             return ResponseEntity.notFound().build();
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             log.atError().setCause(e).addArgument(id).log("Error deleting question with id: {}");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
@@ -161,37 +180,14 @@ public class QuestionController implements QuestionApi {
                 log.atWarn().addArgument(questionBankId).log("QuestionBank not found with id: {}");
                 return ResponseEntity.notFound().build();
             }
-
-            List<QuestionDto> questions = questionService.getQuestionsByQuestionBankId(questionBankId);
-            if (questions == null) {
-                questions = new ArrayList<>();
-            }
-
-            QuestionFilterResponseDto filteredQuestionsDto = QuestionFilterResponseDto.builder()
-                    .questions(questions)
-                    .selectedQuestionBank(questionBankById)
-                    .selectedCourse(questionBankById.getCourse())
-                    .selectedCourseId(questionBankById.getCourseId())
-                    .selectedQuestionBankId(questionBankId)
-                    .build();
-
-            // Populate authors and all courses for consistency with main filter endpoint
-            if (questionBankById.getCourse() != null) {
-                List<AuthorInfo> authors = authorService.getAuthorsByCourse(questionBankById.getCourse());
-                filteredQuestionsDto.setAuthors(authors != null ? authors : new ArrayList<>());
-            } else {
-                List<AuthorInfo> allAuthors = authorService.getAllAuthorsBasic();
-                filteredQuestionsDto.setAuthors(allAuthors != null ? allAuthors : new ArrayList<>());
-            }
-
-            // Populate course list for dropdown
-            List<CourseInfo> allCourses = courseService.getAllCourses().stream()
-                    .map(CourseInfo::from)
-                    .toList();
-            filteredQuestionsDto.setAllCourses(allCourses);
-
-            return ResponseEntity.ok(filteredQuestionsDto);
-        } catch (Exception e) {
+            return ResponseEntity.ok(buildQuestionFilterResponse(
+                    questionBankById,
+                    questionBankId,
+                    null,
+                    questionService.getQuestionsByQuestionBankId(questionBankId)
+            ));
+        }
+        catch (Exception e) {
             log.atError().setCause(e).addArgument(questionBankId).log("Error getting questions by questionBank id: {}");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
@@ -207,6 +203,7 @@ public class QuestionController implements QuestionApi {
             return ResponseEntity.badRequest().build();
         }
 
+        Long questionBankId = filterInput.getQuestionBank();
         AuthorInfo authorInfo = resolveAuthorInfo(filterInput.getAuthorId());
         String selectedCourse = null;
         Long selectedCourseId = filterInput.getCourseId();
@@ -218,13 +215,24 @@ public class QuestionController implements QuestionApi {
         if (selectedCourse != null && selectedCourse.isEmpty()) {
             selectedCourse = null;
         }
+        if (selectedCourse == null && questionBankId != null) {
+            QuestionBankDto selectedQuestionBank = questionBankService.getQuestionBankById(questionBankId);
+            if (selectedQuestionBank != null) {
+                selectedCourse = selectedQuestionBank.getCourse();
+                selectedCourseId = selectedQuestionBank.getCourseId();
+            }
+        }
 
-        // Guard against invalid page/pageSize
-        int validPage = (filterInput.getPage() != null && filterInput.getPage() > 0) ? filterInput.getPage() : 1;
-        int validPageSize = (filterInput.getPageSize() != null && filterInput.getPageSize() > 0) ? filterInput.getPageSize() : 10;
+        PaginationParams pagination = PaginationSupport.normalize(filterInput.getPage(), filterInput.getPageSize());
+        int validPage = pagination.page();
+        int validPageSize = pagination.pageSize();
 
         QuestionFilterResponseDto filteredQuestions = questionService.getQuestionsFiltered(
-                selectedCourse, authorInfo.getId(), validPage, validPageSize, filterInput.getQuestionBank(),
+                selectedCourse,
+                authorInfo.getId(),
+                validPage,
+                validPageSize,
+                questionBankId,
                 filterInput.getQuestionType()
         );
 
@@ -244,7 +252,13 @@ public class QuestionController implements QuestionApi {
      */
     @GetMapping("/{id}/duplicates")
     @Operation(summary = "Get question duplicates", description = "Retrieve a question and all its duplicate links")
-    @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Duplicates retrieved successfully"), @ApiResponse(responseCode = "404", description = "Question not found"), @ApiResponse(responseCode = "500", description = "Internal server error")})
+    @ApiResponses(
+            value = {
+                    @ApiResponse(responseCode = "200", description = "Duplicates retrieved successfully"),
+                    @ApiResponse(responseCode = "404", description = "Question not found"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error")
+            }
+    )
     public ResponseEntity<QuestionDto> getQuestionDuplicates(@Parameter(description = "Question ID") @PathVariable Long id) {
         log.atInfo().addArgument(id).log("Getting duplicates for question {}");
         try {
@@ -254,7 +268,8 @@ public class QuestionController implements QuestionApi {
                 return ResponseEntity.notFound().build();
             }
             return ResponseEntity.ok(questionWithDuplicates);
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             log.atError().setCause(e).addArgument(id).log("Error getting duplicates for question {}");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
@@ -271,7 +286,13 @@ public class QuestionController implements QuestionApi {
     @PostMapping(ControllerSettings.API_QUESTION_BANKS_DUPLICATES_REMOVE_BY_ID)
     @Override
     @Operation(summary = "Remove duplication links", description = "Remove specific duplication links without deleting questions")
-    @ApiResponses(value = {@ApiResponse(responseCode = "204", description = "Duplication links removed successfully"), @ApiResponse(responseCode = "400", description = "Invalid input"), @ApiResponse(responseCode = "500", description = "Internal server error")})
+    @ApiResponses(
+            value = {
+                    @ApiResponse(responseCode = "204", description = "Duplication links removed successfully"),
+                    @ApiResponse(responseCode = "400", description = "Invalid input"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error")
+            }
+    )
     public ResponseEntity<Void> removeQuestionDuplicates(@PathVariable Long id, @RequestBody DuplicateUnlinkRequestDto selectionDto) {
         log.atInfo().addArgument(id).log("Removing duplication links for question {}");
         try {
@@ -280,7 +301,10 @@ public class QuestionController implements QuestionApi {
                 return ResponseEntity.badRequest().build();
             }
 
-            boolean removed = questionService.removeDuplicationLinks(id, selectionDto.getDuplicateQuestionIds());
+            boolean removed = questionService.removeDuplicationLinks(
+                    id,
+                    selectionDto.getDuplicateQuestionIds()
+            );
 
             if (removed) {
                 log.atInfo().addArgument(id).addArgument(selectionDto.getDuplicateQuestionIds().size()).log("Removed {} duplication links for question {}");
@@ -289,8 +313,44 @@ public class QuestionController implements QuestionApi {
                 log.atWarn().addArgument(id).log("Question not found: {}");
                 return ResponseEntity.notFound().build();
             }
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             log.atError().setCause(e).addArgument(id).log("Error removing duplication links for question {}");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * Remove all duplication links for a question, regardless of pagination.
+     *
+     * @param id The primary question ID
+     * @return Success response
+     */
+    @PostMapping(ControllerSettings.API_QUESTION_BANKS_DUPLICATES_REMOVE_ALL_BY_ID)
+    @Override
+    @Operation(summary = "Remove all duplication links", description = "Remove every duplication link for a question without deleting questions")
+    @ApiResponses(
+            value = {
+                    @ApiResponse(responseCode = "204", description = "All duplication links removed successfully"),
+                    @ApiResponse(responseCode = "404", description = "Question not found"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error")
+            }
+    )
+    public ResponseEntity<Void> removeAllQuestionDuplicates(@PathVariable Long id) {
+        log.atInfo().addArgument(id).log("Removing all duplication links for question {}");
+        try {
+            boolean removed = questionService.removeAllDuplicationLinks(id);
+
+            if (removed) {
+                log.atInfo().addArgument(id).log("Removed all duplication links for question {}");
+                return ResponseEntity.noContent().build();
+            } else {
+                log.atWarn().addArgument(id).log("Question not found: {}");
+                return ResponseEntity.notFound().build();
+            }
+        }
+        catch (Exception e) {
+            log.atError().setCause(e).addArgument(id).log("Error removing all duplication links for question {}");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
@@ -304,29 +364,36 @@ public class QuestionController implements QuestionApi {
      */
     @DeleteMapping("/{id}/as-duplicate")
     @Operation(summary = "Delete duplicate question", description = "Delete a question marked as duplicate including all associations")
-    @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Duplicate question deleted successfully"), @ApiResponse(responseCode = "404", description = "Question not found"), @ApiResponse(responseCode = "500", description = "Internal server error")})
+    @ApiResponses(
+            value = {
+                    @ApiResponse(responseCode = "204", description = "Duplicate question deleted successfully"),
+                    @ApiResponse(responseCode = "404", description = "Question not found"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error")
+            }
+    )
     public ResponseEntity<Map<String, Object>> deleteDuplicateQuestion(@PathVariable Long id) {
         log.atInfo().addArgument(id).log("Deleting duplicate question {}");
         try {
             boolean deleted = questionService.removeDuplicateQuestion(id);
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("status", deleted ? "success" : "not_found");
-            response.put("message", deleted ? "Duplicate question deleted successfully" : "Question not found");
-            response.put("questionId", id);
-
             if (deleted) {
                 log.atInfo().addArgument(id).log("Successfully deleted duplicate question {}");
+                return ResponseEntity.noContent().build();
             } else {
                 log.atWarn().addArgument(id).log("Question not found for deletion: {}");
+                return ResponseEntity.notFound().build();
             }
-
-            return deleted ? ResponseEntity.ok(response) : ResponseEntity.notFound().build();
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             log.atError().setCause(e).addArgument(id).log("Error deleting duplicate question {}");
             Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("status", "error");
-            errorResponse.put("message", "Error deleting question: " + e.getMessage());
+            errorResponse.put(
+                    ControllerSettings.RESPONSE_KEY_STATUS,
+                    ControllerSettings.MESSAGE_TYPE_ERROR
+            );
+            errorResponse.put(
+                    ControllerSettings.RESPONSE_KEY_MESSAGE,
+                    "Error deleting question: " + e.getMessage()
+            );
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
     }
@@ -340,44 +407,90 @@ public class QuestionController implements QuestionApi {
      */
     @GetMapping("/course/{course}/with-duplicates")
     @Operation(summary = "Get duplicates in course", description = "Retrieve all questions with duplicates in a specific course")
-    @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Duplicates list retrieved successfully"), @ApiResponse(responseCode = "400", description = "Invalid course name"), @ApiResponse(responseCode = "500", description = "Internal server error")})
+    @ApiResponses(
+            value = {
+                    @ApiResponse(responseCode = "200", description = "Duplicates list retrieved successfully"),
+                    @ApiResponse(responseCode = "400", description = "Invalid course name"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error")
+            }
+    )
     public ResponseEntity<Map<String, Object>> getQuestionsWithDuplicatesInCourse(@PathVariable String course) {
         log.atInfo().addArgument(course).log("Getting questions with duplicates in course {}");
         try {
             if (course == null || course.trim().isEmpty()) {
                 log.atWarn().log("Invalid course name provided");
-                return ResponseEntity.badRequest().body(Map.of("status", "error", "message", "Course name cannot be empty"));
+                return ResponseEntity.badRequest().body(Map.of(
+                        ControllerSettings.RESPONSE_KEY_STATUS,
+                        ControllerSettings.MESSAGE_TYPE_ERROR,
+                        ControllerSettings.RESPONSE_KEY_MESSAGE,
+                        "Course name cannot be empty"
+                ));
             }
 
             List<QuestionDto> duplicates = questionService.getQuestionsWithDuplicates(course);
 
             Map<String, Object> response = new HashMap<>();
-            response.put("status", "success");
-            response.put("course", course);
-            response.put("duplicateCount", duplicates != null ? duplicates.size() : 0);
-            response.put("questions", duplicates != null ? duplicates : new ArrayList<>());
+            response.put(
+                    ControllerSettings.RESPONSE_KEY_STATUS,
+                    ControllerSettings.KEY_SUCCESS
+            );
+            response.put(
+                    "course",
+                    course
+            );
+            response.put(
+                    "duplicateCount",
+                    duplicates != null ? duplicates.size() : 0
+            );
+            response.put(
+                    "questions",
+                    duplicates != null ? duplicates : new ArrayList<>()
+            );
 
             log.atInfo().addArgument(course).addArgument(duplicates != null ? duplicates.size() : 0).log("Found {} questions with duplicates in course {}");
 
             return ResponseEntity.ok(response);
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             log.atError().setCause(e).addArgument(course).log("Error getting duplicates for course {}");
             Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("status", "error");
-            errorResponse.put("message", "Error retrieving duplicates: " + e.getMessage());
+            errorResponse.put(
+                    ControllerSettings.RESPONSE_KEY_STATUS,
+                    ControllerSettings.MESSAGE_TYPE_ERROR
+            );
+            errorResponse.put(
+                    ControllerSettings.RESPONSE_KEY_MESSAGE,
+                    "Error retrieving duplicates: " + e.getMessage()
+            );
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
     }
 
     @PostMapping("/{id}/correction/grammar")
     @Operation(summary = "Correct grammar in question", description = "Use AI to correct grammar and spelling errors")
-    @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Grammar correction completed successfully"), @ApiResponse(responseCode = "500", description = "Internal server error")})
+    @ApiResponses(
+            value = {
+                    @ApiResponse(responseCode = "200", description = "Grammar correction completed successfully"),
+                    @ApiResponse(responseCode = "400", description = "Invalid correction payload"),
+                    @ApiResponse(responseCode = "503", description = "Correction request interrupted"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error")
+            }
+    )
     public ResponseEntity<QuestionCorrectionDto> correctGrammar(@PathVariable("id") Long id, @RequestBody QuestionCorrectionDto correctionDto) {
         try {
+            if (correctionDto == null || correctionDto.getOriginalQuestion() == null) {
+                return ResponseEntity.badRequest().build();
+            }
             log.atInfo().addArgument(id).log("[APP] Processing grammar correction for question {}");
             QuestionCorrectionDto result = questionCorrectionService.correctGrammar(correctionDto);
             return ResponseEntity.ok(result);
-        } catch (Exception e) {
+        }
+        catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.atError().setCause(e).log("Grammar correction interrupted");
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        }
+        catch (Exception e) {
             log.atError().setCause(e).log("Error correcting grammar");
             return ResponseEntity.internalServerError().build();
         }
@@ -385,13 +498,29 @@ public class QuestionController implements QuestionApi {
 
     @PostMapping("/{id}/correction/improve")
     @Operation(summary = "Improve question", description = "Use AI to improve question clarity and precision")
-    @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Question improvement completed successfully"), @ApiResponse(responseCode = "500", description = "Internal server error")})
+    @ApiResponses(
+            value = {
+                    @ApiResponse(responseCode = "200", description = "Question improvement completed successfully"),
+                    @ApiResponse(responseCode = "400", description = "Invalid correction payload"),
+                    @ApiResponse(responseCode = "503", description = "Improvement request interrupted"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error")
+            }
+    )
     public ResponseEntity<QuestionCorrectionDto> improveQuestion(@PathVariable("id") Long id, @RequestBody QuestionCorrectionDto correctionDto) {
         try {
+            if (correctionDto == null || correctionDto.getOriginalQuestion() == null) {
+                return ResponseEntity.badRequest().build();
+            }
             log.atInfo().addArgument(id).log("[APP] Processing question improvement for question {}");
             QuestionCorrectionDto result = questionCorrectionService.improveQuestion(correctionDto);
             return ResponseEntity.ok(result);
-        } catch (Exception e) {
+        }
+        catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.atError().setCause(e).log("Question improvement interrupted");
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        }
+        catch (Exception e) {
             log.atError().setCause(e).log("Error improving question");
             return ResponseEntity.internalServerError().build();
         }
@@ -399,16 +528,38 @@ public class QuestionController implements QuestionApi {
 
     @PostMapping("/{id}/correction/alternatives")
     @Operation(summary = "Generate alternative answers", description = "Use AI to generate plausible but incorrect alternatives")
-    @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Alternatives generated successfully"), @ApiResponse(responseCode = "500", description = "Internal server error")})
+    @ApiResponses(
+            value = {
+                    @ApiResponse(responseCode = "200", description = "Alternatives generated successfully"),
+                    @ApiResponse(responseCode = "400", description = "Invalid correction payload"),
+                    @ApiResponse(responseCode = "503", description = "Alternatives request interrupted"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error")
+            }
+    )
     public ResponseEntity<Map<String, String>> generateAlternatives(@PathVariable("id") Long id, @RequestBody QuestionCorrectionDto correctionDto) {
         try {
+            if (correctionDto == null || correctionDto.getOriginalQuestion() == null) {
+                return ResponseEntity.badRequest().build();
+            }
             log.atInfo().addArgument(id).log("[APP] Processing generate alternatives for question {}");
             String alternatives = questionCorrectionService.generateAlternatives(correctionDto);
             Map<String, String> response = new HashMap<>();
-            response.put("alternatives", alternatives);
-            response.put("status", "success");
+            response.put(
+                    "alternatives",
+                    alternatives
+            );
+            response.put(
+                    ControllerSettings.RESPONSE_KEY_STATUS,
+                    ControllerSettings.KEY_SUCCESS
+            );
             return ResponseEntity.ok(response);
-        } catch (Exception e) {
+        }
+        catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.atError().setCause(e).log("Generate alternatives interrupted");
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        }
+        catch (Exception e) {
             log.atError().setCause(e).log("Error generating alternatives");
             return ResponseEntity.internalServerError().build();
         }
@@ -416,20 +567,38 @@ public class QuestionController implements QuestionApi {
 
     @PostMapping("/{id}/correction/explanation")
     @Operation(summary = "Explain correct answer", description = "Use AI to explain why an answer is correct and others are wrong")
-    @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Answer explanation generated successfully"), @ApiResponse(responseCode = "500", description = "Internal server error")})
+    @ApiResponses(
+            value = {
+                    @ApiResponse(responseCode = "200", description = "Answer explanation generated successfully"),
+                    @ApiResponse(responseCode = "400", description = "Invalid correction payload"),
+                    @ApiResponse(responseCode = "503", description = "Explanation request interrupted"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error")
+            }
+    )
     public ResponseEntity<Map<String, String>> explainAnswer(@PathVariable("id") Long id, @RequestBody QuestionCorrectionDto correctionDto) {
         log.atInfo().addArgument(id).log("[APP] Processing explain answer for question {}");
         try {
+            if (correctionDto == null || correctionDto.getOriginalQuestion() == null) {
+                return ResponseEntity.badRequest().build();
+            }
             String explanation = questionCorrectionService.explainAnswer(correctionDto);
             Map<String, String> response = new HashMap<>();
-            response.put("explanation", explanation);
-            response.put("status", "success");
-            return ResponseEntity.status(HttpStatus.OK).body(response);
-        } catch (InterruptedException e) {
+            response.put(
+                    "explanation",
+                    explanation
+            );
+            response.put(
+                    ControllerSettings.RESPONSE_KEY_STATUS,
+                    ControllerSettings.KEY_SUCCESS
+            );
+            return ResponseEntity.ok(response);
+        }
+        catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             log.atError().setCause(e).addArgument(id).log("Explain answer interrupted for question {}");
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        }
+        catch (Exception e) {
             log.atError().setCause(e).addArgument(id).log("Error explaining answer for question {}");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
@@ -440,24 +609,43 @@ public class QuestionController implements QuestionApi {
      */
     private AuthorInfo resolveAuthorInfo(Long authorId) {
         if (authorId == null) {
-            return new AuthorInfo(null, "", null);
+            return new AuthorInfo(
+                    null,
+                    "",
+                    null
+            );
         }
 
         AuthorDto author = authorService.getAuthorById(authorId);
         String authorName = author != null ? author.getName() : "";
         String authorInitials = author != null ? author.getInitials() : null;
-        return new AuthorInfo(authorId, authorName, authorInitials);
+        return new AuthorInfo(
+                authorId,
+                authorName,
+                authorInitials
+        );
     }
 
 
     @GetMapping("/author/{authorId}/question-bank/{questionBankId}")
     @Operation(summary = "Get questions by author and QuestionBank", description = "Retrieve all questions for a specific QuestionBank created by a specific author")
-    @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Successfully retrieved questions"), @ApiResponse(responseCode = "404", description = "QuestionBank author combination not found"), @ApiResponse(responseCode = "500", description = "Internal server error")})
-    public ResponseEntity<QuestionFilterResponseDto> getQuestionsByAuthorAndQuestionBank(@Parameter(description = "Author ID", required = true) @PathVariable Long authorId,
-                                                                                 @Parameter(description = "QuestionBank ID", required = true) @PathVariable Long questionBankId) {
+    @ApiResponses(
+            value = {
+                    @ApiResponse(responseCode = "200", description = "Successfully retrieved questions"),
+                    @ApiResponse(responseCode = "404", description = "QuestionBank author combination not found"),
+                    @ApiResponse(responseCode = "500", description = "Internal server error")
+            }
+    )
+    public ResponseEntity<QuestionFilterResponseDto> getQuestionsByAuthorAndQuestionBank(
+            @Parameter(description = "Author ID", required = true) @PathVariable Long authorId,
+            @Parameter(description = "QuestionBank ID", required = true) @PathVariable Long questionBankId
+    ) {
         log.atInfo().addArgument(authorId).addArgument(questionBankId).log("Getting questions by author {} and questionBank {}");
         try {
-            var qaOpt = questionBankAuthorService.getQuestionBankAuthorByQuestionBankIdAndAuthorId(questionBankId, authorId);
+            var qaOpt = questionBankAuthorService.getQuestionBankAuthorByQuestionBankIdAndAuthorId(
+                    questionBankId,
+                    authorId
+            );
             if (qaOpt.isEmpty()) {
                 log.atWarn().addArgument(authorId).addArgument(questionBankId).log("No QuestionBankAuthor found for author {} and questionBank {}");
                 return ResponseEntity.notFound().build();
@@ -467,34 +655,14 @@ public class QuestionController implements QuestionApi {
             if (questionBankDto == null) {
                 return ResponseEntity.notFound().build();
             }
-            List<QuestionDto> questions = questionService.getQuestionBankQuestionsForAuthor(questionBankAuthor.getId()).stream()
-                    .map(q -> questionService.getQuestionById(q.getId()))
-                    .filter(Objects::nonNull)
-                    .toList();
-
-            QuestionFilterResponseDto dto = QuestionFilterResponseDto.builder()
-                    .questions(questions)
-                    .selectedQuestionBank(questionBankDto)
-                    .selectedCourse(questionBankDto.getCourse())
-                    .selectedCourseId(questionBankDto.getCourseId())
-                    .selectedAuthorId(authorId)
-                    .selectedQuestionBankId(questionBankId)
-                    .build();
-
-            // Populate authors for the selected course
-            if (questionBankDto.getCourse() != null) {
-                List<AuthorInfo> authors = authorService.getAuthorsByCourse(questionBankDto.getCourse());
-                dto.setAuthors(authors != null ? authors : new ArrayList<>());
-            }
-
-            // Populate course list for dropdown
-            List<CourseInfo> allCourses = courseService.getAllCourses().stream()
-                    .map(CourseInfo::from)
-                    .toList();
-            dto.setAllCourses(allCourses);
-
-            return ResponseEntity.ok(dto);
-        } catch (Exception e) {
+            return ResponseEntity.ok(buildQuestionFilterResponse(
+                    questionBankDto,
+                    questionBankId,
+                    authorId,
+                    questionService.getQuestionDtosForQuestionBankAuthor(questionBankAuthor.getId())
+            ));
+        }
+        catch (Exception e) {
             log.atError().setCause(e).addArgument(authorId).addArgument(questionBankId).log("Error getting questions by author {} and questionBank {}");
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
@@ -512,36 +680,67 @@ public class QuestionController implements QuestionApi {
     public ResponseEntity<QuestionDto> getSampleQuestion(@org.springframework.web.bind.annotation.RequestParam(value = "type", defaultValue = "MULTICHOICE") String type) {
         try {
             QuestionType qType = QuestionType.valueOf(type.toUpperCase());
-            QuestionDto sample = new QuestionDto();
-            sample.setType(qType);
-            sample.setAuthorName(ControllerSettings.DEFAULT_AUTHOR);
-            sample.setCourse(ControllerSettings.DEFAULT_COURSE);
-            sample.setQuestionBankName(ControllerSettings.DEFAULT_QUESTION_BANK);
-            if (qType == QuestionType.MULTICHOICE) {
-                sample.setTitle("SQL Query Basics");
-                sample.setText("Which SQL statement is used to retrieve data from a database table?");
-                sample.setChapter("Databases");
-                sample.setResponse1("SELECT");
-                sample.setResponse2("INSERT");
-                sample.setResponse3("UPDATE");
-                sample.setResponse4("DELETE");
-                sample.setWeightResponse1(100.0);
-                sample.setWeightResponse2(-100.0);
-                sample.setWeightResponse3(-100.0);
-                sample.setWeightResponse4(-100.0);
-            } else {
-                sample.setTitle("SQL Statement Usage");
-                sample.setText("The SQL statement SELECT is used to retrieve data from a table.");
-                sample.setChapter("Databases");
-                sample.setResponse1("True");
-                sample.setWeightTrue(100.0);
-                sample.setWeightFalse(-100.0);
-            }
-            return ResponseEntity.ok(sample);
-        } catch (IllegalArgumentException e) {
+            return ResponseEntity.ok(buildSampleQuestion(qType));
+        }
+        catch (IllegalArgumentException e) {
             log.atWarn().addArgument(type).log("Invalid question type for sample: {}");
             return ResponseEntity.badRequest().build();
         }
     }
-}
 
+    private QuestionFilterResponseDto buildQuestionFilterResponse(QuestionBankDto questionBankDto, Long questionBankId, Long selectedAuthorId, List<QuestionDto> questions) {
+        QuestionFilterResponseDto dto = QuestionFilterResponseDto.builder().questions(questions != null ? questions : new ArrayList<>()).selectedQuestionBank(questionBankDto)
+                                                                 .selectedCourse(questionBankDto.getCourse()).selectedCourseId(questionBankDto.getCourseId()).selectedAuthorId(selectedAuthorId)
+                                                                 .selectedQuestionBankId(questionBankId).build();
+        dto.setAuthors(resolveAuthorsForCourse(questionBankDto.getCourse()));
+        dto.setAllCourses(getAllCourseInfos());
+        return dto;
+    }
+
+    private List<AuthorInfo> resolveAuthorsForCourse(String course) {
+        List<AuthorInfo> authors = course != null ? authorService.getAuthorsByCourse(course) : authorService.getAllAuthorsBasic();
+        return authors != null ? authors : new ArrayList<>();
+    }
+
+    private List<CourseInfo> getAllCourseInfos() {
+        List<CourseInfo> courses = courseService.getAllCourses().stream().map(CourseInfo::from).filter(java.util.Objects::nonNull).toList();
+        return courses != null ? courses : new ArrayList<>();
+    }
+
+    private QuestionDto buildSampleQuestion(QuestionType qType) {
+        QuestionDto sample = new QuestionDto();
+        sample.setType(qType);
+        sample.setAuthor(AuthorInfo.builder().name(ControllerSettings.DEFAULT_AUTHOR).initials(authorService.extractInitials(ControllerSettings.DEFAULT_AUTHOR)).build());
+        sample.setCourse(ControllerSettings.DEFAULT_COURSE);
+        sample.setQuestionBankName(ControllerSettings.DEFAULT_QUESTION_BANK);
+        if (qType == QuestionType.MULTICHOICE) {
+            populateMultichoiceSample(sample);
+        } else {
+            populateTrueFalseSample(sample);
+        }
+        return sample;
+    }
+
+    private void populateMultichoiceSample(QuestionDto sample) {
+        sample.setTitle("SQL Query Basics");
+        sample.setText("Which SQL statement is used to retrieve data from a database table?");
+        sample.setChapter(SAMPLE_CHAPTER);
+        sample.setResponse1("SELECT");
+        sample.setResponse2("INSERT");
+        sample.setResponse3("UPDATE");
+        sample.setResponse4("DELETE");
+        sample.setWeightResponse1(100.0);
+        sample.setWeightResponse2(-100.0);
+        sample.setWeightResponse3(-100.0);
+        sample.setWeightResponse4(-100.0);
+    }
+
+    private void populateTrueFalseSample(QuestionDto sample) {
+        sample.setTitle("SQL Statement Usage");
+        sample.setText("The SQL statement SELECT is used to retrieve data from a table.");
+        sample.setChapter(SAMPLE_CHAPTER);
+        sample.setResponse1("True");
+        sample.setWeightTrue(100.0);
+        sample.setWeightFalse(-100.0);
+    }
+}

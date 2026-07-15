@@ -7,6 +7,7 @@ import com.unitbv.myquiz.api.dto.QuestionBankFilterResponseDto;
 import com.unitbv.myquiz.api.dto.QuestionBankStatisticsDto;
 import com.unitbv.myquiz.api.dto.QuestionDto;
 import com.unitbv.myquiz.api.interfaces.QuestionBankApi;
+import com.unitbv.myquiz.api.settings.ControllerSettings;
 import com.unitbv.myquiz.api.types.QuestionType;
 import com.unitbv.myquiz.app.entities.Question;
 import com.unitbv.myquiz.app.services.ExportService;
@@ -52,10 +53,8 @@ public class QuestionBankController implements QuestionBankApi {
 
     private static final Logger log = LoggerFactory.getLogger(QuestionBankController.class);
     private static final String REGEX_SAFE = "[^a-zA-Z0-9]";
-    private static final String PERMISSION_EXPORT_XML = "EXPORT_XML";
     private static final String DEFAULT_COURSE = "course";
     private static final String DEFAULT_QUESTIONBANK = "questionBank";
-    private static final String CONTENT_DISPOSITION_ATTACHMENT = "attachment; filename=";
     private final QuestionBankService questionBankService;
     private final QuestionErrorService questionErrorService;
     private final ExportService exportService;
@@ -254,7 +253,7 @@ public class QuestionBankController implements QuestionBankApi {
         String safeQuestionBankName = questionBank.getName() != null ? questionBank.getName().replaceAll(REGEX_SAFE, "_") : DEFAULT_QUESTIONBANK;
         String safeYear = questionBank.getStudyYear() != null ? questionBank.getStudyYear().getValue() : "year";
         String filename = String.format("%s_%s_%s_MC.csv", safeCourse, safeQuestionBankName, safeYear);
-        response.setHeader(HttpHeaders.CONTENT_DISPOSITION, CONTENT_DISPOSITION_ATTACHMENT + filename);
+        response.setHeader(HttpHeaders.CONTENT_DISPOSITION, ControllerSettings.HEADER_ATTACHMENT_FILENAME_PREFIX + filename);
         String header = "Nr.,Curs,Titlu intrebare,Text intrebare,PR1,Raspuns 1,PR2,Raspuns 2,PR3,Raspuns 3,PR4,Raspuns 4, Feedback\n";
         ServletOutputStream out = response.getOutputStream();
         out.write("\uFEFF".getBytes(StandardCharsets.UTF_8)); // Write BOM for UTF-8
@@ -287,7 +286,7 @@ public class QuestionBankController implements QuestionBankApi {
         String safeQuestionBankName = questionBank.getName() != null ? questionBank.getName().replaceAll(REGEX_SAFE, "_") : DEFAULT_QUESTIONBANK;
         String safeYear = questionBank.getStudyYear() != null ? questionBank.getStudyYear().getValue() : "year";
         String filename = String.format("%s_%s_%s_TF.csv", safeCourse, safeQuestionBankName, safeYear);
-        response.setHeader(HttpHeaders.CONTENT_DISPOSITION, CONTENT_DISPOSITION_ATTACHMENT + filename);
+        response.setHeader(HttpHeaders.CONTENT_DISPOSITION, ControllerSettings.HEADER_ATTACHMENT_FILENAME_PREFIX + filename);
         String header = "Nr.,Curs,Titlu,Text intrebare (afirmatie),TRUE,FALSE,Feedback\n";
         ServletOutputStream out = response.getOutputStream();
         out.write("\uFEFF".getBytes(StandardCharsets.UTF_8)); // Write BOM for UTF-8
@@ -328,7 +327,7 @@ public class QuestionBankController implements QuestionBankApi {
             String safeYear = questionBank.getStudyYear() != null ? questionBank.getStudyYear().getValue() : "year";
             String filename = String.format("%s_%s_%s.xml", safeCourse, safeQuestionBankName, safeYear);
 
-            return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).header(HttpHeaders.CONTENT_DISPOSITION, CONTENT_DISPOSITION_ATTACHMENT + filename).body(
+            return ResponseEntity.ok().contentType(MediaType.APPLICATION_XML).header(HttpHeaders.CONTENT_DISPOSITION, ControllerSettings.HEADER_ATTACHMENT_FILENAME_PREFIX + filename).body(
                     xml.getBytes(StandardCharsets.UTF_8));
         } catch (IllegalArgumentException e) {
             log.atWarn().setCause(e).addArgument(id).log("Question bank not found for XML export: {}");
@@ -414,7 +413,7 @@ public class QuestionBankController implements QuestionBankApi {
         if (auth == null) {
             return false;
         }
-        return auth.getAuthorities().stream().anyMatch(authority -> PERMISSION_EXPORT_XML.equals(authority.getAuthority()));
+        return auth.getAuthorities().stream().anyMatch(authority -> ControllerSettings.PERMISSION_EXPORT_XML.equals(authority.getAuthority()));
     }
 }
 

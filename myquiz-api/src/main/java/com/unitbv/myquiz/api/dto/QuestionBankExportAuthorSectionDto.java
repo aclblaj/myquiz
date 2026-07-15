@@ -31,5 +31,5 @@ public class QuestionBankExportAuthorSectionDto {
     private List<QuestionErrorDto> errors = new ArrayList<>();
 
     @JsonProperty("duplicateQuestions")
-    private List<QuestionDto> duplicateQuestions = new ArrayList<>();
+    private List<QuestionDuplicateDto> duplicateQuestions = new ArrayList<>();
 }

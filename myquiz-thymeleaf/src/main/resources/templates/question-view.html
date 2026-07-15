@@ -6,7 +6,7 @@
     <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
 </head>
 <body>
-<div th:insert="~{fragments::menu}"></div>
+<div th:insert="~{fragments/navigation::menu}"></div>
 
 <div class="container mt-3 list-page-compact">
     <h2 class="list-page-title">📝 Question Details</h2>
@@ -36,7 +36,13 @@
             </tr>
             <tr>
                 <th scope="row">Author</th>
-                <td th:text="${question.authorName}"></td>
+                <td>
+                    <a th:if="${question.author != null and question.author.id != null}"
+                       th:href="@{/authors/{id}/details(id=${question.author.id})}"
+                       th:text="${question.author.name}"></a>
+                    <span th:if="${question.author == null or question.author.id == null}"
+                          th:text="${question.author != null ? question.author.name : ''}"></span>
+                </td>
             </tr>
             <tr>
                 <th scope="row">Question Bank</th>
@@ -67,17 +73,10 @@
             </tr>
         </table>
 
+        <div class="form-actions"
+             th:insert="~{fragments/forms :: question-actions(${question}, ${currentPage}, ${pageSize}, ${selectedCourseId}, ${selectedAuthorId}, ${selectedQuestionBankId}, ${selectedType})}"></div>
         <div class="form-actions">
-            <a th:href="${questionEditUrl != null ? questionEditUrl : '/questions/' + question.id + '/edit'}"
-               class="btn btn-questionBank-edit">✏️ Edit </a>
-            <form th:action="@{'/questions/' + ${question.id}}" method="post" style="display:inline;">
-                <input type="hidden" name="_method" value="DELETE"/>
-                <button type="submit" class="btn btn-delete"
-                        onclick="return confirm('Are you sure you want to delete this question?');">🗑️ Delete
-                </button>
-            </form>
-            <a th:href="${backToQuestionsUrl != null ? backToQuestionsUrl : '/questions'}" class="btn btn-outline">↩️
-                Back to Questions</a>
+            <a th:href="${backToQuestionsUrl != null ? backToQuestionsUrl : '/questions'}" class="btn btn-outline">↩️ Back to Questions</a>
         </div>
     </div>
 
@@ -88,5 +87,21 @@
     </div>
 </div>
 
+<script>
+function deleteQuestion(questionId) {
+    if (confirm('Are you sure you want to delete this question? This action cannot be undone.')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/questions/' + questionId;
+        const methodInput = document.createElement('input');
+        methodInput.type = 'hidden';
+        methodInput.name = '_method';
+        methodInput.value = 'DELETE';
+        form.appendChild(methodInput);
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
 </body>
 </html>

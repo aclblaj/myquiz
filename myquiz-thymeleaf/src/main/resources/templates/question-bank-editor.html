@@ -7,7 +7,7 @@
 </head>
 <body>
 
-<div th:insert="~{fragments::menu}"></div>
+<div th:insert="~{fragments/navigation::menu}"></div>
 
 <div class="container mt-3">
     <h2 th:text="${questionBank != null and questionBank.id != null ? '✏️ Edit Question Bank: ' + questionBank.name : '➕ Create New Question Bank'}">Question Bank Editor</h2>

@@ -13,6 +13,8 @@ import com.unitbv.myquiz.api.dto.QuestionErrorDto;
 import com.unitbv.myquiz.api.settings.ControllerSettings;
 import com.unitbv.myquiz.api.types.QuestionType;
 import com.unitbv.myquiz.api.types.TemplateType;
+import com.unitbv.myquiz.api.util.PaginationParams;
+import com.unitbv.myquiz.api.util.PaginationSupport;
 import com.unitbv.myquiz.app.entities.Author;
 import com.unitbv.myquiz.app.entities.Question;
 import com.unitbv.myquiz.app.entities.QuestionBank;
@@ -48,8 +50,10 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Service
 public class AuthorService {
@@ -282,24 +286,55 @@ public class AuthorService {
         Author author = authorRepository.findById(authorId).orElse(null);
         if (author == null) return null;
         AuthorDto authorDto = mapToAuthorDto(author);
-        getQuestionBankAuthors(author).forEach(questionBankAuthor -> {
-            QuestionBank questionBank = getAuthorFromQuestionBank(questionBankAuthor);
-            if (questionBank != null && questionBank.getCourse() != null && questionBank.getCourseName().equalsIgnoreCase(courseName)) {
-                long noMC = getQuestionBankAuthorQuestions(questionBankAuthor).stream().filter(q1 -> testIfMultichoice(q1) && isCourseNameEqualTo(courseName, q1)).count();
-                authorDto.setNumberOfMultipleChoiceQuestions(authorDto.getNumberOfMultipleChoiceQuestions() + noMC);
 
-                long noTF = getQuestionBankAuthorQuestions(questionBankAuthor).stream().filter(q -> testIfTruefalse(q) && isCourseNameEqualTo(courseName, q)).count();
-                authorDto.setNumberOfTrueFalseQuestions(authorDto.getNumberOfTrueFalseQuestions() + noTF);
+        long mcCount = 0L;
+        long tfCount = 0L;
+        long errorCount = 0L;
+        Set<Long> questionIds = new HashSet<>();
 
-                log.atInfo().log("Author '{}', QuestionBank '{}', Course '{}': MCQ count = {}, TF count = {}", author.getName(), questionBank.getName(), questionBank.getCourseName(), noMC, noTF);
-
-                authorDto.setNumberOfErrors(authorDto.getNumberOfErrors() + getQuestionBankAuthorQuestionErrors(questionBankAuthor).size());
-                authorDto.setNumberOfQuestions(authorDto.getNumberOfQuestions() + noMC + noTF);
-                authorDto.setQuestionBankName(questionBank.getName());
-                authorDto.setTemplateType(questionBankAuthor.getTemplateType() != null ? questionBankAuthor.getTemplateType().toString() : TemplateType.Other.toString());
-                authorDto.setCourse(questionBank.getCourseName());
+        for (QuestionBankAuthor questionBankAuthor : getQuestionBankAuthors(author)) {
+            QuestionBank questionBank = questionBankAuthor.getQuestionBank();
+            if (questionBank == null) {
+                questionBank = getAuthorFromQuestionBank(questionBankAuthor);
             }
-        });
+            if (questionBank == null) {
+                continue;
+            }
+
+            boolean includeByCourse = (courseName == null || courseName.isBlank())
+                    || (questionBank.getCourse() != null && questionBank.getCourseName().equalsIgnoreCase(courseName));
+            if (!includeByCourse) {
+                continue;
+            }
+
+            List<Question> questions = getQuestionBankAuthorQuestions(questionBankAuthor);
+            long noMC = questions.stream().filter(AuthorService::testIfMultichoice).count();
+            long noTF = questions.stream().filter(this::testIfTruefalse).count();
+            mcCount += noMC;
+            tfCount += noTF;
+            errorCount += getQuestionBankAuthorQuestionErrors(questionBankAuthor).size();
+            questions.stream().map(Question::getId).filter(java.util.Objects::nonNull).forEach(questionIds::add);
+
+            authorDto.setQuestionBankName(questionBank.getName());
+            authorDto.setTemplateType(questionBankAuthor.getTemplateType() != null ? questionBankAuthor.getTemplateType().toString() : TemplateType.Other.toString());
+            authorDto.setCourse(questionBank.getCourseName());
+
+            log.atInfo().log("Author '{}', QuestionBank '{}', Course '{}': MCQ count = {}, TF count = {}", author.getName(), questionBank.getName(), questionBank.getCourseName(), noMC, noTF);
+        }
+
+        authorDto.setNumberOfMultipleChoiceQuestions(mcCount);
+        authorDto.setNumberOfTrueFalseQuestions(tfCount);
+        authorDto.setNumberOfQuestions(mcCount + tfCount);
+        authorDto.setNumberOfErrors(errorCount);
+
+        long duplicatesCount = 0L;
+        for (Long questionId : questionIds) {
+            if (questionDuplicateRepository.countByQuestionIdOrDuplicateQuestionId(questionId, questionId) > 0) {
+                duplicatesCount++;
+            }
+        }
+        authorDto.setNumberOfDuplicates(duplicatesCount);
+
         return authorDto;
     }
 
@@ -365,8 +400,9 @@ public class AuthorService {
         log.atInfo().addArgument(filterInput).log("Filtering authors with input: {}");
 
         // Apply defaults for null parameters
-        int pageNo = filterInput.getPage() != null && filterInput.getPage() > 0 ? filterInput.getPage() : 1;
-        int pageSize = filterInput.getPageSize() != null && filterInput.getPageSize() > 0 ? filterInput.getPageSize() : ControllerSettings.PAGE_SIZE;
+        PaginationParams pagination = PaginationSupport.normalize(filterInput.getPage(), filterInput.getPageSize());
+        int pageNo = pagination.page();
+        int pageSize = pagination.pageSize();
         String sortField = "name"; // Default sort field
         String sortDirection = "asc"; // Default sort direction
 
@@ -515,7 +551,10 @@ public class AuthorService {
     }
 
     private List<QuestionError> getQuestionBankAuthorQuestionErrors(QuestionBankAuthor questionBankAuthor) {
-        return questionErrorRepository.findByQuestionQuestionBankAuthorId(questionBankAuthor.getId());
+        return questionErrorRepository.findByQuestionQuestionBankAuthorId(questionBankAuthor.getId())
+                .stream()
+                .filter(error -> !MyUtil.isDuplicateValidationError(error.getDescription()))
+                .toList();
     }
 
     private List<Question> getQuestionBankAuthorQuestions(QuestionBankAuthor questionBankAuthor) {

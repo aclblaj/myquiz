@@ -1,6 +1,7 @@
 package com.unitbv.myquiz.app.controller;
 
 import com.unitbv.myquiz.api.dto.OllamaResponseDto;
+import com.unitbv.myquiz.api.settings.ControllerSettings;
 import com.unitbv.myquiz.app.services.OllamaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -33,9 +34,6 @@ import java.util.Map;
 public class OllamaController {
 
     private static final Logger log = LoggerFactory.getLogger(OllamaController.class);
-    private static final String KEY_ERROR = "error";
-    private static final String KEY_MESSAGE = "message";
-    private static final String KEY_TIMESTAMP = "timestamp";
     private final OllamaService ollamaService;
 
     // Remove @Autowired for constructor injection (Spring 4.3+ does this automatically)
@@ -81,9 +79,9 @@ public class OllamaController {
 
             if (prompt == null || prompt.trim().isEmpty()) {
                 Map<String, Object> errorResponse = new HashMap<>();
-                errorResponse.put(KEY_ERROR, "Bad Request");
-                errorResponse.put(KEY_MESSAGE, "Prompt is required and cannot be empty");
-                errorResponse.put(KEY_TIMESTAMP, OffsetDateTime.now());
+                errorResponse.put(ControllerSettings.KEY_ERROR, "Bad Request");
+                errorResponse.put(ControllerSettings.RESPONSE_KEY_MESSAGE, "Prompt is required and cannot be empty");
+                errorResponse.put(ControllerSettings.KEY_TIMESTAMP, OffsetDateTime.now());
                 return ResponseEntity.badRequest().body(errorResponse);
             }
 
@@ -94,16 +92,16 @@ public class OllamaController {
             Map<String, Object> response = new HashMap<>();
             response.put("response", aiResponse.getResponse());
             response.put("model", model);
-            response.put(KEY_TIMESTAMP, OffsetDateTime.now());
+            response.put(ControllerSettings.KEY_TIMESTAMP, OffsetDateTime.now());
 
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
             log.atError().setCause(e).log("Error generating AI response");
             Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put(KEY_ERROR, "AI Generation Failed");
-            errorResponse.put(KEY_MESSAGE, e.getMessage());
-            errorResponse.put(KEY_TIMESTAMP, OffsetDateTime.now());
+            errorResponse.put(ControllerSettings.KEY_ERROR, "AI Generation Failed");
+            errorResponse.put(ControllerSettings.RESPONSE_KEY_MESSAGE, e.getMessage());
+            errorResponse.put(ControllerSettings.KEY_TIMESTAMP, OffsetDateTime.now());
             return ResponseEntity.internalServerError().body(errorResponse);
         }
     }
@@ -120,7 +118,7 @@ public class OllamaController {
     public ResponseEntity<Map<String, Object>> improveQuestions(@Parameter(description = "Question IDs to improve", required = true) @RequestBody List<Long> questionIds) {
         try {
             Map<String, Object> response = new HashMap<>();
-            response.put(KEY_MESSAGE, "Question improvement process initiated");
+            response.put(ControllerSettings.RESPONSE_KEY_MESSAGE, "Question improvement process initiated");
             response.put("questionIds", questionIds);
             response.put("timestamp", OffsetDateTime.now());
 
@@ -130,7 +128,7 @@ public class OllamaController {
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.atError().setCause(e).log("Error improving questions with AI");
-            return ResponseEntity.internalServerError().body(Map.of(KEY_ERROR, "Question improvement failed", KEY_MESSAGE, e.getMessage()));
+            return ResponseEntity.internalServerError().body(Map.of(ControllerSettings.KEY_ERROR, "Question improvement failed", ControllerSettings.RESPONSE_KEY_MESSAGE, e.getMessage()));
         }
     }
 
@@ -146,12 +144,12 @@ public class OllamaController {
             status.put("service", "Ollama AI Integration");
             status.put("status", "operational");
             status.put("availableModels", List.of("llama3", "codellama", "mistral"));
-            status.put(KEY_TIMESTAMP, OffsetDateTime.now());
+           status.put(ControllerSettings.KEY_TIMESTAMP, OffsetDateTime.now());
 
             return ResponseEntity.ok(status);
         } catch (Exception e) {
             log.atError().setCause(e).log("Error checking AI service status");
-            return ResponseEntity.status(503).body(Map.of("service", "Ollama AI Integration", "status", "unavailable", KEY_ERROR, e.getMessage()));
+            return ResponseEntity.status(503).body(Map.of("service", "Ollama AI Integration", "status", "unavailable", ControllerSettings.KEY_ERROR, e.getMessage()));
         }
     }
 }

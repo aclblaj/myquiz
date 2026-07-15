@@ -32,12 +32,12 @@ import java.sql.Timestamp;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.temporal.TemporalAccessor;
-import java.util.Arrays;
 import java.util.ArrayList;
-import java.util.Locale;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.List;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 /**
  * Service for comprehensive data cleanup operations.
@@ -57,12 +57,25 @@ public class DataCleanupService {
         "course",
         "author",
         "question_bank",
-        "quiz_author",
-        "question_bank_item",
+        "question_bank_author",
+        "question",
+        "answers_reference",
         "question_error",
         "archive_import",
-        "question_duplicate"
+        "question_duplicate",
+        "duplicate_recompute_history"
     );
+    private static final Set<String> AUTH_TABLE_NAMES = Set.of(
+        "users",
+        "roles",
+        "permissions",
+        "user_roles",
+        "role_permissions"
+    );
+    private static final Pattern WRITE_STATEMENT_PATTERN = Pattern.compile(
+        "(?is)^\\s*(insert\\s+into|update|delete\\s+from|truncate\\s+table|alter\\s+table|drop\\s+table|create\\s+table)\\b"
+    );
+    private static final Pattern SQL_LINE_COMMENT_PATTERN = Pattern.compile("(?m)--.*$");
 
     private final QuestionErrorRepository questionErrorRepository;
     private final QuestionRepository questionRepository;
@@ -73,6 +86,7 @@ public class DataCleanupService {
     private final RestTemplate restTemplate;
     private final QuestionDuplicateRepository questionDuplicateRepository;
     private final ArchiveImportRepository archiveImportRepository;
+    private final DuplicateRecomputeHistoryRepository duplicateRecomputeHistoryRepository;
     private final JdbcTemplate jdbcTemplate;
     private final DataSource dataSource;
 
@@ -99,6 +113,7 @@ public class DataCleanupService {
             QuestionDuplicateRepository questionDuplicateRepository,
             RestTemplate restTemplate,
             ArchiveImportRepository archiveImportRepository,
+            DuplicateRecomputeHistoryRepository duplicateRecomputeHistoryRepository,
             JdbcTemplate jdbcTemplate,
             DataSource dataSource
     ) {
@@ -111,6 +126,7 @@ public class DataCleanupService {
         this.questionDuplicateRepository = questionDuplicateRepository;
         this.restTemplate = restTemplate;
         this.archiveImportRepository = archiveImportRepository;
+        this.duplicateRecomputeHistoryRepository = duplicateRecomputeHistoryRepository;
         this.jdbcTemplate = jdbcTemplate;
         this.dataSource = dataSource;
     }
@@ -131,12 +147,14 @@ public class DataCleanupService {
 
         appendSequenceReset(sql, "course_seq", "course", "id");
         appendSequenceReset(sql, "author_seq", "author", "id");
-        appendSequenceReset(sql, "quiz_seq", "question_bank", "id");
-        appendSequenceReset(sql, "quiz_author_seq", "quiz_author", "id");
-        appendSequenceReset(sql, "question_bank_item_seq", "question_bank_item", "id");
+        appendSequenceReset(sql, "question_bank_seq", "question_bank", "id");
+        appendSequenceReset(sql, "question_bank_author_seq", "question_bank_author", "id");
+        appendSequenceReset(sql, "question_seq", "question", "id");
+        appendSequenceReset(sql, "answers_reference_seq", "answers_reference", "id");
         appendSequenceReset(sql, "question_error_seq", "question_error", "id");
         appendSequenceReset(sql, "archive_import_seq", "archive_import", "id");
         appendSequenceReset(sql, "question_duplicate_seq", "question_duplicate", "id");
+        appendSequenceReset(sql, "dup_recompute_history_seq", "duplicate_recompute_history", "id");
 
         sql.append("\nCOMMIT;\n");
         return sql.toString();
@@ -174,11 +192,13 @@ public class DataCleanupService {
      *
      * Deletion order (respects foreign key constraints):
      * 1. Question Errors
-     * 2. Questions
-     * 3. QuestionBank Authors
-     * 4. Quizzes
-     * 5. Authors
-     * 6. Courses
+     * 2. Question Duplicates
+     * 3. Questions
+     * 4. QuestionBank Authors
+     * 5. Archive Imports
+     * 6. Question Banks
+     * 7. Authors
+     * 8. Courses
      *
      * Users, Roles, and Permissions are NOT deleted.
      */
@@ -191,19 +211,28 @@ public class DataCleanupService {
             // Step 1: Delete all QuestionErrors
             deleteAllAndLog(questionErrorRepository, "question errors");
 
-            // Step 2: Delete all Questions
+            // Step 2: Delete all QuestionDuplicates
+            deleteAllAndLog(questionDuplicateRepository, "question duplicates");
+
+            // Step 3: Delete all Questions
             deleteAllAndLog(questionRepository, "questions");
 
-            // Step 3: Delete all QuizAuthors
+            // Step 4: Delete all QuizAuthors
             deleteAllAndLog(questionBankAuthorRepository, "QuestionBank authors");
 
-            // Step 4: Delete all Quizzes
-            deleteAllAndLog(questionBankRepository, "quizzes");
+            // Step 5: Delete all ArchiveImports
+            deleteAllAndLog(archiveImportRepository, "archive imports");
 
-            // Step 5: Delete all Authors
+            // Step 6: Delete all DuplicateRecomputeHistory entries
+            deleteAllAndLog(duplicateRecomputeHistoryRepository, "duplicate recompute history entries");
+
+            // Step 7: Delete all Question Banks
+            deleteAllAndLog(questionBankRepository, "Question Banks");
+
+            // Step 8: Delete all Authors
             deleteAllAndLog(authorRepository, "authors");
 
-            // Step 6: Delete all Courses
+            // Step 9: Delete all Courses
             deleteAllAndLog(courseRepository, "courses");
 
             long totalTime = System.currentTimeMillis() - startTime;
@@ -230,7 +259,7 @@ public class DataCleanupService {
         Map<String, Long> stats = new LinkedHashMap<>();
 
         // Basic statistics - always included
-        stats.put("quizzes", questionBankRepository.count());
+        stats.put("questionBanks", questionBankRepository.count());
         stats.put("quizAuthors", questionBankAuthorRepository.count());
         stats.put("archiveImports", archiveImportRepository.count());
 
@@ -442,25 +471,27 @@ public class DataCleanupService {
     }
 
     private void validateBackupScript(byte[] content) {
-        String sql = new String(content, StandardCharsets.UTF_8).toLowerCase(Locale.ROOT);
-        List<String> forbiddenTokens = Arrays.asList(
-            "insert into users",
-            "insert into roles",
-            "insert into permissions",
-            "insert into user_roles",
-            "insert into role_permissions",
-            "truncate table users",
-            "truncate table roles",
-            "truncate table permissions",
-            "truncate table user_roles",
-            "truncate table role_permissions"
-        );
+        String sql = new String(content, StandardCharsets.UTF_8);
+        String sanitizedSql = SQL_LINE_COMMENT_PATTERN.matcher(sql).replaceAll("");
 
-        for (String token : forbiddenTokens) {
-            if (sql.contains(token)) {
-                throw new IllegalArgumentException("Backup file must not modify auth tables");
+        for (String rawStatement : sanitizedSql.split(";")) {
+            String statement = rawStatement.trim().toLowerCase(java.util.Locale.ROOT);
+            if (statement.isEmpty() || !WRITE_STATEMENT_PATTERN.matcher(statement).find()) {
+                continue;
+            }
+
+            for (String authTable : AUTH_TABLE_NAMES) {
+                if (containsTableReference(statement, authTable)) {
+                    throw new IllegalArgumentException("Backup file must not modify auth tables");
+                }
             }
         }
+    }
+
+    private boolean containsTableReference(String statement, String table) {
+        return Pattern.compile("\\b(?:public\\.)?" + Pattern.quote(table) + "\\b")
+            .matcher(statement)
+            .find();
     }
 
     /**

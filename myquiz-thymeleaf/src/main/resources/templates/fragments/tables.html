@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+
+<!-- Authentication Menu for Index Page -->
+<div th:fragment="authmenu" class="auth-menu">
+    <div sec:authorize="isAuthenticated()" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+        <p>Welcome, <span sec:authentication="name"></span>!</p>
+        <a href="/logout" class="btn btn-logout">Logout</a>
+    </div>
+    <div sec:authorize="isAnonymous()" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+        <a href="/login" class="btn btn-login">Login</a>
+        <a href="/register" class="btn btn-register">Register</a>
+    </div>
+</div>
+
+<!-- Error Table Fragment - Reusable for error-list and question-bank-extended-details -->
+<table th:fragment="error-table(errors, showActions)" class="styled-table">
+    <thead>
+    <tr>
+        <th>Question ID</th>
+        <th>Row</th>
+        <th>Type</th>
+        <th>Description</th>
+        <th>Author</th>
+        <th>Question Bank</th>
+        <th>Status</th>
+        <th th:if="${showActions}">Actions</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="error : ${errors}" class="data-row" th:classappend="${error != null and error.status == T(com.unitbv.myquiz.api.settings.ControllerSettings).ERROR_STATUS_RESOLVED} ? 'resolved-row' : ''">
+        <td>
+            <a th:if="${error != null and error.questionId != null}"
+               th:href="${backToErrorsUrl != null and !backToErrorsUrl.isBlank() ? '/questions/' + error.questionId + '?backUrl=' + #uris.escapeQueryParam(backToErrorsUrl) : '/questions/' + error.questionId}"
+               class="btn btn-info btn-small">
+                👁️ <span th:text="${error.questionId}"></span>
+            </a>
+            <span th:if="${error == null or error.questionId == null}">—</span>
+        </td>
+        <td th:text="${error != null and error.row != null ? error.row : '-'}"></td>
+        <td th:text="${error != null and error.questionType != null ? error.questionType : '-'}"></td>
+        <td th:text="${error != null and error.description != null ? error.description : (error != null and error.message != null ? error.message : '-')}"></td>
+        <td th:text="${error != null and error.authorName != null ? error.authorName : '-'}"></td>
+        <td th:text="${error != null and error.questionBankName != null ? error.questionBankName : '-'}"></td>
+        <td>
+            <span th:if="${error != null and error.status == T(com.unitbv.myquiz.api.settings.ControllerSettings).ERROR_STATUS_OPEN}" class="badge badge-status-open">OPEN</span>
+            <span th:if="${error != null and error.status == T(com.unitbv.myquiz.api.settings.ControllerSettings).ERROR_STATUS_RESOLVED}" class="badge badge-status-resolved">RESOLVED</span>
+            <span th:if="${error == null or error.status == null}" class="badge badge-status-open">OPEN</span>
+        </td>
+        <td th:if="${showActions}" class="action-cell">
+            <form method="post" th:action="@{/errors/{id}/resolve(id=${error.id})}" class="inline-form" th:if="${error != null and error.id != null}">
+                <input type="hidden" name="courseId" th:value="${selectedCourseId}" />
+                <input type="hidden" name="author" th:value="${selectedAuthor}" />
+                <input type="hidden" name="questionBankId" th:value="${selectedQuestionBankIdErrors}" />
+                <input type="hidden" name="page" th:value="${currentPage}" />
+                <input type="hidden" name="pageSize" th:value="${pageSize}" />
+                <button type="submit" class="btn btn-success btn-small"
+                        th:unless="${error.status == T(com.unitbv.myquiz.api.settings.ControllerSettings).ERROR_STATUS_RESOLVED}"
+                        onclick="return confirm('Mark this error as resolved?')">
+                    ✔️ Resolve
+                </button>
+            </form>
+            <form method="post" th:action="@{/errors/{id}/delete(id=${error.id})}" class="inline-form" th:if="${error != null and error.id != null}">
+                <input type="hidden" name="courseId" th:value="${selectedCourseId}" />
+                <input type="hidden" name="author" th:value="${selectedAuthor}" />
+                <input type="hidden" name="questionBankId" th:value="${selectedQuestionBankIdErrors}" />
+                <input type="hidden" name="page" th:value="${currentPage}" />
+                <input type="hidden" name="pageSize" th:value="${pageSize}" />
+                <button type="submit" class="btn btn-delete btn-small"
+                        onclick="return confirm('Delete this error? This action cannot be undone.')">
+                    🗑️ Delete
+                </button>
+            </form>
+        </td>
+    </tr>
+    <tr th:if="${#lists.isEmpty(errors)}" class="empty-row">
+        <td th:colspan="${showActions ? 8 : 7}" class="list-empty-message">No errors found for the selected criteria</td>
+    </tr>
+    </tbody>
+</table>
+
+<!-- Duplicate Table Fragment -->
+<table th:fragment="duplicate-table(duplicates, showSelection, showActions, backToQuestionsUrl, selectedCourseId, selectedQuestionBankId, selectedAuthorId, selectedType, currentPage, pageSize, primaryQuestionId)" class="styled-table">
+    <thead>
+    <tr>
+        <th th:if="${showSelection}" class="select-cell">Select</th>
+        <th>Question ID 1</th>
+        <th>Title 1</th>
+        <th>Answers Q1</th>
+        <th>Question ID 2</th>
+        <th>Title 2</th>
+        <th>Answers Q2</th>
+        <th>Status</th>
+        <th th:if="${showActions}">Actions</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="duplicate : ${duplicates}" class="data-row"
+        th:classappend="${duplicate != null and duplicate.status == T(com.unitbv.myquiz.api.settings.ControllerSettings).DUPLICATE_STATUS_RESOLVED} ? 'resolved-row' : ''">
+        <td th:if="${showSelection}" class="select-cell">
+            <input type="checkbox" name="duplicateQuestionIds" th:value="${duplicate.questionId}" />
+        </td>
+        <td>
+            <a th:if="${duplicate.question1Id != null}"
+               th:href="@{/questions/{id}(id=${duplicate.question1Id})}"
+               class="btn btn-info btn-small"
+               th:text="${duplicate.question1Id}"></a>
+            <span th:if="${duplicate.question1Id == null}">—</span>
+        </td>
+        <td th:text="${duplicate.question1Title != null ? duplicate.question1Title : '-'}"></td>
+        <td class="text-cell" th:if="${duplicate.type1 == T(com.unitbv.myquiz.api.types.QuestionType).MULTICHOICE}">
+            <div><span>1. </span><span th:text="${duplicate.response1Q1}"></span></div>
+            <div><span>2. </span><span th:text="${duplicate.response2Q1}"></span></div>
+            <div><span>3. </span><span th:text="${duplicate.response3Q1}"></span></div>
+            <div><span>4. </span><span th:text="${duplicate.response4Q1}"></span></div>
+        </td>
+        <td class="text-cell" th:if="${duplicate.type1 != T(com.unitbv.myquiz.api.types.QuestionType).MULTICHOICE}">
+            <span th:text="${duplicate.response1Q1}"></span> (TRUE/FALSE)
+        </td>
+        <td>
+            <a th:if="${duplicate.question2Id != null}"
+               th:href="@{/questions/{id}(id=${duplicate.question2Id})}"
+               class="btn btn-info btn-small"
+               th:text="${duplicate.question2Id}"></a>
+            <span th:if="${duplicate.question2Id == null}">—</span>
+        </td>
+        <td th:text="${duplicate.question2Title != null ? duplicate.question2Title : '-'}"></td>
+        <td class="text-cell" th:if="${duplicate.type2 == T(com.unitbv.myquiz.api.types.QuestionType).MULTICHOICE}">
+            <div><span>1. </span><span th:text="${duplicate.response1Q2}"></span></div>
+            <div><span>2. </span><span th:text="${duplicate.response2Q2}"></span></div>
+            <div><span>3. </span><span th:text="${duplicate.response3Q2}"></span></div>
+            <div><span>4. </span><span th:text="${duplicate.response4Q2}"></span></div>
+        </td>
+        <td class="text-cell" th:if="${duplicate.type2 != T(com.unitbv.myquiz.api.types.QuestionType).MULTICHOICE}">
+            <span th:text="${duplicate.response1Q2}"></span> (TRUE/FALSE)
+        </td>
+        <td>
+            <span th:if="${duplicate.status == T(com.unitbv.myquiz.api.settings.ControllerSettings).DUPLICATE_STATUS_OPEN}" class="badge badge-status-open">OPEN</span>
+            <span th:if="${duplicate.status == T(com.unitbv.myquiz.api.settings.ControllerSettings).DUPLICATE_STATUS_RESOLVED}" class="badge badge-status-resolved">RESOLVED</span>
+            <span th:if="${duplicate.status == null}" class="badge badge-status-open">OPEN</span>
+        </td>
+        <td th:if="${showActions}" class="action-cell">
+            <form method="post" th:action="@{/duplicates/{id}/mark-resolved(id=${duplicate.id})}" class="inline-form"
+                  th:if="${duplicate.status != T(com.unitbv.myquiz.api.settings.ControllerSettings).DUPLICATE_STATUS_RESOLVED}">
+                <input type="hidden" name="primaryQuestionId" th:value="${primaryQuestionId}" />
+                <input type="hidden" name="backUrl" th:value="${backToQuestionsUrl}" />
+                <input type="hidden" name="courseId" th:value="${selectedCourseId}" />
+                <input type="hidden" name="questionBankId" th:value="${selectedQuestionBankId}" />
+                <input type="hidden" name="authorId" th:value="${selectedAuthorId}" />
+                <input type="hidden" name="type" th:value="${selectedType}" />
+                <input type="hidden" name="page" th:value="${currentPage}" />
+                <input type="hidden" name="pageSize" th:value="${pageSize}" />
+                <button type="submit" class="btn btn-success btn-small"
+                        onclick="return confirm('Mark this duplicate pair as resolved (it will remain linked, just flagged as reviewed)?')">✔️ Resolved</button>
+            </form>
+        </td>
+    </tr>
+    <tr th:if="${#lists.isEmpty(duplicates)}" class="empty-row">
+        <td th:colspan="${7 + (showSelection ? 1 : 0) + (showActions ? 1 : 0)}" class="list-empty-message">No duplicates found</td>
+    </tr>
+    </tbody>
+</table>
+
+</body>
+</html>

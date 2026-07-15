@@ -51,7 +51,7 @@ public class ThyHomeController {
         Object loggedInUser = sessionService.getLoggedInUser();
         log.atInfo().addArgument(loggedInUser).log("Home page requested by user: {}");
         log.atInfo().log("Redirecting to question-bank list for home page");
-        return ControllerSettings.VIEW_REDIRECT_QUESTION_BANKS;
+        return ControllerSettings.VIEW_REDIRECT_QUESTION_BANK;
     }
 
     @GetMapping("/help")
@@ -61,7 +61,7 @@ public class ThyHomeController {
 
     @GetMapping("/home/deleteall")
     public String deleteAllQuestions() {
-        return "redirect:/admin/data/deleteall";
+        return "redirect:/admin/data";
     }
 
     @GetMapping("/statistics")

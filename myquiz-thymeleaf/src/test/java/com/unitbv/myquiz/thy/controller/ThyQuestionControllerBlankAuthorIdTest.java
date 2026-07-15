@@ -2,6 +2,7 @@ package com.unitbv.myquiz.thy.controller;
 
 import com.unitbv.myquiz.api.dto.QuestionBankDto;
 import com.unitbv.myquiz.api.dto.QuestionDto;
+import com.unitbv.myquiz.api.dto.QuestionDuplicateDto;
 import com.unitbv.myquiz.api.settings.ControllerSettings;
 import com.unitbv.myquiz.api.types.QuestionType;
 import com.unitbv.myquiz.thy.service.QuestionCorrectionService;
@@ -24,7 +25,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
@@ -77,10 +80,39 @@ class ThyQuestionControllerBlankAuthorIdTest {
                         .queryParam("page", "1")
                         .queryParam("pageSize", "10"))
                 .andExpect(status().isOk())
-                .andExpect(view().name(ControllerSettings.QUESTION_EDITOR_MULTICHOICE));
+                .andExpect(view().name(ControllerSettings.VIEW_QUESTION_VIEW));
+    }
+
+    @Test
+    void showQuestionDuplicates_acceptsBlankOptionalNumericQueryParameters() throws Exception {
+        QuestionDuplicateDto duplicate = new QuestionDuplicateDto();
+        duplicate.setQuestionId(5807L);
+        duplicate.setTitle("Duplicate question");
+
+        QuestionDto question = new QuestionDto();
+        question.setId(12594L);
+        question.setType(QuestionType.MULTICHOICE);
+        question.setTitle("Source question");
+        question.setDuplicates(java.util.List.of(duplicate));
+
+        when(sessionService.validateSessionOrRedirect()).thenReturn(null);
+        when(sessionService.getAuthorizationHeader()).thenReturn(new HttpEntity<Void>(new HttpHeaders()));
+        when(sessionService.getLoggedInUser()).thenReturn(null);
+        when(restTemplate.exchange(anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(QuestionDto.class)))
+                .thenReturn(ResponseEntity.ok(question));
+
+        mockMvc.perform(get("/questions/12594/duplicates")
+                        .queryParam("courseId", "")
+                        .queryParam("questionBankId", "34")
+                        .queryParam("authorId", "")
+                        .queryParam("type", "")
+                        .queryParam("page", "1")
+                        .queryParam("pageSize", "10"))
+                .andExpect(status().isOk())
+                .andExpect(view().name(ControllerSettings.VIEW_QUESTION_DUPLICATES))
+                .andExpect(model().attribute(ControllerSettings.ATTR_DUPLICATES, hasSize(1)))
+                .andExpect(model().attribute(ControllerSettings.ATTR_SELECTED_QUESTION_BANK_ID, 34L));
     }
 }
-
-
 
 

@@ -6,7 +6,7 @@
     <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
 </head>
 <body>
-<div th:insert="~{fragments::menu}"></div>
+<div th:insert="~{fragments/navigation::menu}"></div>
 
 <div class="container mt-3 list-page-compact">
     <h2 class="list-page-title">🔀 Question Duplicates</h2>
@@ -24,25 +24,30 @@
             <tr th:if="${question.type == T(com.unitbv.myquiz.api.types.QuestionType).MULTICHOICE}">
                 <th scope="row">Responses</th>
                 <td colspan="1" class="text-cell">
-                    <div th:text="${question.response1}"></div>
-                    <div th:text="${question.response2}"></div>
-                    <div th:text="${question.response3}"></div>
-                    <div th:text="${question.response4}"></div>
+                    <div><span>1. </span><span th:text="${question.response1}"></span></div>
+                    <div><span>2. </span><span th:text="${question.response2}"></span></div>
+                    <div><span>3. </span><span th:text="${question.response3}"></span></div>
+                    <div><span>4. </span><span th:text="${question.response4}"></span></div>
                 </td>
             </tr>
             <tr th:unless="${question.type == T(com.unitbv.myquiz.api.types.QuestionType).MULTICHOICE}">
                 <th scope="row">Responses</th>
-                <td><span th:text="${question.response1}"></span> (TRUE/FALSE)</td>
+                <td class="text-cell"><span th:text="${question.response1}"></span> (TRUE/FALSE)</td>
             </tr>
             <tr><th scope="row">Course</th><td th:text="${question.course}"></td></tr>
             <tr><th scope="row">Question Bank</th><td th:text="${question.questionBankName}"></td></tr>
-            <tr><th scope="row">Author</th><td th:text="${question.authorName}"></td></tr>
+            <tr><th scope="row">Author</th><td>
+                <a th:if="${question.author != null and question.author.id != null}"
+                   th:href="@{/authors/{id}/details(id=${question.author.id})}"
+                   th:text="${question.author.name}"></a>
+                <span th:if="${question.author == null or question.author.id == null}"
+                      th:text="${question.author != null ? question.author.name : ''}"></span>
+            </td></tr>
             <tr><th scope="row">Duplicate Count</th><td th:text="${question.duplicateCount}"></td></tr>
         </table>
+        <div class="form-actions"
+             th:insert="~{fragments/forms :: question-actions(${question}, ${currentPage}, ${pageSize}, ${selectedCourseId}, ${selectedAuthorId}, ${selectedQuestionBankId}, ${selectedType})}"></div>
         <div class="form-actions">
-            <a th:href="${questionViewUrl != null ? questionViewUrl : '/questions/' + question.id}" class="btn btn-info">👁️ View</a>
-            <a th:if="${question.id != null}" th:href="${questionCorrectionUrl != null ? questionCorrectionUrl : '/questions/' + question.id + '/correction'}" class="btn btn-new">🤖 AI Correct</a>
-            <span th:if="${question.id == null}" class="btn btn-outline disabled" title="AI correction is unavailable for unsaved questions">🤖 AI Correct</span>
             <a th:href="${backToQuestionsUrl != null ? backToQuestionsUrl : '/questions'}" class="btn btn-outline">↩️ Back to Questions</a>
         </div>
     </div>
@@ -57,63 +62,82 @@
         <input type="hidden" name="type" th:value="${selectedType}" />
         <input type="hidden" name="page" th:value="${currentPage}" />
         <input type="hidden" name="pageSize" th:value="${pageSize}" />
-        <table class="styled-table">
-            <thead>
-            <tr>
-                <th>Select</th>
-                <th>ID</th>
-                <th>Type</th>
-                <th>Title</th>
-                <th>Question Text</th>
-                <th>Responses</th>
-                <th>Course</th>
-                <th>Question Bank</th>
-                <th>Author</th>
-                <th>Row</th>
-                <th>Actions</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr th:each="duplicate : ${duplicates}" class="data-row">
-                <td><input type="checkbox" name="duplicateQuestionIds" th:value="${duplicate.questionId}" /></td>
-                <td th:text="${duplicate.questionId}"></td>
-                <td th:text="${duplicate.type}"></td>
-                <td th:text="${duplicate.title}"></td>
-                <td class="text-cell"><span th:text="${#strings.abbreviate(duplicate.text, 50)}"></span></td>
-                <td class="text-cell" colspan="1" th:if="${duplicate.type == T(com.unitbv.myquiz.api.types.QuestionType).MULTICHOICE}">
-                    <div th:text="${duplicate.response1}"></div>
-                    <div th:text="${duplicate.response2}"></div>
-                    <div th:text="${duplicate.response3}"></div>
-                    <div th:text="${duplicate.response4}"></div>
-                </td>
-                <td class="text-cell" th:if="${duplicate.type != T(com.unitbv.myquiz.api.types.QuestionType).MULTICHOICE}">
-                    <span th:text="${duplicate.response1}"></span> (TRUE/FALSE)
-                </td>
-                <td th:text="${duplicate.course}"></td>
-                <td th:text="${duplicate.questionBankName}"></td>
-                <td th:text="${duplicate.authorName}"></td>
-                <td th:text="${duplicate.row}"></td>
-                <td class="action-cell">
-                    <a th:if="${backToQuestionsUrl != null and !backToQuestionsUrl.isBlank()}" th:href="${'/questions/' + duplicate.questionId + '?backUrl=' + #uris.escapeQueryParam(backToQuestionsUrl)}" class="btn btn-info">👁️ View</a>
-                    <a th:unless="${backToQuestionsUrl != null and !backToQuestionsUrl.isBlank()}" th:href="@{/questions/{id}(id=${duplicate.questionId}, courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, authorId=${selectedAuthorId}, type=${selectedType}, page=${currentPage}, pageSize=${pageSize})}" class="btn btn-info">👁️ View</a>
-                    <a th:if="${duplicate.questionId != null and backToQuestionsUrl != null and !backToQuestionsUrl.isBlank()}" th:href="${'/questions/' + duplicate.questionId + '/correction?backUrl=' + #uris.escapeQueryParam(backToQuestionsUrl)}" class="btn btn-new">🤖 AI Correct</a>
-                    <a th:if="${duplicate.questionId != null and (backToQuestionsUrl == null or backToQuestionsUrl.isBlank())}" th:href="@{/questions/{id}/correction(id=${duplicate.questionId}, courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, authorId=${selectedAuthorId}, type=${selectedType}, page=${currentPage}, pageSize=${pageSize})}" class="btn btn-new">🤖 AI Correct</a>
-                    <span th:if="${duplicate.questionId == null}" class="btn btn-outline disabled" title="AI correction is unavailable for unsaved questions">🤖 AI Correct</span>
-                    <a th:if="${backToQuestionsUrl != null and !backToQuestionsUrl.isBlank()}" th:href="${'/questions/' + duplicate.questionId + '/duplicates?backUrl=' + #uris.escapeQueryParam(backToQuestionsUrl)}" class="btn btn-new">🔀 Inspect</a>
-                    <a th:unless="${backToQuestionsUrl != null and !backToQuestionsUrl.isBlank()}" th:href="@{/questions/{id}/duplicates(id=${duplicate.questionId}, courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, authorId=${selectedAuthorId}, type=${selectedType}, page=${currentPage}, pageSize=${pageSize})}" class="btn btn-new">🔀 Inspect</a>
-                    <button type="button" class="btn btn-delete" th:onclick="|deleteQuestion(${duplicate.questionId})|">🗑️ Delete</button>
-                </td>
-            </tr>
-            </tbody>
-        </table>
+        <div th:replace="~{fragments/tables::duplicate-table(
+            duplicates=${duplicates},
+            showSelection=${true},
+            showActions=${true},
+            backToQuestionsUrl=${backToQuestionsUrl},
+            selectedCourseId=${selectedCourseId},
+            selectedQuestionBankId=${selectedQuestionBankId},
+            selectedAuthorId=${selectedAuthorId},
+            selectedType=${selectedType},
+            currentPage=${currentPage},
+            pageSize=${pageSize},
+            primaryQuestionId=${question.id}
+        )}"></div>
 
         <div class="form-actions">
             <button type="submit" class="btn btn-save">✖️ Remove Selected Duplicate Links</button>
         </div>
     </form>
 
+    <form th:if="${duplicates != null and !#lists.isEmpty(duplicates)}"
+          th:action="@{'/questions/' + ${question.id} + '/duplicates/remove-all'}"
+          method="post" class="form-actions">
+        <input type="hidden" name="backUrl" th:value="${backToQuestionsUrl}" />
+        <input type="hidden" name="courseId" th:value="${selectedCourseId}" />
+        <input type="hidden" name="questionBankId" th:value="${selectedQuestionBankId}" />
+        <input type="hidden" name="authorId" th:value="${selectedAuthorId}" />
+        <input type="hidden" name="type" th:value="${selectedType}" />
+        <input type="hidden" name="page" th:value="${currentPage}" />
+        <input type="hidden" name="pageSize" th:value="${pageSize}" />
+        <button type="submit" class="btn btn-delete"
+                onclick="return confirm('Delete ALL duplicate links for this question? This action cannot be undone and affects duplicates on every page, not just the current one.')">
+            🗑️ Delete All Duplicates
+        </button>
+    </form>
+
     <div th:if="${duplicates == null or #lists.isEmpty(duplicates)}" class="alert">
         No duplicates are currently linked to this question.
+    </div>
+
+    <!-- Pagination Controls -->
+    <div class="pagination-controls" th:if="${totalPages != null && totalPages > 1}">
+        <div class="list-pagination-row">
+            <!-- First Button -->
+            <a th:if="${currentPage != null && currentPage > 1}"
+               th:href="@{/questions/{id}/duplicates(id=${question.id}, courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, authorId=${selectedAuthorId}, type=${selectedType}, backUrl=${backToQuestionsUrl}, page=1, pageSize=${pageSize != null ? pageSize : 10})}"
+               class="btn btn-outline">⏮️ First</a>
+            <span th:if="${currentPage == null || currentPage <= 1}"
+                  class="btn btn-outline disabled">⏮️ First</span>
+
+            <!-- Previous Button -->
+            <a th:if="${currentPage != null && currentPage > 1}"
+               th:href="@{/questions/{id}/duplicates(id=${question.id}, courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, authorId=${selectedAuthorId}, type=${selectedType}, backUrl=${backToQuestionsUrl}, page=${currentPage - 1}, pageSize=${pageSize != null ? pageSize : 10})}"
+               class="btn btn-outline">◀️ Previous</a>
+            <span th:if="${currentPage == null || currentPage <= 1}"
+                  class="btn btn-outline disabled">◀️ Previous</span>
+
+            <span class="list-page-indicator">Page <span
+                    th:text="${currentPage != null ? currentPage : 1}"></span> of <span th:text="${totalPages}"></span></span>
+
+            <!-- Next Button -->
+            <a th:if="${currentPage != null && currentPage < totalPages}"
+               th:href="@{/questions/{id}/duplicates(id=${question.id}, courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, authorId=${selectedAuthorId}, type=${selectedType}, backUrl=${backToQuestionsUrl}, page=${currentPage + 1}, pageSize=${pageSize != null ? pageSize : 10})}"
+               class="btn btn-outline">▶️ Next</a>
+            <span th:if="${currentPage == null || currentPage >= totalPages}" class="btn btn-outline disabled">▶️ Next</span>
+
+            <!-- Last Button -->
+            <a th:if="${currentPage != null && currentPage < totalPages}"
+               th:href="@{/questions/{id}/duplicates(id=${question.id}, courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, authorId=${selectedAuthorId}, type=${selectedType}, backUrl=${backToQuestionsUrl}, page=${totalPages}, pageSize=${pageSize != null ? pageSize : 10})}"
+               class="btn btn-outline">⏭️ Last</a>
+            <span th:if="${currentPage == null || currentPage >= totalPages}" class="btn btn-outline disabled">⏭️ Last</span>
+        </div>
+    </div>
+
+    <!-- Total Elements -->
+    <div class="total-elements" th:if="${totalElements != null}">
+        Total: <span th:text="${totalElements}"></span> duplicate(s) found
     </div>
 </div>
 

@@ -8,6 +8,8 @@ import com.unitbv.myquiz.api.dto.QuestionBankInfo;
 import com.unitbv.myquiz.api.dto.QuestionDto;
 import com.unitbv.myquiz.api.dto.QuestionFilterResponseDto;
 import com.unitbv.myquiz.api.types.QuestionType;
+import com.unitbv.myquiz.api.util.PaginationParams;
+import com.unitbv.myquiz.api.util.PaginationSupport;
 import com.unitbv.myquiz.app.entities.Author;
 import com.unitbv.myquiz.app.entities.Course;
 import com.unitbv.myquiz.app.entities.Question;
@@ -177,6 +179,10 @@ public class QuestionService {
     )
     @Transactional
     public boolean deleteQuestion(Long id) {
+        return deleteQuestionInternal(id);
+    }
+
+    private boolean deleteQuestionInternal(Long id) {
         Question question = findQuestionById(id);
         if (question != null) {
             questionDuplicationService.removeAllDuplicateAssociationsForQuestion(id);
@@ -203,6 +209,15 @@ public class QuestionService {
                 null
         );
         return questionRepository.findAll(spec);
+    }
+
+    @Transactional(readOnly = true)
+    public List<QuestionDto> getQuestionDtosForQuestionBankAuthor(Long questionBankAuthorId) {
+        if (questionBankAuthorId == null) {
+            throw new IllegalArgumentException("QuestionBankAuthor ID cannot be null");
+        }
+
+        return convertQuestionsToEnrichedDtos(getQuestionBankQuestionsForAuthor(questionBankAuthorId));
     }
 
     public List<Question> getQuestionsForAuthorId(Long authorId, String course) {
@@ -255,13 +270,7 @@ public class QuestionService {
     @Cacheable(value = "allQuestions")
     @Transactional(readOnly = true)
     public List<QuestionDto> getAllQuestions() {
-        List<Question> questions = findAllQuestions();
-        List<QuestionDto> dtos = questions.stream().map(questionMapper::toDto).toList();
-        questionDtoEnricher.enrichListWithErrors(
-                dtos,
-                questions
-        );
-        return dtos;
+        return convertQuestionsToEnrichedDtos(findAllQuestions());
     }
 
     // REST API operation implementations
@@ -270,15 +279,7 @@ public class QuestionService {
     @Transactional(readOnly = true)
     public QuestionDto getQuestionById(Long id) {
         Question question = findQuestionById(id);
-        if (question != null) {
-            QuestionDto dto = questionMapper.toDto(question);
-            questionDtoEnricher.enrichWithErrors(
-                    dto,
-                    question
-            );
-            return dto;
-        }
-        return null;
+        return question != null ? createEnrichedDto(question) : null;
     }
 
     @CacheEvict(
@@ -337,7 +338,8 @@ public class QuestionService {
     }
 
     private Author createAuthor(QuestionDto questionDto) {
-        String authorName = questionDto.getAuthorName();
+        AuthorInfo authorInfo = questionDto.getAuthor();
+        String authorName = authorInfo != null ? authorInfo.getName() : null;
         if (authorName == null || authorName.isBlank()) {
             return null;
         }
@@ -345,7 +347,9 @@ public class QuestionService {
         if (authorDto == null) {
             authorDto = new AuthorDto();
             authorDto.setName(authorName);
-            authorDto.setInitials(authorService.extractInitials(authorName));
+            authorDto.setInitials(authorInfo.getInitials() != null && !authorInfo.getInitials().isBlank()
+                    ? authorInfo.getInitials()
+                    : authorService.extractInitials(authorName));
             authorDto = authorService.saveAuthorDto(authorDto);
         }
         // Return entity from repository
@@ -464,9 +468,9 @@ public class QuestionService {
     public QuestionFilterResponseDto getQuestionsFiltered(String course, Long authorId, Integer page, Integer pageSize, Long questionBankId, QuestionType questionType) {
         String normalizedCourse = (course != null && !course.trim().isEmpty()) ? course.trim() : null;
 
-        // Guard against invalid page/pageSize
-        int validPage = (page != null && page > 0) ? page : 1;
-        int validPageSize = (pageSize != null && pageSize > 0) ? pageSize : 10;
+        PaginationParams pagination = PaginationSupport.normalize(page, pageSize);
+        int validPage = pagination.page();
+        int validPageSize = pagination.pageSize();
 
         // Convert 1-based page number to 0-based page index for Spring Data
         int pageIndex = validPage - 1;
@@ -568,12 +572,7 @@ public class QuestionService {
                     q2.getCrtNo()
             );
         }).toList();
-        List<QuestionDto> dtos = entities.stream().map(questionMapper::toDto).toList();
-        questionDtoEnricher.enrichListWithErrors(
-                dtos,
-                entities
-        );
-        return dtos;
+        return convertQuestionsToEnrichedDtos(entities);
     }
 
     /**
@@ -619,14 +618,7 @@ public class QuestionService {
     )
     @Transactional
     public boolean removeDuplicateQuestion(Long questionId) {
-        Question question = findQuestionById(questionId);
-        if (question == null) {
-            return false;
-        }
-
-        questionDuplicationService.removeAllDuplicateAssociationsForQuestion(questionId);
-        questionRepository.deleteById(questionId);
-        return true;
+        return deleteQuestionInternal(questionId);
     }
 
     /**
@@ -653,13 +645,46 @@ public class QuestionService {
         }
 
         try {
-            questionDuplicationService.removeDuplicateAssociations(questionId);
+            questionDuplicationService.removeSpecificDuplicateAssociations(questionId, duplicateIds);
             logger.atInfo().addArgument(duplicateIds.size()).addArgument(questionId)
                     .log("Removed {} duplication links for question {}");
             return true;
         }
         catch (Exception e) {
             logger.atError().setCause(e).log("Error removing duplication links for question {}: {}", questionId, e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Remove all duplication links for a question, regardless of how many exist or which
+     * page they would appear on in a paginated UI.
+     *
+     * @param questionId The primary question ID
+     * @return true if operation successful
+     */
+    @CacheEvict(
+            value = {
+                    "questions",
+                    "allQuestions",
+                    "questionsByQuestionBank",
+                    "questionsByAuthor",
+                    "questionsByAuthorName"
+            }, allEntries = true
+    )
+    @Transactional
+    public boolean removeAllDuplicationLinks(Long questionId) {
+        if (questionId == null) {
+            return false;
+        }
+
+        try {
+            questionDuplicationService.removeAllDuplicateAssociationsForQuestion(questionId);
+            logger.atInfo().addArgument(questionId).log("Removed all duplication links for question {}");
+            return true;
+        }
+        catch (Exception e) {
+            logger.atError().setCause(e).log("Error removing all duplication links for question {}: {}", questionId, e.getMessage());
             return false;
         }
     }
@@ -690,12 +715,7 @@ public class QuestionService {
 
             logger.atInfo().addArgument(course).addArgument(questionsWithDuplicates.size()).log("Found {} questions with duplicates in course '{}'");
 
-            List<QuestionDto> dtos = questionsWithDuplicates.stream().map(questionMapper::toDto).toList();
-            questionDtoEnricher.enrichListWithErrors(
-                    dtos,
-                    questionsWithDuplicates
-            );
-            return dtos;
+            return convertQuestionsToEnrichedDtos(questionsWithDuplicates);
         }
         catch (Exception e) {
             logger.atError().setCause(e).addArgument(course).log(
@@ -716,5 +736,13 @@ public class QuestionService {
         return questionDuplicationService.hasDuplicateError(question);
     }
 
-}
+    private QuestionDto createEnrichedDto(Question question) {
+        if (question == null) {
+            return null;
+        }
+        QuestionDto dto = questionMapper.toDto(question);
+        questionDtoEnricher.enrichWithErrors(dto, question);
+        return dto;
+    }
 
+}

@@ -7,7 +7,7 @@
 </head>
 <body>
 
-<div th:insert="~{fragments::menu}"></div>
+<div th:insert="~{fragments/navigation::menu}"></div>
 
 <div class="container mt-3 list-page-compact">
     <h2 class="list-page-title">Question Banks</h2>
@@ -67,7 +67,12 @@
         </thead>
         <tbody>
         <tr th:if="${questionBankFilter != null}" th:each="questionBank : ${questionBankFilter.questionBanks}" class="data-row">
-            <td th:text="${questionBank.id}"></td>
+            <td>
+                <a th:if="${questionBank.id != null}"
+                   th:href="@{/question-banks/{id}(id=${questionBank.id}, page=${questionBankFilter.page}, pageSize=${questionBankFilter.pageSize}, courseId=${selectedCourseId})}"
+                   th:text="${questionBank.id}">1</a>
+                <span th:if="${questionBank.id == null}">-</span>
+            </td>
             <td th:text="${questionBank.name}"></td>
             <td th:text="${questionBank.course}"></td>
             <td th:text="${questionBank.studyYear != null ? questionBank.studyYear.value : '-'}"></td>
@@ -76,20 +81,12 @@
             <td th:text="${questionBank.mcQuestionsCount + questionBank.tfQuestionsCount}"></td>
             <td th:text="${questionBank.noAuthors}"></td>
             <td th:text="${questionBank.numberOfDuplicates != null ? questionBank.numberOfDuplicates : 0}"></td>
-            <td class="action-cell">
-                <a th:href="@{/questions(page=1, pageSize=${questionBankFilter != null && questionBankFilter.pageSize != null ? questionBankFilter.pageSize : 10}, courseId=${questionBank.courseId}, questionBankId=${questionBank.id})}" class="btn btn-questions" title="Manage Questions">📚 Questions</a>
-                <a th:href="@{/question-banks/{id}(id=${questionBank.id}, page=${questionBankFilter.page}, pageSize=${questionBankFilter.pageSize}, courseId=${selectedCourseId})}" class="btn btn-info" title="Question Bank View">👁️ View</a>
-                <a th:href="@{/question-banks/{id}/extended(id=${questionBank.id}, page=${questionBankFilter.page}, pageSize=${questionBankFilter.pageSize}, courseId=${selectedCourseId})}" class="btn btn-new" title="Details View">📋 Details</a>
-                <a th:href="@{'/question-banks/edit/' + ${questionBank.id}}" class="btn btn-questionBank-edit" title="Edit Question Bank">✏️ Edit</a>
-                <button th:onclick="|deleteQuiz(${questionBank.id})|" class="btn btn-delete" title="Delete Question Bank">🗑️ Delete</button>
-                <a th:href="@{'/question-banks/' + ${questionBank.id} + '/export-mc'}" class="btn btn-new" target="_blank" title="Export MC to CSV">MC Export CSV</a>
-                <a th:href="@{'/question-banks/' + ${questionBank.id} + '/export-tf'}" class="btn btn-new" target="_blank" title="Export TF to CSV">TF Export CSV</a>
-                <a th:if="${menuPermissions['canExportXml']}" th:href="@{'/question-banks/' + ${questionBank.id} + '/export-xml'}" class="btn btn-export-xml" target="_blank" title="Export as XML">Export XML</a>
-                <a th:href="@{'/authors/course/' + ${questionBank.course} + '/page/1'}" class="btn btn-authors" title="View Authors">👥 Authors</a>
+            <td class="action-cell"
+                th:insert="~{fragments/forms :: question-bank-actions(${questionBank}, ${questionBankFilter.page}, ${questionBankFilter.pageSize}, ${selectedCourseId})}">
             </td>
         </tr>
         <tr th:if="${questionBankFilter == null || #lists.isEmpty(questionBankFilter.questionBanks)}" class="empty-row">
-            <td colspan="9" class="list-empty-message">No question banks found for the selected criteria</td>
+            <td colspan="10" class="list-empty-message">No question banks found for the selected criteria</td>
         </tr>
         </tbody>
     </table>

@@ -1,85 +1,85 @@
-# Author Error Software Design Operations Handling
-
-## 1. DTOs in `myquiz-api`
-Inputs: filter criteria (course, author), pagination (page, pageSize)
-Outputs:
-- AuthorErrorFilterDto (fields: authorErrors, authorNames, courses, course, authorName, page, pageSize, totalElements, totalPages)
-- AuthorErrorDto (existing: id, description, row, authorName, authorId, quizName, questionId, dateCreated, status)
-
-## 2. Author Error Operations
-
-| Section | Operation                           | UI Template       | Thymeleaf Endpoint        | Backend Endpoint                 | Service Action                                     |
-|---------|-------------------------------------|-------------------|---------------------------|----------------------------------|-----------------------------------------------------|
-| 2.1.1   | List Errors (Filter/Paginate)       | error-list.html   | GET /errors               | GET /api/errors                  | AuthorErrorService.getAuthorErrorsModel()           |
-| 2.1.2   | Resolve Error                       | error-list.html   | POST /errors/{id}/resolve | PUT /api/errors/{id}/resolve     | AuthorErrorService.resolveErrorById() (future)       |
-| 2.1.3   | Delete Error                        | error-list.html   | POST /errors/{id}         | DELETE /api/errors/{id}          | AuthorErrorService.deleteErrorById() (future)        |
-
-For each operation, the flow cascades from UI template to Thymeleaf Controller, to backend endpoint, to service action. The items below outline steps, inputs/outputs, and error modes.
-
-### 2.1 Actions from error-list.html
-#### 2.1.1 List Errors (with Filtering & Pagination)
-- Step 1: UI Template
-  - Template: `error-list.html`
-  - Action: User selects course/author and page size, submits form
-  - Inputs: selectedCourse, selectedAuthor, page, pageSize
-  - Output: AuthorErrorFilterDto rendered (subset per page)
-  - Errors: Invalid params, empty result
-- Step 2: Thymeleaf Controller
-  - Endpoint: `GET /errors` (ThyAuthorErrorController)
-  - Action: Validates session/JWT, builds URL with filters + page, calls backend
-  - Inputs: selectedCourse, selectedAuthor, page, pageSize
-  - Output: AuthorErrorFilterDto (with pagination metadata)
-  - Errors: Backend error, invalid params
-- Step 3: Backend Endpoint
-  - Endpoint: `GET /api/errors` (AuthorErrorController)
-  - Action: Accept filters, call service for server-side page slicing
-  - Inputs: selectedCourse, selectedAuthor, page, pageSize
-  - Output: AuthorErrorFilterDto (errors, courses, authors, totals)
-  - Errors: Validation error, DB error
-- Step 4: Service Action
-  - Service: `AuthorErrorService.getAuthorErrorsModel(course, author, page, pageSize)`
-  - Inputs: filters + Pageable
-  - Output: Page-mapped AuthorErrorFilterDto with totals
-  - Errors: Data access errors
-
-## 3. Server-side Pagination Design
-- Repository: `AuthorErrorRepository.findErrorsByCourseAndAuthor(String coursePattern, String authorPattern, Pageable pageable)`
-  - Query: Use `LOWER(column) LIKE :pattern` and pass prebuilt `%value%` patterns from service.
-- Service: Build patterns and PageRequest, map `Page<QuizError>` to `List<AuthorErrorDto>` and collect DTO metadata.
-- Controller: Accept query params; set defaults (page=1, pageSize=10) and forward to service.
-- UI: Use shared `searchfilter` styles, render only current page, and include Previous/Next controls that preserve course/author filters.
-
-## 4. Contracts & Error Modes
-- Inputs: course (String), author (String), page (Integer >=1), pageSize (Integer >=1)
-- Outputs: AuthorErrorFilterDto (errors limited to page, totals for pagination)
-- Error modes: 400 invalid params, 404 empty/none, 500 DB/server errors
-
-## 5. Testing Checklist
-- Happy path: course filter only; author filter only; both; none.
-- Pagination: page 1, middle page, last page, bounds disabling.
-- Case-insensitive filtering works; no SQL errors (`lower(bytea)` or `text~~bytea`).
-- UI preserves filters across pages and refill dropdowns correctly.
-
-## 6. Troubleshooting
-- If Postgres error on LIKE: ensure service passes `%value%` strings and JPQL uses `LOWER(column) LIKE :pattern`.
-- If totals mismatch: verify Page’s `getTotalElements()` and `getTotalPages()` mapped into DTO.
-- If empty courses/authors: populate from AuthorService.getCourseNames() and error-derived author names.
-
-## Author Operations
-
-### Create / Update
-- Authors generate error entries indirectly by performing uploads or question edits that fail validation.
-- Authors can correct underlying data to transition associated errors from OPEN to RESOLVED.
-
-### View / List
-- Authors view their import and validation errors via dedicated error listing pages and author-details views.
-
-### Delete / Archive
-- Errors are typically not deleted by authors; they are resolved. Any archival or purging of old errors is handled by backend maintenance jobs or administrators.
-
-### Permissions & Roles
-- Authors can only see errors associated with their own data; administrators may see errors system-wide.
-
----
-
-Note: Align naming and behavior with `author-sd.md` and keep DTOs/controllers consistent across the app.
+﻿# Question Error Software Design
+## 1. Overview
+This document defines the current error-listing feature used to inspect, resolve, and delete validation errors associated with imported or edited questions.
+The active implementation is question-error centric and is backed by `ThyErrorController`, `QuestionErrorController`, and `QuestionErrorService`.
+## 2. Functional Scope
+### 2.1 Main Features
+- list and filter errors by course, author, and question bank
+- paginate server-side results
+- mark individual errors as resolved
+- delete individual errors
+- preserve filter context while navigating and mutating rows
+### 2.2 Main End-to-End Calls
+| Operation | Template | Thymeleaf Route | Backend Route | Service Entry Point |
+|---|---|---|---|---|
+| List/filter errors | `error-list.html` | `GET /errors`, `POST /errors/filter` | `POST /api/errors/filter` | `QuestionErrorService.filter(...)` |
+| Resolve error | `error-list.html` | `POST /errors/{id}/resolve` | `PUT /api/errors/{id}/resolve` | `QuestionErrorService.resolveErrorById(...)` |
+| Delete error | `error-list.html` | `POST /errors/{id}/delete` | `DELETE /api/errors/{id}` | `QuestionErrorService.deleteErrorById(...)` |
+| Get single error | — | — | `GET /api/errors/{id}` | `QuestionErrorService.getErrorById(...)` |
+## 3. Architecture
+### 3.1 Layering
+1. `error-list.html` submits filters or row actions.
+2. `ThyErrorController` validates session and builds API requests.
+3. `QuestionErrorController` exposes `/api/errors` endpoints.
+4. `QuestionErrorService` performs filtering and status changes.
+## 4. Data Model and DTOs
+Primary DTOs in the current flow:
+- `QuestionErrorDto`
+- `QuestionErrorFilterRequestDto`
+- `QuestionErrorFilterResponseDto`
+## 5. Flows
+### 5.1 List and Filter
+1. UI hits `GET /errors` or posts to `/errors/filter`.
+2. `ThyErrorController.renderErrorList(...)` normalizes empty author values and paging defaults.
+3. Controller sends `QuestionErrorFilterRequestDto` to `POST /api/errors/filter`.
+4. Backend returns `QuestionErrorFilterResponseDto`.
+5. UI renders the current page and preserves filter selections.
+### 5.2 Resolve Error
+1. User submits `POST /errors/{id}/resolve`.
+2. Thymeleaf controller forwards authorized `PUT /api/errors/{id}/resolve`.
+3. Success or failure is returned as flash messaging.
+4. User is redirected back to the same filtered page context.
+### 5.3 Delete Error
+1. User submits `POST /errors/{id}/delete`.
+2. Thymeleaf controller forwards authorized `DELETE /api/errors/{id}`.
+3. Flash message is attached.
+4. Redirect restores filter context.
+## 6. Permissions and Security
+- Thymeleaf route entry requires a valid session through `SessionService`
+- backend authorization is still enforced by API security
+- forbidden backend responses are converted into user-facing error messages
+## 7. UI, API, and Service Responsibilities
+### 7.1 `ThyErrorController`
+- normalize request params
+- create `QuestionErrorFilterRequestDto`
+- preserve back URLs and filter state
+- handle flash messages for resolve/delete actions
+### 7.2 `QuestionErrorController`
+- map HTTP endpoints to service actions
+- return `400`, `404`, `204`, or `500` as appropriate
+### 7.3 `QuestionErrorService`
+- build filtered/paged result sets
+- update status to resolved
+- delete rows safely
+- populate dropdown metadata required by the UI
+## 8. Validation and Error Handling
+- invalid filter payloads produce `400`
+- unknown error IDs return `404`
+- page/pageSize are normalized to valid positive values in Thymeleaf flow
+- list fallback model is rendered when API responses fail or return empty/null unexpectedly
+## 9. Key Decisions
+- use a POST filter endpoint so the filter contract can evolve without query-string sprawl
+- keep row actions on POST routes in Thymeleaf even when backend uses PUT/DELETE
+- keep back-link reconstruction explicit so filter context survives row actions
+## 10. Implementation Notes
+- Thymeleaf controller:
+  - `myquiz-thymeleaf/src/main/java/com/unitbv/myquiz/thy/controller/ThyErrorController.java`
+- API controller:
+  - `myquiz-app/src/main/java/com/unitbv/myquiz/app/controller/QuestionErrorController.java`
+- Related service:
+  - `myquiz-app/src/main/java/com/unitbv/myquiz/app/services/QuestionErrorService.java`
+- Main template:
+  - `myquiz-thymeleaf/src/main/resources/templates/error-list.html`
+Related docs:
+- `prompt/author-sd.md`
+- `prompt/question-sd.md`

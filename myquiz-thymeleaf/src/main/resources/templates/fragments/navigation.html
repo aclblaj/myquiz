@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Fragments</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+
+<div th:fragment="menu" class="menu">
+
+    <!-- Courses -->
+    <div th:if="${menuPermissions['canReadCourse']}" class="main-menu-item" tabindex="0" aria-label="Courses">
+        <span>🎓 Courses ▾</span>
+        <div class="main-submenu">
+            <a th:href="@{'/courses/'}">Course List</a>
+            <a th:if="${menuPermissions['canModifyCourse']}" th:href="@{'/courses/new'}">+ Add Course</a>
+        </div>
+    </div>
+
+    <!-- Question Banks -->
+    <div th:if="${menuPermissions['canReadQuiz']}" class="main-menu-item" tabindex="0" aria-label="Question Banks">
+        <span>🗂️ Question Banks ▾</span>
+        <div class="main-submenu">
+            <a th:href="@{'/question-banks/'}">Question Banks List</a>
+            <a th:if="${menuPermissions['canModifyQuiz']}" th:href="@{'/question-banks/new'}">+ Add Question Bank</a>
+        </div>
+    </div>
+
+    <!-- Authors -->
+    <div th:if="${menuPermissions['canReadAuthor']}" class="main-menu-item" tabindex="0" aria-label="Authors">
+        <span>👤 Authors ▾</span>
+        <div class="main-submenu">
+            <a th:href="@{'/authors/'}">Authors Management</a>
+            <a th:if="${menuPermissions['canModifyAuthor']}" th:href="@{'/authors/new'}">+ Add Author</a>
+        </div>
+    </div>
+
+    <!-- Questions -->
+    <div th:if="${menuPermissions['canReadQuestion']}" class="main-menu-item" tabindex="0" aria-label="Questions">
+        <span>❓ Questions ▾</span>
+        <div class="main-submenu">
+            <a th:href="@{'/questions/'}">Question List</a>
+            <a th:if="${menuPermissions['canModifyQuestion']}" th:href="@{'/questions/add?type=MULTICHOICE'}">+ Add
+                MC</a>
+            <a th:if="${menuPermissions['canModifyQuestion']}" th:href="@{'/questions/add?type=TRUEFALSE'}">+ Add TF</a>
+            <!-- Duplicate Management -->
+            <a th:if="${menuPermissions['canModifyQuestion']}" th:href="@{'/duplicate-management'}">🔄 Duplicates</a>
+            <!-- Errors (top-level direct link) -->
+            <a th:if="${menuPermissions['canReadQuestion']}" th:href="@{'/errors'}">⚠️ Errors</a>
+        </div>
+    </div>
+
+    <!-- Upload -->
+    <div th:if="${menuPermissions['canUploadFiles']}" class="main-menu-item" tabindex="0" aria-label="Upload">
+        <span>📤 Upload ▾</span>
+        <div class="main-submenu">
+            <a th:href="@{'/uploads/excel-form'}">Excel</a>
+            <a th:href="@{'/uploads/archive-form'}">Archive</a>
+            <a th:href="@{'/uploads/xml-form'}">Upload XML</a>
+            <a th:href="@{'/uploads/archive-folder-form'}">Folder</a>
+        </div>
+    </div>
+
+    <!-- AI Tools -->
+    <div th:if="${menuPermissions['canUseAiTools']}" class="main-menu-item" tabindex="0" aria-label="AI Tools">
+        <span>🤖 AI Tools ▾</span>
+        <div class="main-submenu">
+            <a th:href="@{'/questions/add?type=MULTICHOICE'}">Sample MC Question</a>
+            <a th:href="@{'/check-pdf'}">Check PDF</a>
+        </div>
+    </div>
+
+    <!-- Administration -->
+    <div th:if="${menuPermissions['canManageUsers'] or menuPermissions['canManageRoles'] or menuPermissions['canBackupDatabase'] or menuPermissions['canRestoreDatabase'] or menuPermissions['canCleanDatabase']}"
+         class="main-menu-item" tabindex="0" aria-label="Administration">
+        <span>⚙️ Administration ▾</span>
+        <div class="main-submenu">
+            <a th:if="${menuPermissions['canManageUsers']}" th:href="@{'/admin/users'}">User Management</a>
+            <a th:if="${menuPermissions['canManageRoles']}" th:href="@{'/admin/roles'}">Role Management</a>
+            <a th:if="${menuPermissions['canManageRoles']}" th:href="@{'/admin/permissions'}">Permission Management</a>
+            <a th:if="${menuPermissions['canBackupDatabase'] or menuPermissions['canRestoreDatabase'] or menuPermissions['canCleanDatabase']}"
+               th:href="@{'/admin/data'}">Data Management</a>
+            <!-- Delete all -->
+            <a th:if="${menuPermissions['canCleanDatabase']}"
+               th:href="@{'/home/deleteall'}"
+               th:onclick="return confirm('Are you sure you want to delete all the database records?')">🗑️ Delete all</a>
+        </div>
+    </div>
+
+
+
+    <!-- Help -->
+    <div class="main-menu-item" tabindex="0" aria-label="Help">
+        <span>❓ Help ▾</span>
+        <div class="main-submenu">
+            <a th:href="@{'/help'}">About</a>
+            <a th:href="@{'/statistics'}">Database Statistics</a>
+            <a th:href="@{${@environment.getProperty('swagger.ui.url', 'http://localhost:8082/swagger-ui.html')}}"
+               target="_blank">API Documentation</a>
+        </div>
+    </div>
+
+    <!-- User -->
+    <div class="main-menu-item" tabindex="0" aria-label="User">
+        <span th:if="${loggedInUser != null}"><b th:text="${loggedInUser}"></b> ▾</span>
+        <span th:if="${loggedInUser == null}">👤 User ▾</span>
+        <div class="main-submenu">
+            <a th:if="${loggedInUser == null}" th:href="@{/auth/login}">Login</a>
+            <a th:if="${loggedInUser == null}" th:href="@{/auth/register}">Register</a>
+            <a th:if="${loggedInUser != null}" th:href="@{/auth/logout}">Logout</a>
+        </div>
+    </div>
+
+</div>
+
+
+<script>
+    // Improved: Show/hide submenu on hover and focus for accessibility
+    function setupDropdown() {
+        document.querySelectorAll('.main-menu-item').forEach(function (menuItem) {
+            var submenu = menuItem.querySelector('.main-submenu');
+            if (!submenu) return;
+            menuItem.addEventListener('mouseenter', function () {
+                submenu.style.display = 'block';
+            });
+            menuItem.addEventListener('mouseleave', function () {
+                submenu.style.display = 'none';
+            });
+            menuItem.addEventListener('focusin', function () {
+                submenu.style.display = 'block';
+            });
+            menuItem.addEventListener('focusout', function (e) {
+                if (!menuItem.contains(e.relatedTarget)) {
+                    submenu.style.display = 'none';
+                }
+            });
+        });
+    }
+
+    setupDropdown();
+</script>
+
+</body>
+</html>

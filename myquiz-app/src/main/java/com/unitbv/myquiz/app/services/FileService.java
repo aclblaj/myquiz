@@ -5,6 +5,7 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.FileSystemUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -14,6 +15,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Comparator;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.zip.ZipEntry;
@@ -24,7 +26,10 @@ public class FileService {
 
     public static final String UPLOAD_FOLDER = "files";
 
-    Logger logger = LoggerFactory.getLogger(FileService.class);
+    private final Logger logger = LoggerFactory.getLogger(FileService.class);
+
+    @Value("${upload.dir:}")
+    private String configuredUploadDir;
 
     public String getRootDir() {
         return rootDir;
@@ -38,12 +43,7 @@ public class FileService {
 
     @PostConstruct
     public void initFileServiceImpl() {
-        String uploadDir = System.getProperty("upload.dir");
-        if (uploadDir == null) {
-            logger.atDebug().log("Upload directory is not set - default temp will be used");
-            uploadDir = System.getProperty("java.io.tmpdir");
-        }
-        Path uploadPath = Path.of(uploadDir).resolve(UPLOAD_FOLDER);
+        Path uploadPath = resolveUploadPath();
         setRootDir(uploadPath.toString());
         try {
             Files.createDirectories(uploadPath);
@@ -70,22 +70,16 @@ public class FileService {
      * @throws IOException if the file cannot be written to disk
      */
     public String uploadFile(MultipartFile file) throws IOException {
-        String originalFilename = file.getOriginalFilename();
-
-        // Strip any directory components that webkitdirectory uploads embed in the filename
-        // e.g. "archives/test.zip" → "test.zip"; null or blank → "upload"
-        String baseName = (originalFilename != null)
-                ? Path.of(originalFilename).getFileName().toString()
-                : "";
-        if (baseName.isBlank()) {
-            baseName = "upload";
+        if (file == null) {
+            throw new IllegalArgumentException("File cannot be null");
         }
 
-        // UUID prefix prevents collisions when the same base name is uploaded concurrently
-        String uniqueFilename = UUID.randomUUID() + "_" + baseName;
+        String originalFilename = file.getOriginalFilename();
+        String uniqueFilename = createUniqueFilename(originalFilename);
         Path targetPath = Path.of(getRootDir()).resolve(uniqueFilename);
 
-        Files.copy(file.getInputStream(), targetPath);
+        Files.createDirectories(targetPath.getParent());
+        Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
         logger.atInfo().addArgument(targetPath).log("File uploaded to: {}");
         return targetPath.toString();
     }
@@ -114,17 +108,9 @@ public class FileService {
             return;
         }
         try (var stream = Files.walk(directory)) {
-            stream.filter(FileValidator::isRegularFile)
-                  .forEach(path -> {
-                      try {
-                          Files.delete(path);
-                      } catch (IOException e) {
-                          logger.atError()
-                                .addArgument(path)
-                                .setCause(e)
-                                .log("Error removing file: {}");
-                      }
-                  });
+            stream.sorted(Comparator.reverseOrder())
+                  .filter(path -> !path.equals(directory))
+                  .forEach(this::deletePath);
             logger.atInfo().addArgument(dirName).log("All files removed from: {}");
         } catch (IOException e) {
             logger.atError()
@@ -170,73 +156,134 @@ public class FileService {
      * @return number of files extracted
      */
     public int unzipAndRenameExcelFiles(Path zipFilePath, Path destFolder) throws IOException {
-        // Validate input
+        validateZipInput(zipFilePath);
+
+        Path inpArchive = prepareExtractionDirectory(zipFilePath);
+        try {
+            extractArchive(zipFilePath, inpArchive);
+            ensureDirectoryExists(destFolder);
+            int count = moveExcelFiles(inpArchive, destFolder);
+            logger.atInfo().addArgument(count).log("Extracted and renamed {} Excel files from archive");
+            return count;
+        } finally {
+            if (FileValidator.exists(inpArchive)) {
+                FileSystemUtils.deleteRecursively(inpArchive);
+            }
+        }
+    }
+
+    private Path resolveUploadPath() {
+        String uploadDir = configuredUploadDir;
+        if (uploadDir == null || uploadDir.isBlank()) {
+            logger.atDebug().log("Upload directory is not configured - default temp will be used");
+            uploadDir = System.getProperty("java.io.tmpdir");
+        }
+        return Path.of(uploadDir).resolve(UPLOAD_FOLDER);
+    }
+
+    private String createUniqueFilename(String originalFilename) {
+        String baseName = "";
+        if (originalFilename != null && !originalFilename.isBlank()) {
+            baseName = Path.of(originalFilename).getFileName().toString();
+        }
+        if (baseName.isBlank()) {
+            baseName = "upload";
+        }
+        return UUID.randomUUID() + "_" + baseName;
+    }
+
+    private void deletePath(Path path) {
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException e) {
+            logger.atError()
+                  .addArgument(path)
+                  .setCause(e)
+                  .log("Error removing file: {}");
+        }
+    }
+
+    private void validateZipInput(Path zipFilePath) throws IOException {
         if (!FileValidator.exists(zipFilePath)) {
             throw new IOException("Zip file does not exist: " + zipFilePath);
         }
         if (!FileValidator.isReadable(zipFilePath)) {
             throw new IOException("Zip file is not readable: " + zipFilePath);
         }
-        
-        // Prepare inpArchive folder in the same parent as zipFilePath
+        if (zipFilePath.getParent() == null) {
+            throw new IOException("Zip file must have a parent directory: " + zipFilePath);
+        }
+    }
+
+    private Path prepareExtractionDirectory(Path zipFilePath) throws IOException {
         Path inpArchive = zipFilePath.getParent().resolve("inpArchive");
         if (FileValidator.exists(inpArchive)) {
             FileSystemUtils.deleteRecursively(inpArchive);
         }
         Files.createDirectories(inpArchive);
-        // Extract archive with system unzip when available, otherwise fallback to Java ZIP.
+        return inpArchive;
+    }
+
+    private void ensureDirectoryExists(Path directory) throws IOException {
+        if (!FileValidator.exists(directory)) {
+            Files.createDirectories(directory);
+        }
+    }
+
+    private void extractArchive(Path zipFilePath, Path destinationDir) throws IOException {
         if (isSystemUnzipAvailable()) {
-            extractWithSystemUnzip(zipFilePath, inpArchive);
-        } else {
-            logger.atWarn().addArgument(zipFilePath.toString())
-                  .log("System 'unzip' is not available. Falling back to Java ZIP extraction for: {}");
-            extractWithJavaZip(zipFilePath, inpArchive);
+            extractWithSystemUnzip(zipFilePath, destinationDir);
+            return;
         }
-        // Ensure destFolder exists
-        if (!FileValidator.exists(destFolder)) {
-            Files.createDirectories(destFolder);
-        }
+
+        logger.atWarn().addArgument(zipFilePath.toString())
+              .log("System 'unzip' is not available. Falling back to Java ZIP extraction for: {}");
+        extractWithJavaZip(zipFilePath, destinationDir);
+    }
+
+    private int moveExcelFiles(Path sourceDir, Path destFolder) throws IOException {
         AtomicInteger count = new AtomicInteger();
-        // Walk inpArchive for Excel files
-        try (var excelStream = Files.walk(inpArchive)) {
+        try (var excelStream = Files.walk(sourceDir)) {
             excelStream.filter(FileValidator::isRegularFile)
-                .filter(FileValidator::isExcelFile)
-                .forEach(excelFile -> {
-                    try {
-                        Path parent = excelFile.getParent();
-                        String parentName = parent != null ? parent.getFileName().toString() : "";
-                        String partialParent = parentName;
-                        int underscoreIdx = parentName.indexOf('_');
-                        if (underscoreIdx > 0) {
-                            partialParent = parentName.substring(0, underscoreIdx);
-                        }
-                        String originalFileName = excelFile.getFileName().toString();
-                        String newFileName = partialParent.isEmpty() ? originalFileName : partialParent + "_" + originalFileName;
-                        Path targetFile = destFolder.resolve(newFileName);
-                        int suffix = 1;
-                        while (Files.exists(targetFile)) {
-                            int dotIdx = newFileName.lastIndexOf('.');
-                            String baseName = dotIdx > 0 ? newFileName.substring(0, dotIdx) : newFileName;
-                            String ext = dotIdx > 0 ? newFileName.substring(dotIdx) : "";
-                            newFileName = baseName + "_" + suffix + ext;
-                            targetFile = destFolder.resolve(newFileName);
-                            suffix++;
-                        }
-                        Files.move(excelFile, targetFile);
-                        logger.atInfo().addArgument(targetFile.toString()).log("Excel file moved and renamed to: {}");
-                        count.getAndIncrement();
-                    } catch (IOException e) {
-                        logger.atError().addArgument(excelFile.toString()).log("Error moving Excel file: {}", e);
-                    }
-                });
-        } finally {
-            // Clean up inpArchive
-            if (FileValidator.exists(inpArchive)) {
-                FileSystemUtils.deleteRecursively(inpArchive);
-            }
+                    .filter(FileValidator::isExcelFile)
+                    .forEach(excelFile -> moveExcelFile(excelFile, destFolder, count));
         }
-        logger.atInfo().addArgument(count.get()).log("Extracted and renamed {} Excel files from archive");
         return count.get();
+    }
+
+    private void moveExcelFile(Path excelFile, Path destFolder, AtomicInteger count) {
+        try {
+            Path parent = excelFile.getParent();
+            String parentName = parent != null && parent.getFileName() != null ? parent.getFileName().toString() : "";
+            String partialParent = parentName;
+            int underscoreIdx = parentName.indexOf('_');
+            if (underscoreIdx > 0) {
+                partialParent = parentName.substring(0, underscoreIdx);
+            }
+
+            String originalFileName = excelFile.getFileName().toString();
+            String targetName = partialParent.isEmpty() ? originalFileName : partialParent + "_" + originalFileName;
+            Path targetFile = uniqueTargetPath(destFolder, targetName);
+            Files.move(excelFile, targetFile);
+            logger.atInfo().addArgument(targetFile.toString()).log("Excel file moved and renamed to: {}");
+            count.incrementAndGet();
+        } catch (IOException e) {
+            logger.atError().addArgument(excelFile.toString()).setCause(e).log("Error moving Excel file: {}");
+        }
+    }
+
+    private Path uniqueTargetPath(Path destFolder, String fileName) {
+        Path targetFile = destFolder.resolve(fileName);
+        int suffix = 1;
+        while (Files.exists(targetFile)) {
+            int dotIdx = fileName.lastIndexOf('.');
+            String baseName = dotIdx > 0 ? fileName.substring(0, dotIdx) : fileName;
+            String ext = dotIdx > 0 ? fileName.substring(dotIdx) : "";
+            fileName = baseName + "_" + suffix + ext;
+            targetFile = destFolder.resolve(fileName);
+            suffix++;
+        }
+        return targetFile;
     }
 
     private boolean isSystemUnzipAvailable() {

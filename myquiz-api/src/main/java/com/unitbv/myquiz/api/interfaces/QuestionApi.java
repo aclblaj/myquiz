@@ -72,6 +72,11 @@ public interface QuestionApi {
     ResponseEntity<Void> removeQuestionDuplicates(@Parameter(description = "Question ID", required = true) @PathVariable Long id,
                                                    @Parameter(description = "Duplicate question IDs to unlink", required = true) @RequestBody DuplicateUnlinkRequestDto selectionDto);
 
+    @Operation(summary = "Remove all duplicate links", description = "Remove every duplicate link for a question, regardless of pagination")
+    @ApiResponses(value = {@ApiResponse(responseCode = "204", description = "All duplicate links removed successfully"), @ApiResponse(responseCode = "404", description = "Question not found"), @ApiResponse(responseCode = "500", description = "Internal server error")})
+    @PostMapping("/{id:\\d+}/duplicates/remove-all")
+    ResponseEntity<Void> removeAllQuestionDuplicates(@Parameter(description = "Question ID", required = true) @PathVariable Long id);
+
     @Operation(summary = "Get sample question", description = "Returns a pre-filled sample question for a given question type")
     @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Sample question generated"), @ApiResponse(responseCode = "400", description = "Invalid question type")})
     @GetMapping("/sample")

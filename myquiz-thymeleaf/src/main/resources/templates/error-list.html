@@ -7,7 +7,7 @@
 </head>
 <body>
 
-<div th:insert="~{fragments::menu}"></div>
+<div th:insert="~{fragments/navigation::menu}"></div>
 
 <div class="container mt-3 list-page-compact">
     <h2 class="list-page-title">⚠️ Question Errors</h2>
@@ -72,7 +72,7 @@
     <div th:if="${successMessage}" class="alert alert-success mt-3" th:text="${successMessage}"></div>
 
     <!-- Errors Table Fragment -->
-    <div th:replace="~{fragments::error-table(errors=${questionErrors}, showActions=${true})}"></div>
+    <div th:replace="~{fragments/tables::error-table(errors=${questionErrors}, showActions=${true})}"></div>
 
     <!-- Pagination Controls -->
     <div class="pagination-controls" th:if="${totalPages != null && totalPages > 1}">

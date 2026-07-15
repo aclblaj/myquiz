@@ -1,5 +1,6 @@
 package com.unitbv.myquiz.app.services;
 
+import com.unitbv.myquiz.api.types.DuplicateComparisonStrategy;
 import com.unitbv.myquiz.api.types.QuestionType;
 import com.unitbv.myquiz.api.types.StudyYear;
 import com.unitbv.myquiz.app.entities.Question;
@@ -90,6 +91,21 @@ class QuestionDuplicationServiceTest {
     }
 
     @Test
+    void getQuestionDuplicates_returnsLinkedDuplicateDtos() {
+        String marker = "it-duplicates-" + UUID.randomUUID();
+        Question q1 = createQuestionForCourse(ServiceTestData.COURSE, QuestionType.MULTICHOICE, marker + "-q1", marker + "-t1", "A1");
+        Question q2 = createQuestionForCourse(ServiceTestData.COURSE, QuestionType.MULTICHOICE, marker + "-q2", marker + "-t2", "B1");
+
+        saveDuplicateLink(q1, q2);
+
+        var dto = service.getQuestionDuplicates(q1.getId());
+
+        assertEquals(q1.getId(), dto.getId());
+        assertEquals(1, dto.getDuplicates().size());
+        assertEquals(q2.getId(), dto.getDuplicates().getFirst().getQuestionId());
+    }
+
+    @Test
     void recomputeDuplicatesForCourse_isolatedCourse_cleansLegacyLinksAndErrors() {
         String marker = "course-clean-" + UUID.randomUUID();
         String course = "BD-IT-" + UUID.randomUUID();
@@ -119,7 +135,7 @@ class QuestionDuplicationServiceTest {
         Question q2 = createQuestionForCourse(course, QuestionType.MULTICHOICE, marker + "-TITLE", marker + "-TEXT", "R1");
         Question q3 = createQuestionForCourse(course, QuestionType.MULTICHOICE, marker + "-title-modified", marker + "-text", "R1");
 
-        QuestionDuplicationService.DuplicateRecomputeSummary summary = service.recomputeDuplicatesForCourse(course, "string-equality");
+        QuestionDuplicationService.DuplicateRecomputeSummary summary = service.recomputeDuplicatesForCourse(course, DuplicateComparisonStrategy.STRING_EQUALITY.getAlgorithmName());
 
         assertEquals(3, summary.totalQuestions());
         // String equality should only find q1 and q2 (exact case-insensitive match)

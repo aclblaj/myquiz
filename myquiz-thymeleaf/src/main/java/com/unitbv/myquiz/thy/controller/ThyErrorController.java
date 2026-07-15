@@ -3,6 +3,8 @@ package com.unitbv.myquiz.thy.controller;
 import com.unitbv.myquiz.api.dto.QuestionErrorFilterRequestDto;
 import com.unitbv.myquiz.api.dto.QuestionErrorFilterResponseDto;
 import com.unitbv.myquiz.api.settings.ControllerSettings;
+import com.unitbv.myquiz.api.util.PaginationParams;
+import com.unitbv.myquiz.api.util.PaginationSupport;
 import com.unitbv.myquiz.thy.service.SessionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -90,20 +92,21 @@ public class ThyErrorController {
         try {
             HttpEntity<Void> entity = sessionService.createAuthorizedRequest();
             restTemplate.exchange(apiBaseUrl + ControllerSettings.API_ERRORS + "/" + id + "/resolve", HttpMethod.PUT, entity, Void.class);
-            redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_SUCCESS_MESSAGE, "Error marked as resolved successfully.");
+            redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_SUCCESS_MESSAGE, ControllerSettings.MSG_ERROR_RESOLVED_SUCCESS);
             log.info("Error {} resolved successfully", id);
         } catch (HttpClientErrorException.NotFound ex) {
             log.warn("Error not found with id: {}", id);
-            redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_ERROR_MESSAGE, "Error not found.");
+            redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_ERROR_MESSAGE, ControllerSettings.MSG_ERROR_NOT_FOUND);
         } catch (HttpClientErrorException.Forbidden ex) {
             log.warn("Permission denied for resolving error {}", id);
-            redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_ERROR_MESSAGE, "You do not have permission to resolve errors.");
+            redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_ERROR_MESSAGE, ControllerSettings.MSG_ERROR_RESOLVE_FORBIDDEN);
         } catch (Exception ex) {
             log.error("Error resolving error with id: {}", id, ex);
-            redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_ERROR_MESSAGE, "Failed to resolve error. Please try again.");
+            redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_ERROR_MESSAGE, ControllerSettings.MSG_ERROR_RESOLVE_FAILED);
         }
 
-        return "redirect:" + buildErrorsBackUrl(courseId, author, questionBankId, page, pageSize);
+        PaginationParams pagination = PaginationSupport.normalize(page, pageSize);
+        return "redirect:" + buildErrorsBackUrl(courseId, author, questionBankId, pagination.page(), pagination.pageSize());
     }
 
     /**
@@ -122,20 +125,21 @@ public class ThyErrorController {
         try {
             HttpEntity<Void> entity = sessionService.createAuthorizedRequest();
             restTemplate.exchange(apiBaseUrl + ControllerSettings.API_ERRORS + "/" + id, HttpMethod.DELETE, entity, Void.class);
-            redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_SUCCESS_MESSAGE, "Error deleted successfully.");
+            redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_SUCCESS_MESSAGE, ControllerSettings.MSG_ERROR_DELETED_SUCCESS);
             log.info("Error {} deleted successfully", id);
         } catch (HttpClientErrorException.NotFound ex) {
             log.warn("Error not found with id: {}", id);
-            redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_ERROR_MESSAGE, "Error not found.");
+            redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_ERROR_MESSAGE, ControllerSettings.MSG_ERROR_NOT_FOUND);
         } catch (HttpClientErrorException.Forbidden ex) {
             log.warn("Permission denied for deleting error {}", id);
-            redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_ERROR_MESSAGE, "You do not have permission to delete errors.");
+            redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_ERROR_MESSAGE, ControllerSettings.MSG_ERROR_DELETE_FORBIDDEN);
         } catch (Exception ex) {
             log.error("Error deleting error with id: {}", id, ex);
-            redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_ERROR_MESSAGE, "Failed to delete error. Please try again.");
+            redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_ERROR_MESSAGE, ControllerSettings.MSG_ERROR_DELETE_FAILED);
         }
 
-        return "redirect:" + buildErrorsBackUrl(courseId, author, questionBankId, page, pageSize);
+        PaginationParams pagination = PaginationSupport.normalize(page, pageSize);
+        return "redirect:" + buildErrorsBackUrl(courseId, author, questionBankId, pagination.page(), pagination.pageSize());
     }
 
     /**
@@ -145,7 +149,7 @@ public class ThyErrorController {
         String redirect = sessionService.validateSessionOrRedirect();
         if (redirect != null) {
             model.addAttribute(ControllerSettings.ATTR_QUESTION_ERRORS, new ArrayList<>());
-            model.addAttribute(ControllerSettings.ATTR_ERROR_MESSAGE, "Please log in to view errors.");
+            model.addAttribute(ControllerSettings.ATTR_ERROR_MESSAGE, ControllerSettings.MSG_LOGIN_REQUIRED_TO_VIEW_ERRORS);
             return ControllerSettings.VIEW_ERROR_LIST;
         }
 
@@ -154,12 +158,9 @@ public class ThyErrorController {
             author = null;
         }
 
-        if (pageSize == null || pageSize < 1) {
-            pageSize = ControllerSettings.PAGE_SIZE;
-        }
-        if (page == null || page < 1) {
-            page = 1;
-        }
+        PaginationParams pagination = PaginationSupport.normalize(page, pageSize);
+        int safePage = pagination.page();
+        int safePageSize = pagination.pageSize();
 
         Object loggedInUser = sessionService.getLoggedInUser();
         try {
@@ -168,8 +169,8 @@ public class ThyErrorController {
             filterInputDto.setSelectedCourseId(courseId);
             filterInputDto.setSelectedAuthor(author);
             filterInputDto.setSelectedQuestionBankId(questionBankId);
-            filterInputDto.setPage(page);
-            filterInputDto.setPageSize(pageSize);
+            filterInputDto.setPage(safePage);
+            filterInputDto.setPageSize(safePageSize);
 
             log.info("Calling backend with filter: {}", filterInputDto);
             HttpEntity<QuestionErrorFilterRequestDto> requestEntity = sessionService.createAuthorizedRequest(filterInputDto);
@@ -179,25 +180,25 @@ public class ThyErrorController {
             QuestionErrorFilterResponseDto filterDto = response.getBody();
             if (filterDto == null) {
                 log.error("API returned null for QuestionErrorFilterResponseDto");
-                populateErrorListModelFallback(model, page, pageSize, courseId, author, questionBankId);
+                populateErrorListModelFallback(model, safePage, safePageSize, courseId, author, questionBankId);
                 return ControllerSettings.VIEW_ERROR_LIST;
             }
 
-            populateErrorListModel(model, filterDto, page, pageSize, courseId, author, questionBankId);
-            model.addAttribute(ControllerSettings.ATTR_BACK_TO_ERRORS_URL, buildErrorsBackUrl(courseId, author, questionBankId, page, pageSize));
+            populateErrorListModel(model, filterDto, safePage, safePageSize, courseId, author, questionBankId);
+            model.addAttribute(ControllerSettings.ATTR_BACK_TO_ERRORS_URL, buildErrorsBackUrl(courseId, author, questionBankId, safePage, safePageSize));
             model.addAttribute(ControllerSettings.ATTR_LOGGED_IN_USER, loggedInUser);
             return ControllerSettings.VIEW_ERROR_LIST;
 
         } catch (HttpClientErrorException.Forbidden ex) {
             log.warn("Permission denied when loading errors");
-            model.addAttribute(ControllerSettings.ATTR_ERROR_MESSAGE, "You do not have permission to view errors.");
-            model.addAttribute(ControllerSettings.ATTR_BACK_TO_ERRORS_URL, buildErrorsBackUrl(courseId, author, questionBankId, page, pageSize));
+            model.addAttribute(ControllerSettings.ATTR_ERROR_MESSAGE, ControllerSettings.MSG_ERROR_VIEW_FORBIDDEN);
+            model.addAttribute(ControllerSettings.ATTR_BACK_TO_ERRORS_URL, buildErrorsBackUrl(courseId, author, questionBankId, safePage, safePageSize));
             return ControllerSettings.VIEW_ERROR_LIST;
         } catch (Exception ex) {
             log.error("Error loading errors: {}", ex.getMessage(), ex);
-            model.addAttribute(ControllerSettings.ATTR_ERROR_MESSAGE, "Could not load errors. Please try again later.");
-            populateErrorListModelFallback(model, page, pageSize, courseId, author, questionBankId);
-            model.addAttribute(ControllerSettings.ATTR_BACK_TO_ERRORS_URL, buildErrorsBackUrl(courseId, author, questionBankId, page, pageSize));
+            model.addAttribute(ControllerSettings.ATTR_ERROR_MESSAGE, ControllerSettings.MSG_ERROR_LOAD_FAILED);
+            populateErrorListModelFallback(model, safePage, safePageSize, courseId, author, questionBankId);
+            model.addAttribute(ControllerSettings.ATTR_BACK_TO_ERRORS_URL, buildErrorsBackUrl(courseId, author, questionBankId, safePage, safePageSize));
             return ControllerSettings.VIEW_ERROR_LIST;
         }
     }
@@ -264,4 +265,3 @@ public class ThyErrorController {
         return url.toString();
     }
 }
-

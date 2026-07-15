@@ -3,16 +3,20 @@ package com.unitbv.myquiz.app.services;
 import com.unitbv.myquiz.api.dto.CourseDto;
 import com.unitbv.myquiz.api.dto.CourseDuplicateRecomputeResultDto;
 import com.unitbv.myquiz.api.dto.CourseSourceDto;
+import com.unitbv.myquiz.api.dto.DuplicateRecomputeHistoryDto;
 import com.unitbv.myquiz.api.dto.DuplicateStatisticsDto;
+import com.unitbv.myquiz.api.types.DefaultCourse;
 import com.unitbv.myquiz.app.entities.ArchiveImport;
 import com.unitbv.myquiz.app.entities.Author;
 import com.unitbv.myquiz.app.entities.Course;
+import com.unitbv.myquiz.app.entities.DuplicateRecomputeHistory;
 import com.unitbv.myquiz.app.entities.Question;
 import com.unitbv.myquiz.app.entities.QuestionBank;
 import com.unitbv.myquiz.app.entities.QuestionBankAuthor;
 import com.unitbv.myquiz.app.mapper.CourseMapper;
 import com.unitbv.myquiz.app.repositories.AuthorRepository;
 import com.unitbv.myquiz.app.repositories.CourseRepository;
+import com.unitbv.myquiz.app.repositories.DuplicateRecomputeHistoryRepository;
 import com.unitbv.myquiz.app.repositories.QuestionBankAuthorRepository;
 import com.unitbv.myquiz.app.repositories.QuestionBankRepository;
 import com.unitbv.myquiz.app.repositories.QuestionDuplicateRepository;
@@ -31,14 +35,17 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 @Service
 public class CourseService {
 
     private static final Logger log = LoggerFactory.getLogger(CourseService.class);
+    private static final String MSG_COURSE_NOT_FOUND_WITH_ID = "Course not found with ID: ";
 
     private final CourseRepository courseRepository;
     private final QuestionRepository questionRepository;
@@ -49,11 +56,12 @@ public class CourseService {
     private final QuestionDuplicationService questionDuplicationService;
     private final QuestionDuplicateRepository questionDuplicateRepository;
     private final QuestionErrorRepository questionErrorRepository;
+    private final DuplicateRecomputeHistoryRepository duplicateRecomputeHistoryRepository;
 
     @Autowired
     public CourseService(CourseRepository courseRepository, QuestionRepository questionRepository, AuthorRepository authorRepository, QuestionBankAuthorRepository questionBankAuthorRepository,
                          QuestionBankRepository questionBankRepository, CourseMapper courseMapper, QuestionDuplicationService questionDuplicationService, QuestionDuplicateRepository questionDuplicateRepository,
-                         QuestionErrorRepository questionErrorRepository) {
+                         QuestionErrorRepository questionErrorRepository, DuplicateRecomputeHistoryRepository duplicateRecomputeHistoryRepository) {
         this.courseRepository = courseRepository;
         this.questionRepository = questionRepository;
         this.authorRepository = authorRepository;
@@ -63,6 +71,7 @@ public class CourseService {
         this.questionDuplicationService = questionDuplicationService;
         this.questionDuplicateRepository = questionDuplicateRepository;
         this.questionErrorRepository = questionErrorRepository;
+        this.duplicateRecomputeHistoryRepository = duplicateRecomputeHistoryRepository;
     }
 
 
@@ -88,7 +97,7 @@ public class CourseService {
             throw new IllegalArgumentException("Course ID cannot be null");
         }
 
-        courseRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Course not found with ID: " + id));
+        courseRepository.findById(id).orElseThrow(() -> new IllegalArgumentException(MSG_COURSE_NOT_FOUND_WITH_ID + id));
 
         List<QuestionBank> questionBanks = questionBankRepository.findAll(QuestionBankSpecification.byCourseId(id));
         log.atInfo().addArgument(questionBanks.size()).addArgument(id).log("Deleting {} questionBanks for course id={}");
@@ -134,7 +143,7 @@ public class CourseService {
             }
         } catch (Exception e) {
             log.atError().setCause(e).addArgument(selectedCourse).log("Error deleting course: {}");
-            throw new RuntimeException("Failed to delete course: " + selectedCourse, e);
+            throw new CourseDeletionException("Failed to delete course: " + selectedCourse, e);
         }
     }
 
@@ -180,7 +189,7 @@ public class CourseService {
             throw new IllegalArgumentException("Course ID cannot be null");
         }
 
-        Course course = courseRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Course not found with ID: " + id));
+        Course course = courseRepository.findById(id).orElseThrow(() -> new IllegalArgumentException(MSG_COURSE_NOT_FOUND_WITH_ID + id));
 
         CourseDto dto = courseMapper.toDto(course);
         dto.setSources(extractCourseSources(course));
@@ -250,7 +259,7 @@ public class CourseService {
             throw new IllegalArgumentException("CourseDto cannot be null");
         }
 
-        Course course = courseRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("Course not found with ID: " + id));
+        Course course = courseRepository.findById(id).orElseThrow(() -> new IllegalArgumentException(MSG_COURSE_NOT_FOUND_WITH_ID + id));
 
         course.setCourse(courseDto.getCourse());
         course.setDescription(courseDto.getDescription());
@@ -310,7 +319,7 @@ public class CourseService {
             return courseMapper.toDto(course);
         }
 
-        return createCourse(courseDto);
+        return createCourseInternal(courseDto);
     }
 
 
@@ -350,7 +359,7 @@ public class CourseService {
             throw new IllegalArgumentException("Course ID cannot be null");
         }
 
-        Course course = courseRepository.findById(courseId).orElseThrow(() -> new IllegalArgumentException("Course not found with ID: " + courseId));
+        Course course = courseRepository.findById(courseId).orElseThrow(() -> new IllegalArgumentException(MSG_COURSE_NOT_FOUND_WITH_ID + courseId));
 
         java.time.OffsetDateTime startedAt = java.time.OffsetDateTime.now();
         long startedMs = System.currentTimeMillis();
@@ -381,7 +390,7 @@ public class CourseService {
             throw new IllegalArgumentException("Course ID cannot be null");
         }
 
-        Course course = courseRepository.findById(courseId).orElseThrow(() -> new IllegalArgumentException("Course not found with ID: " + courseId));
+        Course course = courseRepository.findById(courseId).orElseThrow(() -> new IllegalArgumentException(MSG_COURSE_NOT_FOUND_WITH_ID + courseId));
 
         java.time.OffsetDateTime startedAt = java.time.OffsetDateTime.now();
         long startedMs = System.currentTimeMillis();
@@ -413,8 +422,8 @@ public class CourseService {
         }
 
         Course course = courseRepository.findById(courseId)
-                .orElseThrow(() -> new IllegalArgumentException("Course not found with ID: " + courseId));
-        return getDuplicateStatistics(course.getCourse());
+                .orElseThrow(() -> new IllegalArgumentException(MSG_COURSE_NOT_FOUND_WITH_ID + courseId));
+        return buildDuplicateStatistics(course.getCourse(), loadScopedQuestions(course.getCourse(), null, null));
     }
 
     @Transactional(readOnly = true)
@@ -423,36 +432,15 @@ public class CourseService {
             throw new IllegalArgumentException("Course name cannot be null or empty");
         }
 
-        List<Question> allCourseQuestions = questionRepository.findAll(QuestionSpecification.byFilters(courseName, null, null, null));
-        long questionsWithDuplicateErrors = allCourseQuestions.stream()
-                .filter(q -> q.getQuestionErrors() != null && q.getQuestionErrors().stream()
-                        .anyMatch(e -> isDuplicateError(e.getDescription())))
-                .count();
-
-        List<Long> questionIds = allCourseQuestions.stream()
-                .map(Question::getId)
-                .filter(Objects::nonNull)
-                .toList();
-
-        long duplicateLinks = 0;
-        if (!questionIds.isEmpty()) {
-            duplicateLinks = questionDuplicateRepository.findByQuestionIdInOrDuplicateQuestionIdIn(questionIds, questionIds).size();
-        }
-
-        return new DuplicateStatisticsDto(
-                courseName,
-                allCourseQuestions.size(),
-                (int) questionsWithDuplicateErrors,
-                duplicateLinks
-        );
+        return buildDuplicateStatistics(courseName, loadScopedQuestions(courseName, null, null));
     }
 
     private boolean isDuplicateError(String description) {
-        if (description == null) {
-            return false;
-        }
-        return description.startsWith("Reformulate question - Title already exists") ||
-                description.startsWith("Reformulate question - Answer already exists");
+        return MyUtil.isDuplicateValidationError(description)
+                || (description != null && (
+                description.startsWith("Reformulate question - Title already exists") ||
+                description.startsWith("Reformulate question - Answer already exists")
+        ));
     }
 
     @Transactional
@@ -462,8 +450,11 @@ public class CourseService {
         }
 
         Course course = courseRepository.findById(courseId)
-                .orElseThrow(() -> new IllegalArgumentException("Course not found with ID: " + courseId));
-        return clearDuplicatesForCourse(course.getCourse());
+                .orElseThrow(() -> new IllegalArgumentException(MSG_COURSE_NOT_FOUND_WITH_ID + courseId));
+        DuplicateClearSummary summary = clearDuplicatesForQuestionIds(extractQuestionIds(loadScopedQuestions(course.getCourse(), null, null)));
+        log.atInfo().addArgument(summary.duplicateLinksRemoved()).addArgument(summary.duplicateErrorsRemoved()).addArgument(course.getCourse())
+                .log("Cleared {} duplicate links and {} duplicate errors for course '{}'");
+        return summary.duplicateLinksRemoved();
     }
 
     @Transactional
@@ -472,23 +463,11 @@ public class CourseService {
             throw new IllegalArgumentException("Course name cannot be null or empty");
         }
 
-        List<Question> allCourseQuestions = questionRepository.findAll(QuestionSpecification.byFilters(courseName, null, null, null));
-        List<Long> questionIds = allCourseQuestions.stream()
-                .map(Question::getId)
-                .filter(Objects::nonNull)
-                .toList();
-
-        if (questionIds.isEmpty()) {
-            return 0;
-        }
-
-        long deletedDuplicates = questionDuplicateRepository.deleteByQuestionIdInOrDuplicateQuestionIdIn(questionIds, questionIds);
-        long deletedTitleErrors = questionErrorRepository.deleteByQuestionIdInAndDescriptionStartingWith(questionIds, MyUtil.REFORMULATE_QUESTION_TITLE_ALREADY_EXISTS);
-        long deletedAnswerErrors = questionErrorRepository.deleteByQuestionIdInAndDescriptionStartingWith(questionIds, MyUtil.REFORMULATE_QUESTION_ANSWER_ALREADY_EXISTS);
-        log.atInfo().addArgument(deletedDuplicates).addArgument(deletedTitleErrors + deletedAnswerErrors).addArgument(courseName)
+        DuplicateClearSummary summary = clearDuplicatesForQuestionIds(extractQuestionIds(loadScopedQuestions(courseName, null, null)));
+        log.atInfo().addArgument(summary.duplicateLinksRemoved()).addArgument(summary.duplicateErrorsRemoved()).addArgument(courseName)
                 .log("Cleared {} duplicate links and {} duplicate errors for course '{}'");
 
-        return (int) deletedDuplicates;
+        return summary.duplicateLinksRemoved();
     }
 
     @Transactional
@@ -497,26 +476,8 @@ public class CourseService {
             throw new IllegalArgumentException("Course name cannot be null or empty");
         }
 
-        java.time.OffsetDateTime startedAt = java.time.OffsetDateTime.now();
-        long startedMs = System.currentTimeMillis();
-
-        QuestionDuplicationService.DuplicateRecomputeSummary summary = questionDuplicationService.recomputeDuplicatesForCourse(courseName);
-
-        long endedMs = System.currentTimeMillis();
-        java.time.OffsetDateTime endedAt = java.time.OffsetDateTime.now();
-
-        CourseDuplicateRecomputeResultDto dto = new CourseDuplicateRecomputeResultDto();
-        dto.setCourseName(courseName);
-        dto.setStartedAt(startedAt);
-        dto.setEndedAt(endedAt);
-        dto.setDurationMs(endedMs - startedMs);
-        dto.setTotalQuestions(summary.totalQuestions());
-        dto.setMultichoiceQuestions(summary.multichoiceQuestions());
-        dto.setTruefalseQuestions(summary.truefalseQuestions());
-        dto.setDuplicateLinksRemoved(summary.duplicateLinksRemoved());
-        dto.setDuplicateErrorsRemoved(summary.duplicateErrorsRemoved());
-        dto.setDuplicateErrorsCreated(summary.duplicateErrorsCreated());
-        return dto;
+        return executeRecompute(courseName, null,
+                () -> questionDuplicationService.recomputeDuplicatesForCourse(courseName));
     }
 
     @Transactional
@@ -525,26 +486,8 @@ public class CourseService {
             throw new IllegalArgumentException("Course name cannot be null or empty");
         }
 
-        java.time.OffsetDateTime startedAt = java.time.OffsetDateTime.now();
-        long startedMs = System.currentTimeMillis();
-
-        QuestionDuplicationService.DuplicateRecomputeSummary summary = questionDuplicationService.recomputeDuplicatesForCourse(courseName, strategy);
-
-        long endedMs = System.currentTimeMillis();
-        java.time.OffsetDateTime endedAt = java.time.OffsetDateTime.now();
-
-        CourseDuplicateRecomputeResultDto dto = new CourseDuplicateRecomputeResultDto();
-        dto.setCourseName(courseName);
-        dto.setStartedAt(startedAt);
-        dto.setEndedAt(endedAt);
-        dto.setDurationMs(endedMs - startedMs);
-        dto.setTotalQuestions(summary.totalQuestions());
-        dto.setMultichoiceQuestions(summary.multichoiceQuestions());
-        dto.setTruefalseQuestions(summary.truefalseQuestions());
-        dto.setDuplicateLinksRemoved(summary.duplicateLinksRemoved());
-        dto.setDuplicateErrorsRemoved(summary.duplicateErrorsRemoved());
-        dto.setDuplicateErrorsCreated(summary.duplicateErrorsCreated());
-        return dto;
+        return executeRecompute(courseName, null,
+                () -> questionDuplicationService.recomputeDuplicatesForCourse(courseName, strategy));
     }
 
     // ---- Question Bank scoped operations ----
@@ -554,33 +497,12 @@ public class CourseService {
         if (questionBankId == null) {
             throw new IllegalArgumentException("QuestionBank ID cannot be null");
         }
-        QuestionBank qb = questionBankRepository.findById(questionBankId)
-                .orElseThrow(() -> new IllegalArgumentException("QuestionBank not found with ID: " + questionBankId));
+        QuestionBank qb = getQuestionBankOrThrow(questionBankId);
         String courseName = qb.getCourseName();
+        List<Question> qbQuestions = loadScopedQuestions(null, null, questionBankId);
 
-        List<Question> qbQuestions = questionRepository.findAll(QuestionSpecification.byFilters(null, null, questionBankId, null));
-
-        java.time.OffsetDateTime startedAt = java.time.OffsetDateTime.now();
-        long startedMs = System.currentTimeMillis();
-
-        QuestionDuplicationService.DuplicateRecomputeSummary summary =
-                questionDuplicationService.recomputeDuplicatesForQuestionList(courseName, qbQuestions, strategy);
-
-        long endedMs = System.currentTimeMillis();
-        java.time.OffsetDateTime endedAt = java.time.OffsetDateTime.now();
-
-        CourseDuplicateRecomputeResultDto dto = new CourseDuplicateRecomputeResultDto();
-        dto.setCourseName(courseName);
-        dto.setStartedAt(startedAt);
-        dto.setEndedAt(endedAt);
-        dto.setDurationMs(endedMs - startedMs);
-        dto.setTotalQuestions(summary.totalQuestions());
-        dto.setMultichoiceQuestions(summary.multichoiceQuestions());
-        dto.setTruefalseQuestions(summary.truefalseQuestions());
-        dto.setDuplicateLinksRemoved(summary.duplicateLinksRemoved());
-        dto.setDuplicateErrorsRemoved(summary.duplicateErrorsRemoved());
-        dto.setDuplicateErrorsCreated(summary.duplicateErrorsCreated());
-        return dto;
+        return executeRecompute(courseName, qb.getCourse() != null ? qb.getCourse().getId() : null,
+                () -> questionDuplicationService.recomputeDuplicatesForQuestionList(courseName, qbQuestions, strategy));
     }
 
     @Transactional(readOnly = true)
@@ -588,32 +510,8 @@ public class CourseService {
         if (questionBankId == null) {
             throw new IllegalArgumentException("QuestionBank ID cannot be null");
         }
-        QuestionBank qb = questionBankRepository.findById(questionBankId)
-                .orElseThrow(() -> new IllegalArgumentException("QuestionBank not found with ID: " + questionBankId));
-
-        List<Question> questions = questionRepository.findAll(QuestionSpecification.byFilters(null, null, questionBankId, null));
-        long questionsWithDuplicateErrors = questions.stream()
-                .filter(q -> q.getQuestionErrors() != null && q.getQuestionErrors().stream()
-                        .anyMatch(e -> isDuplicateError(e.getDescription())))
-                .count();
-
-        List<Long> questionIds = questions.stream()
-                .map(Question::getId)
-                .filter(Objects::nonNull)
-                .toList();
-
-        long duplicateLinks = 0;
-        if (!questionIds.isEmpty()) {
-            duplicateLinks = questionDuplicateRepository.findByQuestionIdInOrDuplicateQuestionIdIn(questionIds, questionIds).size();
-        }
-
-        DuplicateStatisticsDto dto = new DuplicateStatisticsDto(
-                qb.getCourseName(),
-                questions.size(),
-                (int) questionsWithDuplicateErrors,
-                duplicateLinks
-        );
-        return dto;
+        QuestionBank qb = getQuestionBankOrThrow(questionBankId);
+        return buildDuplicateStatistics(qb.getCourseName(), loadScopedQuestions(null, null, questionBankId));
     }
 
     @Transactional
@@ -621,19 +519,10 @@ public class CourseService {
         if (questionBankId == null) {
             throw new IllegalArgumentException("QuestionBank ID cannot be null");
         }
-        List<Question> questions = questionRepository.findAll(QuestionSpecification.byFilters(null, null, questionBankId, null));
-        List<Long> questionIds = questions.stream().map(Question::getId).filter(Objects::nonNull).toList();
-
-        if (questionIds.isEmpty()) {
-            return 0;
-        }
-
-        long deleted = questionDuplicateRepository.deleteByQuestionIdInOrDuplicateQuestionIdIn(questionIds, questionIds);
-        long deletedTitleErrors = questionErrorRepository.deleteByQuestionIdInAndDescriptionStartingWith(questionIds, MyUtil.REFORMULATE_QUESTION_TITLE_ALREADY_EXISTS);
-        long deletedAnswerErrors = questionErrorRepository.deleteByQuestionIdInAndDescriptionStartingWith(questionIds, MyUtil.REFORMULATE_QUESTION_ANSWER_ALREADY_EXISTS);
-        log.atInfo().addArgument(deleted).addArgument(deletedTitleErrors + deletedAnswerErrors).addArgument(questionBankId)
+        DuplicateClearSummary summary = clearDuplicatesForQuestionIds(extractQuestionIds(loadScopedQuestions(null, null, questionBankId)));
+        log.atInfo().addArgument(summary.duplicateLinksRemoved()).addArgument(summary.duplicateErrorsRemoved()).addArgument(questionBankId)
                 .log("Cleared {} duplicate links and {} duplicate errors for questionBank '{}'");
-        return (int) deleted;
+        return summary.duplicateLinksRemoved();
     }
 
     // ---- Author scoped operations (within a question bank) ----
@@ -646,33 +535,12 @@ public class CourseService {
         if (authorId == null) {
             throw new IllegalArgumentException("Author ID cannot be null");
         }
-        QuestionBank qb = questionBankRepository.findById(questionBankId)
-                .orElseThrow(() -> new IllegalArgumentException("QuestionBank not found with ID: " + questionBankId));
+        QuestionBank qb = getQuestionBankOrThrow(questionBankId);
         String courseName = qb.getCourseName();
+        List<Question> authorQuestions = loadScopedQuestions(courseName, authorId, questionBankId);
 
-        List<Question> authorQuestions = questionRepository.findAll(QuestionSpecification.byFilters(courseName, authorId, questionBankId, null));
-
-        java.time.OffsetDateTime startedAt = java.time.OffsetDateTime.now();
-        long startedMs = System.currentTimeMillis();
-
-        QuestionDuplicationService.DuplicateRecomputeSummary summary =
-                questionDuplicationService.recomputeDuplicatesForQuestionList(courseName, authorQuestions, strategy);
-
-        long endedMs = System.currentTimeMillis();
-        java.time.OffsetDateTime endedAt = java.time.OffsetDateTime.now();
-
-        CourseDuplicateRecomputeResultDto dto = new CourseDuplicateRecomputeResultDto();
-        dto.setCourseName(courseName);
-        dto.setStartedAt(startedAt);
-        dto.setEndedAt(endedAt);
-        dto.setDurationMs(endedMs - startedMs);
-        dto.setTotalQuestions(summary.totalQuestions());
-        dto.setMultichoiceQuestions(summary.multichoiceQuestions());
-        dto.setTruefalseQuestions(summary.truefalseQuestions());
-        dto.setDuplicateLinksRemoved(summary.duplicateLinksRemoved());
-        dto.setDuplicateErrorsRemoved(summary.duplicateErrorsRemoved());
-        dto.setDuplicateErrorsCreated(summary.duplicateErrorsCreated());
-        return dto;
+        return executeRecompute(courseName, qb.getCourse() != null ? qb.getCourse().getId() : null,
+                () -> questionDuplicationService.recomputeDuplicatesForQuestionList(courseName, authorQuestions, strategy));
     }
 
     @Transactional(readOnly = true)
@@ -683,31 +551,8 @@ public class CourseService {
         if (authorId == null) {
             throw new IllegalArgumentException("Author ID cannot be null");
         }
-        QuestionBank qb = questionBankRepository.findById(questionBankId)
-                .orElseThrow(() -> new IllegalArgumentException("QuestionBank not found with ID: " + questionBankId));
-
-        List<Question> questions = questionRepository.findAll(QuestionSpecification.byFilters(qb.getCourseName(), authorId, questionBankId, null));
-        long questionsWithDuplicateErrors = questions.stream()
-                .filter(q -> q.getQuestionErrors() != null && q.getQuestionErrors().stream()
-                        .anyMatch(e -> isDuplicateError(e.getDescription())))
-                .count();
-
-        List<Long> questionIds = questions.stream()
-                .map(Question::getId)
-                .filter(Objects::nonNull)
-                .toList();
-
-        long duplicateLinks = 0;
-        if (!questionIds.isEmpty()) {
-            duplicateLinks = questionDuplicateRepository.findByQuestionIdInOrDuplicateQuestionIdIn(questionIds, questionIds).size();
-        }
-
-        return new DuplicateStatisticsDto(
-                qb.getCourseName(),
-                questions.size(),
-                (int) questionsWithDuplicateErrors,
-                duplicateLinks
-        );
+        QuestionBank qb = getQuestionBankOrThrow(questionBankId);
+        return buildDuplicateStatistics(qb.getCourseName(), loadScopedQuestions(qb.getCourseName(), authorId, questionBankId));
     }
 
     @Transactional
@@ -718,21 +563,217 @@ public class CourseService {
         if (authorId == null) {
             throw new IllegalArgumentException("Author ID cannot be null");
         }
-        QuestionBank qb = questionBankRepository.findById(questionBankId)
+        QuestionBank qb = getQuestionBankOrThrow(questionBankId);
+        DuplicateClearSummary summary = clearDuplicatesForQuestionIds(extractQuestionIds(loadScopedQuestions(qb.getCourseName(), authorId, questionBankId)));
+        log.atInfo().addArgument(summary.duplicateLinksRemoved()).addArgument(summary.duplicateErrorsRemoved()).addArgument(authorId).addArgument(questionBankId)
+                .log("Cleared {} duplicate links and {} duplicate errors for author '{}' in questionBank '{}'");
+        return summary.duplicateLinksRemoved();
+    }
+
+    private QuestionBank getQuestionBankOrThrow(Long questionBankId) {
+        return questionBankRepository.findById(questionBankId)
                 .orElseThrow(() -> new IllegalArgumentException("QuestionBank not found with ID: " + questionBankId));
+    }
 
-        List<Question> questions = questionRepository.findAll(QuestionSpecification.byFilters(qb.getCourseName(), authorId, questionBankId, null));
-        List<Long> questionIds = questions.stream().map(Question::getId).filter(Objects::nonNull).toList();
+    private List<Question> loadScopedQuestions(String courseName, Long authorId, Long questionBankId) {
+        return questionRepository.findAll(QuestionSpecification.byFilters(courseName, authorId, questionBankId, null));
+    }
 
+    private List<Long> extractQuestionIds(List<Question> questions) {
+        return questions.stream()
+                .map(Question::getId)
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    private long countQuestionsWithDuplicateErrors(List<Question> questions) {
+        return questions.stream()
+                .filter(q -> q.getQuestionErrors() != null && q.getQuestionErrors().stream()
+                        .anyMatch(e -> isDuplicateError(e.getDescription())))
+                .count();
+    }
+
+    private long countDuplicateLinks(List<Long> questionIds) {
         if (questionIds.isEmpty()) {
             return 0;
         }
-
-        long deleted = questionDuplicateRepository.deleteByQuestionIdInOrDuplicateQuestionIdIn(questionIds, questionIds);
-        long deletedTitleErrors = questionErrorRepository.deleteByQuestionIdInAndDescriptionStartingWith(questionIds, MyUtil.REFORMULATE_QUESTION_TITLE_ALREADY_EXISTS);
-        long deletedAnswerErrors = questionErrorRepository.deleteByQuestionIdInAndDescriptionStartingWith(questionIds, MyUtil.REFORMULATE_QUESTION_ANSWER_ALREADY_EXISTS);
-        log.atInfo().addArgument(deleted).addArgument(deletedTitleErrors + deletedAnswerErrors).addArgument(authorId).addArgument(questionBankId)
-                .log("Cleared {} duplicate links and {} duplicate errors for author '{}' in questionBank '{}'");
-        return (int) deleted;
+        return questionDuplicateRepository.findByQuestionIdInOrDuplicateQuestionIdIn(questionIds, questionIds).size();
     }
+
+    private DuplicateStatisticsDto buildDuplicateStatistics(String courseName, List<Question> questions) {
+        List<Long> questionIds = extractQuestionIds(questions);
+        return new DuplicateStatisticsDto(
+                courseName,
+                questions.size(),
+                (int) countQuestionsWithDuplicateErrors(questions),
+                countDuplicateLinks(questionIds)
+        );
+    }
+
+    private CourseDto createCourseInternal(CourseDto courseDto) {
+        log.atInfo().addArgument(courseDto.getCourse()).log("Creating new course: {}");
+
+        Course course = courseMapper.toEntity(courseDto);
+        courseRepository.save(course);
+
+        log.atInfo().addArgument(course.getId()).log("Course created with ID: {}");
+        return courseMapper.toDto(course);
+    }
+
+    private DuplicateClearSummary clearDuplicatesForQuestionIds(List<Long> questionIds) {
+        if (questionIds.isEmpty()) {
+            return new DuplicateClearSummary(0, 0);
+        }
+
+        int deletedDuplicates = (int) questionDuplicateRepository.deleteByQuestionIdInOrDuplicateQuestionIdIn(questionIds, questionIds);
+        int deletedErrors = Math.toIntExact(
+                questionErrorRepository.deleteByQuestionIdInAndDescriptionStartingWith(questionIds, MyUtil.REFORMULATE_QUESTION_TITLE_ALREADY_EXISTS)
+                        + questionErrorRepository.deleteByQuestionIdInAndDescriptionStartingWith(questionIds, MyUtil.REFORMULATE_QUESTION_ANSWER_ALREADY_EXISTS)
+        );
+        return new DuplicateClearSummary(deletedDuplicates, deletedErrors);
+    }
+
+    private CourseDuplicateRecomputeResultDto executeRecompute(
+            String courseName,
+            Long courseId,
+            Supplier<QuestionDuplicationService.DuplicateRecomputeSummary> recomputeAction
+    ) {
+        OffsetDateTime startedAt = OffsetDateTime.now();
+        long startedMs = System.currentTimeMillis();
+        QuestionDuplicationService.DuplicateRecomputeSummary summary = recomputeAction.get();
+        long durationMs = System.currentTimeMillis() - startedMs;
+        OffsetDateTime endedAt = OffsetDateTime.now();
+        return buildRecomputeResult(courseName, courseId, startedAt, endedAt, durationMs, summary);
+    }
+
+    private CourseDuplicateRecomputeResultDto buildRecomputeResult(
+            String courseName,
+            Long courseId,
+            OffsetDateTime startedAt,
+            OffsetDateTime endedAt,
+            long durationMs,
+            QuestionDuplicationService.DuplicateRecomputeSummary summary
+    ) {
+        CourseDuplicateRecomputeResultDto dto = new CourseDuplicateRecomputeResultDto();
+        dto.setCourseId(courseId);
+        dto.setCourseName(courseName);
+        dto.setStartedAt(startedAt);
+        dto.setEndedAt(endedAt);
+        dto.setDurationMs(durationMs);
+        dto.setTotalQuestions(summary.totalQuestions());
+        dto.setMultichoiceQuestions(summary.multichoiceQuestions());
+        dto.setTruefalseQuestions(summary.truefalseQuestions());
+        dto.setDuplicateLinksRemoved(summary.duplicateLinksRemoved());
+        dto.setDuplicateErrorsRemoved(summary.duplicateErrorsRemoved());
+        dto.setDuplicateErrorsCreated(summary.duplicateErrorsCreated());
+        return dto;
+    }
+
+    private record DuplicateClearSummary(int duplicateLinksRemoved, int duplicateErrorsRemoved) {
+    }
+
+    private static class CourseDeletionException extends RuntimeException {
+        CourseDeletionException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
+
+    // ---- Recompute History ----
+
+    /**
+     * Saves a duplicate recompute result as a history entry.
+     */
+    @Transactional
+    public DuplicateRecomputeHistoryDto saveRecomputeHistory(CourseDuplicateRecomputeResultDto result,
+                                                              String strategy,
+                                                              Long courseId,
+                                                              Long questionBankId,
+                                                              Long authorId) {
+        DuplicateRecomputeHistory entity = new DuplicateRecomputeHistory();
+        entity.setCourseId(result.getCourseId() != null ? result.getCourseId() : courseId);
+        entity.setCourseName(result.getCourseName());
+        entity.setQuestionBankId(questionBankId);
+        entity.setAuthorId(authorId);
+        entity.setStrategy(strategy);
+        entity.setTotalQuestions(result.getTotalQuestions());
+        entity.setMultichoiceQuestions(result.getMultichoiceQuestions());
+        entity.setTruefalseQuestions(result.getTruefalseQuestions());
+        entity.setDuplicateLinksRemoved(result.getDuplicateLinksRemoved());
+        entity.setDuplicateErrorsRemoved(result.getDuplicateErrorsRemoved());
+        entity.setDuplicateErrorsCreated(result.getDuplicateErrorsCreated());
+        entity.setStartedAt(result.getStartedAt());
+        entity.setEndedAt(result.getEndedAt());
+        entity.setDurationMs(result.getDurationMs());
+        DuplicateRecomputeHistory saved = duplicateRecomputeHistoryRepository.save(entity);
+        log.atInfo().addArgument(saved.getId()).addArgument(saved.getCourseName()).log("Saved recompute history entry id={} for course '{}'");
+        return mapHistoryToDto(saved);
+    }
+
+    /**
+     * Returns all recompute history entries ordered by savedAt descending.
+     */
+    @Transactional(readOnly = true)
+    public List<DuplicateRecomputeHistoryDto> getRecomputeHistory() {
+        return duplicateRecomputeHistoryRepository.findAllByOrderBySavedAtDesc()
+                .stream().map(this::mapHistoryToDto).toList();
+    }
+
+    /**
+     * Deletes a recompute history entry by ID.
+     */
+    @Transactional
+    public void deleteRecomputeHistoryEntry(Long id) {
+        if (id == null) {
+            throw new IllegalArgumentException("History entry ID cannot be null");
+        }
+        if (!duplicateRecomputeHistoryRepository.existsById(id)) {
+            throw new IllegalArgumentException("History entry not found with ID: " + id);
+        }
+        duplicateRecomputeHistoryRepository.deleteById(id);
+        log.atInfo().addArgument(id).log("Deleted recompute history entry id={}");
+    }
+
+    private DuplicateRecomputeHistoryDto mapHistoryToDto(DuplicateRecomputeHistory entity) {
+        DuplicateRecomputeHistoryDto dto = new DuplicateRecomputeHistoryDto();
+        dto.setId(entity.getId());
+        dto.setCourseId(entity.getCourseId());
+        dto.setCourseName(entity.getCourseName());
+        dto.setQuestionBankId(entity.getQuestionBankId());
+        dto.setAuthorId(entity.getAuthorId());
+        dto.setStrategy(entity.getStrategy());
+        dto.setTotalQuestions(entity.getTotalQuestions());
+        dto.setMultichoiceQuestions(entity.getMultichoiceQuestions());
+        dto.setTruefalseQuestions(entity.getTruefalseQuestions());
+        dto.setDuplicateLinksRemoved(entity.getDuplicateLinksRemoved());
+        dto.setDuplicateErrorsRemoved(entity.getDuplicateErrorsRemoved());
+        dto.setDuplicateErrorsCreated(entity.getDuplicateErrorsCreated());
+        dto.setStartedAt(entity.getStartedAt());
+        dto.setEndedAt(entity.getEndedAt());
+        dto.setDurationMs(entity.getDurationMs());
+        dto.setSavedAt(entity.getSavedAt());
+        return dto;
+    }
+
+    @Transactional
+    @CacheEvict(value = "courseNames", allEntries = true)
+    public int createDefaultCourses() {
+        int createdCount = 0;
+        for (DefaultCourse defaultCourse : DefaultCourse.getAllCourses()) {
+            CourseDto courseDto = new CourseDto();
+            courseDto.setCourse(defaultCourse.getCourseName());
+            if (courseDto.getCourse() != null && !courseDto.getCourse().isBlank()) {
+                Specification<Course> spec = CourseSpecification.byCourseName(defaultCourse.getCourseName());
+                List<Course> found = courseRepository.findAll(spec);
+                if (found.isEmpty()) {
+                    CourseDto created = createCourseInternal(courseDto);
+                    if (created != null) {
+                        createdCount++;
+                    }
+                }
+            }
+        }
+        log.atInfo().addArgument(createdCount).log("Created {} default courses");
+        return createdCount;
+    }
+
 }
