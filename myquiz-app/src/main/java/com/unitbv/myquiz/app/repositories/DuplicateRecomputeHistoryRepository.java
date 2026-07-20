@@ -22,3 +22,4 @@ public interface DuplicateRecomputeHistoryRepository extends JpaRepository<Dupli
      */
     List<DuplicateRecomputeHistory> findByCourseIdOrderBySavedAtDesc(Long courseId);
 }
+

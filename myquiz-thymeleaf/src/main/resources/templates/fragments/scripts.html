@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Script Fragments</title>
+</head>
+<body>
+
+<div th:fragment="menu-scripts">
+    <script>
+        // Setup dropdown menus: Show/hide submenu on hover and focus for accessibility
+        function setupDropdown() {
+            document.querySelectorAll('.main-menu-item').forEach(function (menuItem) {
+                var submenu = menuItem.querySelector('.main-submenu');
+                if (!submenu) return;
+                menuItem.addEventListener('mouseenter', function () {
+                    submenu.style.display = 'block';
+                });
+                menuItem.addEventListener('mouseleave', function () {
+                    submenu.style.display = 'none';
+                });
+                menuItem.addEventListener('focusin', function () {
+                    submenu.style.display = 'block';
+                });
+                menuItem.addEventListener('focusout', function (e) {
+                    if (!menuItem.contains(e.relatedTarget)) {
+                        submenu.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        setupDropdown();
+    </script>
+</div>
+
+</body>
+</html>
+

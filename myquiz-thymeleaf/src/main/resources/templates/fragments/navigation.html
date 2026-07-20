@@ -2,7 +2,7 @@
 <html lang="en" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Fragments</title>
+    <title>Navigation Fragments</title>
     <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
 </head>
 <body>
@@ -15,6 +15,7 @@
         <div class="main-submenu">
             <a th:href="@{'/courses/'}">Course List</a>
             <a th:if="${menuPermissions['canModifyCourse']}" th:href="@{'/courses/new'}">+ Add Course</a>
+            <a th:if="${menuPermissions['canModifyCourse']}" th:href="@{'/courses/default-courses'}">📚 Add Default Courses</a>
         </div>
     </div>
 
@@ -82,13 +83,14 @@
             <a th:if="${menuPermissions['canBackupDatabase'] or menuPermissions['canRestoreDatabase'] or menuPermissions['canCleanDatabase']}"
                th:href="@{'/admin/data'}">Data Management</a>
             <!-- Delete all -->
-            <a th:if="${menuPermissions['canCleanDatabase']}"
-               th:href="@{'/home/deleteall'}"
-               th:onclick="return confirm('Are you sure you want to delete all the database records?')">🗑️ Delete all</a>
+            <form th:if="${menuPermissions['canCleanDatabase']}" method="post" th:action="@{/admin/data/deleteall}">
+                <input type="hidden" th:if="${_csrf != null}"
+                       th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <button type="submit" class="submenu-button"
+                        onclick="return confirm('Are you sure you want to delete all the database records?')">🗑️ Delete all</button>
+            </form>
         </div>
     </div>
-
-
 
     <!-- Help -->
     <div class="main-menu-item" tabindex="0" aria-label="Help">

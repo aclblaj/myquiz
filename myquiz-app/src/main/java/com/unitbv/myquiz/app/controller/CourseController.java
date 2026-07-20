@@ -353,7 +353,7 @@ public class CourseController implements CourseApi {
         return result;
     }
 
-    @PostMapping("/create-defaults")
+    @PostMapping("/" + ControllerSettings.API_COURSES_CREATE_DEFAULTS_SUFFIX)
     @Operation(
         summary = "Create Default Courses",
         description = "Create all default courses that don't already exist in the database"
