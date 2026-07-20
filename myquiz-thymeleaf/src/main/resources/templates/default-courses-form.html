@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Add Default Courses</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+
+<div th:insert="~{fragments/navigation::menu}"></div>
+
+<div class="container mt-3">
+    <h2 class="list-page-title">Add Default Courses</h2>
+
+    <div class="form-container">
+        <p class="form-section-description">
+            This will add all default courses to the system that don't already exist in the database.
+            Click the button below to add the following courses:
+        </p>
+
+        <div class="default-courses-list">
+            <h3>Default Courses to be Added:</h3>
+            <ul>
+                <li>Sisteme de operare</li>
+                <li>Retele de calculatoare</li>
+                <li>Cybersecurity</li>
+                <li>Secuirtatea sistemelor informatice</li>
+                <li>Baze de date</li>
+                <li>Baze de date dristribuite</li>
+                <li>Aplicatii mobile</li>
+                <li>Algoritmi in retea</li>
+            </ul>
+        </div>
+
+        <form method="post" th:action="@{/courses/default-courses}" class="form">
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">✓ Add Default Courses</button>
+                <a th:href="@{'/courses/'}" class="btn btn-outline">↩️ Back to Courses</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+</body>
+</html>
+

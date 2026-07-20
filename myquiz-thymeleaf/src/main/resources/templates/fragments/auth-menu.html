@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Auth Menu Fragment</title>
+    <link rel="stylesheet" type="text/css" th:href="@{/css/styles.css}">
+</head>
+<body>
+
+<!-- Authentication Menu for Index Page -->
+<div th:fragment="authmenu" class="auth-menu">
+    <div sec:authorize="isAuthenticated()" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+        <p>Welcome, <span sec:authentication="name"></span>!</p>
+        <a href="/logout" class="btn btn-logout">Logout</a>
+    </div>
+    <div sec:authorize="isAnonymous()" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+        <a href="/login" class="btn btn-login">Login</a>
+        <a href="/register" class="btn btn-register">Register</a>
+    </div>
+</div>
+
+</body>
+</html>
