@@ -105,12 +105,16 @@ public class QuestionBankService {
     @Transactional(readOnly = true)
     public List<QuestionBankDto> getAllQuestionBanks() {
         List<QuestionBank> questionBanks = questionBankRepository.findAll();
-        questionBanks.sort(Comparator.comparing(QuestionBank::getCourseName));
+        questionBanks.sort(Comparator.comparing(
+                qb -> qb != null ? qb.getCourseName() : null,
+                Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)
+        ));
         return questionBanks.stream().map(questionBank -> {
             QuestionBankDto dto = new QuestionBankDto();
             dto.setId(questionBank.getId());
             dto.setName(questionBank.getName());
             dto.setCourse(questionBank.getCourseName());
+            dto.setCourseId(questionBank.getCourse() != null ? questionBank.getCourse().getId() : null);
             dto.setStudyYear(questionBank.getStudyYear());
             // Fetch questions for this questionBank using QuestionSpecification
             var spec = QuestionSpecification.byFilters(null, null, questionBank.getId(), null);
@@ -197,6 +201,7 @@ public class QuestionBankService {
             dto.setId(q.getId());
             dto.setName(q.getName());
             dto.setCourse(q.getCourseName());
+            dto.setCourseId(q.getCourse() != null ? q.getCourse().getId() : null);
             dto.setStudyYear(q.getStudyYear());
             // Fetch questions for this questionBank using QuestionSpecification
             var spec = QuestionSpecification.byFilters(null, null, id, null);
@@ -261,6 +266,7 @@ public class QuestionBankService {
             dto.setId(questionBank.getId());
             dto.setName(questionBank.getName());
             dto.setCourse(questionBank.getCourseName());
+            dto.setCourseId(questionBank.getCourse() != null ? questionBank.getCourse().getId() : null);
             dto.setStudyYear(questionBank.getStudyYear());
             Set<QuestionBankAuthor> qbAuthors = questionBank.getQuestionBankAuthors();
             if (qbAuthors != null && !qbAuthors.isEmpty()) {
@@ -294,6 +300,7 @@ public class QuestionBankService {
             dto.setId(q.getId());
             dto.setName(q.getName());
             dto.setCourse(q.getCourseName());
+            dto.setCourseId(q.getCourse() != null ? q.getCourse().getId() : null);
             dto.setStudyYear(q.getStudyYear());
             List<Question> questions = questionRepository.findAll(QuestionSpecification.byFilters(null, null, q.getId(), null));
             dto.setNumberOfDuplicates(countDuplicateQuestions(questions));
@@ -336,6 +343,7 @@ public class QuestionBankService {
             dto.setId(questionBank.getId());
             dto.setName(questionBank.getName());
             dto.setCourse(questionBank.getCourseName());
+            dto.setCourseId(questionBank.getCourse() != null ? questionBank.getCourse().getId() : null);
             dto.setStudyYear(questionBank.getStudyYear());
             var spec = QuestionSpecification.byFilters(null, null, questionBank.getId(), null);
             List<Question> questions = questionRepository.findAll(spec);
@@ -387,6 +395,7 @@ public class QuestionBankService {
         dto.setId(questionBank.get().getId());
         dto.setName(questionBank.get().getName());
         dto.setCourse(questionBank.get().getCourseName());
+        dto.setCourseId(questionBank.get().getCourse() != null ? questionBank.get().getCourse().getId() : null);
         dto.setStudyYear(questionBank.get().getStudyYear());
         List<Question> questions = questionRepository.findAll(QuestionSpecification.byFilters(null, null, id, null));
         dto.setNumberOfDuplicates(countDuplicateQuestions(questions));

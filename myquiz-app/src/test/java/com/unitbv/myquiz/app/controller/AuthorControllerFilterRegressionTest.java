@@ -8,6 +8,7 @@ import com.unitbv.myquiz.api.dto.CourseDto;
 import com.unitbv.myquiz.api.dto.QuestionBankInfo;
 import com.unitbv.myquiz.app.services.AuthorService;
 import com.unitbv.myquiz.app.services.CourseService;
+import com.unitbv.myquiz.app.services.FilterOptionsService;
 import com.unitbv.myquiz.app.services.QuestionBankAuthorService;
 import com.unitbv.myquiz.app.services.QuestionBankService;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,13 +52,17 @@ class AuthorControllerFilterRegressionTest {
     @Mock
     private CourseService courseService;
 
+    @Mock
+    private FilterOptionsService filterOptionsService;
+
     @BeforeEach
     void setUp() {
         AuthorController controller = new AuthorController(
                 authorService,
                 questionBankAuthorService,
                 questionBankService,
-                courseService
+                courseService,
+                filterOptionsService
         );
         mockMvc = MockMvcBuilders.standaloneSetup(controller).addPlaceholderValue(
                 "FRONTEND_URL",
@@ -90,7 +95,7 @@ class AuthorControllerFilterRegressionTest {
                 eq("name"),
                 eq("desc")
         )).thenReturn(page);
-        when(questionBankAuthorService.getAuthorDtosByCourse("Algorithms")).thenReturn(List.of(new AuthorInfo(
+        when(filterOptionsService.resolveAuthorOptions(isNull(), eq("Algorithms"))).thenReturn(List.of(new AuthorInfo(
                 1L,
                 "Alice Author",
                 null

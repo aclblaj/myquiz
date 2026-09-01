@@ -16,6 +16,7 @@ import javax.sql.DataSource;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
@@ -43,7 +44,7 @@ public class SystemController implements SystemApi {
         try {
             response.put(ControllerSettings.STATUS_KEY, ControllerSettings.UP);
             response.put(ControllerSettings.SERVICE_KEY, "myquiz-app");
-            response.put(ControllerSettings.TIMESTAMP_KEY, OffsetDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+            response.put(ControllerSettings.TIMESTAMP_KEY, OffsetDateTime.now(ZoneId.systemDefault()).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
             response.put("application", "myquiz");
 
             return ResponseEntity.ok(response);
@@ -61,7 +62,7 @@ public class SystemController implements SystemApi {
         Map<String, Object> response = new HashMap<>();
 
         try {
-            response.put(ControllerSettings.TIMESTAMP_KEY, OffsetDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+            response.put(ControllerSettings.TIMESTAMP_KEY, OffsetDateTime.now(ZoneId.systemDefault()).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
             response.put(ControllerSettings.SERVICE_KEY, "myquiz-app");
             response.put("javaVersion", System.getProperty("java.version"));
             response.put("osName", System.getProperty("os.name"));
@@ -101,7 +102,7 @@ public class SystemController implements SystemApi {
                     response.put(ControllerSettings.STATUS_KEY, ControllerSettings.UP);
                     response.put("databaseProductName", connection.getMetaData().getDatabaseProductName());
                     response.put("databaseVersion", connection.getMetaData().getDatabaseMajorVersion() + "." + connection.getMetaData().getDatabaseMinorVersion());
-                    response.put(ControllerSettings.TIMESTAMP_KEY, OffsetDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+                    response.put(ControllerSettings.TIMESTAMP_KEY, OffsetDateTime.now(ZoneId.systemDefault()).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
                     return ResponseEntity.ok(response);
                 }
             }
@@ -141,7 +142,7 @@ public class SystemController implements SystemApi {
             memoryMetrics.put("nonHeapCommitted", nonHeapMemoryUsage.getCommitted());
 
             response.put("memory", memoryMetrics);
-            response.put(ControllerSettings.TIMESTAMP_KEY, OffsetDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
+            response.put(ControllerSettings.TIMESTAMP_KEY, OffsetDateTime.now(ZoneId.systemDefault()).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
             response.put("uptime", ManagementFactory.getRuntimeMXBean().getUptime());
             response.put("processorCount", Runtime.getRuntime().availableProcessors());
 

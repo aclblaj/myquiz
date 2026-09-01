@@ -36,15 +36,14 @@ public class QuestionErrorService {
 
     private final QuestionErrorRepository questionErrorRepository;
     private final QuestionRepository questionRepository;
-    private final AuthorService authorService;
     private final QuestionBankService questionBankService;
     private final CourseService courseService;
 
-    public QuestionErrorService(QuestionErrorRepository questionErrorRepository, QuestionRepository questionRepository, AuthorService authorService, @Lazy QuestionBankService questionBankService,
+    public QuestionErrorService(QuestionErrorRepository questionErrorRepository, QuestionRepository questionRepository,
+                                @Lazy QuestionBankService questionBankService,
                                 CourseService courseService) {
         this.questionErrorRepository = questionErrorRepository;
         this.questionRepository = questionRepository;
-        this.authorService = authorService;
         this.questionBankService = questionBankService;
         this.courseService = courseService;
     }
@@ -117,6 +116,7 @@ public class QuestionErrorService {
 
     @Transactional(readOnly = true)
     public QuestionErrorFilterResponseDto filter(QuestionErrorFilterRequestDto filterInput) {
+        log.atDebug().log("Filtering question errors with input: {}", filterInput);
         if (filterInput == null) {
             throw new IllegalArgumentException("Filter input cannot be null");
         }

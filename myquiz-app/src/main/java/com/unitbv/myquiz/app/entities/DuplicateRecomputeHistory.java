@@ -14,6 +14,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 
 /**
  * Persistent history record of a duplicate recompute run.
@@ -83,7 +84,7 @@ public class DuplicateRecomputeHistory {
 
     @PrePersist
     protected void onCreate() {
-        savedAt = OffsetDateTime.now();
+        savedAt = OffsetDateTime.now(ZoneId.systemDefault());
     }
 }
 

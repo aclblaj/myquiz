@@ -41,7 +41,6 @@ class QuestionErrorServiceTest {
         QuestionErrorService service = new QuestionErrorService(
                 questionErrorRepository,
                 questionRepository,
-                authorService,
                 questionBankService,
                 courseService
         );
@@ -63,7 +62,6 @@ class QuestionErrorServiceTest {
         QuestionErrorService service = new QuestionErrorService(
                 questionErrorRepository,
                 questionRepository,
-                authorService,
                 questionBankService,
                 courseService
         );
@@ -86,7 +84,6 @@ class QuestionErrorServiceTest {
         QuestionErrorService service = new QuestionErrorService(
                 questionErrorRepository,
                 questionRepository,
-                authorService,
                 questionBankService,
                 courseService
         );

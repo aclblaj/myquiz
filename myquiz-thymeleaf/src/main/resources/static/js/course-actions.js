@@ -20,3 +20,30 @@ function submitRecompute(courseId) {
     }
 }
 
+function toggleDeleteDuplicatesConfirm(courseId) {
+    var confirmBox = document.getElementById('delete-duplicates-confirm-' + courseId);
+    if (!confirmBox) {
+        return;
+    }
+    confirmBox.style.display = confirmBox.style.display === 'none' ? 'block' : 'none';
+}
+
+function hideDeleteDuplicatesConfirm(courseId) {
+    var confirmBox = document.getElementById('delete-duplicates-confirm-' + courseId);
+    if (confirmBox) {
+        confirmBox.style.display = 'none';
+    }
+}
+
+function submitDeleteDuplicates(courseId) {
+    var form = document.getElementById('delete-duplicates-form-' + courseId);
+    if (form) {
+        // Disable the button to prevent multiple submissions
+        var button = event.target;
+        if (button) {
+            button.disabled = true;
+        }
+        form.submit();
+    }
+}
+

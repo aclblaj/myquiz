@@ -26,6 +26,18 @@
         Duplicates
     </button>
 
+    <form th:id="${'delete-duplicates-form-' + course.id}"
+          th:action="@{'/courses/' + ${course.id} + '/delete-duplicate-questions'}"
+          method="post"
+          style="display:inline-block; margin:0;">
+        <input type="hidden" name="selectedCourse" th:value="${selectedCourse}">
+        <input type="hidden" name="selectedYear" th:value="${selectedYear}">
+        <input type="hidden" name="page" th:value="${currentPage}">
+        <input type="hidden" name="pageSize" th:value="${pageSize}">
+    </form>
+    <button type="button" class="btn btn-warning" th:attr="onclick=|toggleDeleteDuplicatesConfirm(${course.id})|">⚠️ Delete Exact Duplicates
+    </button>
+
     <form th:action="@{'/courses/' + ${course.id}}" method="post" style="display:inline-block; margin:0;">
         <input type="hidden" name="_method" value="delete"/>
         <button type="submit"
@@ -48,12 +60,25 @@
             </button>
         </div>
     </div>
+
+    <div th:id="${'delete-duplicates-confirm-' + course.id}" class="form-container mt-1" style="display:none;">
+        <div class="list-error-message">Delete duplicate questions from this course? This will permanently remove exact duplicate questions (matching title and answers) from all question banks, keeping only one instance of each unique question. This action cannot be undone.
+        </div>
+        <div class="form-actions" style="margin-top:0.5rem;">
+            <button type="button" class="btn btn-warning btn-small" th:attr="onclick=|submitDeleteDuplicates(${course.id})|">
+                Delete
+            </button>
+            <button type="button" class="btn btn-outline btn-small"
+                    th:attr="onclick=|hideDeleteDuplicatesConfirm(${course.id})|">Cancel
+            </button>
+        </div>
+    </div>
 </div>
 
 <!-- Recompute Feedback Fragment -->
 <!-- Question Bank Actions (shared across list/details/extended/statistics) -->
 <th:block th:fragment="question-bank-actions(questionBank, page, pageSize, selectedCourseId)">
-    <a th:href="@{/questions(page=1, pageSize=${pageSize != null ? pageSize : 10}, courseId=${questionBank.courseId}, questionBankId=${questionBank.id})}"
+    <a th:href="@{/questions(page=1, pageSize=${pageSize != null ? pageSize : 10}, courseId=${selectedCourseId != null ? selectedCourseId : questionBank.courseId}, questionBankId=${questionBank.id})}"
        class="btn btn-questions" title="Manage Questions">📚 Questions</a>
     <a th:href="@{/question-banks/{id}/extended(id=${questionBank.id}, page=${page}, pageSize=${pageSize}, courseId=${selectedCourseId})}"
        class="btn btn-new" title="Details View">📋 Details</a>
@@ -69,7 +94,7 @@
 </th:block>
 
 <!-- Author Actions (shared across list/details) -->
-<th:block th:fragment="author-actions(author, page, pageSize, selectedCourseId, selectedQuestionBankId)">
+<th:block th:fragment="author-actions(author, page, pageSize, selectedCourseId, selectedAuthorId, selectedQuestionBankId)">
     <a th:href="@{/questions(courseId=${selectedCourseId}, authorId=${author.id}, page=1, pageSize=${pageSize != null ? pageSize : 10})}"
        class="btn btn-questions" title="Manage Questions">📚 Questions</a>
     <a th:href="@{/authors/{id}/details(id=${author.id}, courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, page=${page}, pageSize=${pageSize})}"

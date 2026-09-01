@@ -49,6 +49,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/courses")
 public class ThyCourseController {
     private static final Logger log = LoggerFactory.getLogger(ThyCourseController.class);
+
     private record CoursePageResult(List<CourseDto> courses, int currentPage, int totalPages, int totalElements) {
     }
 
@@ -95,7 +96,7 @@ public class ThyCourseController {
             CoursePageResult pageResult = paginateCourses(filteredCourses, pagination);
             Set<String> uniqueYears = extractUniqueYears(allCourses);
 
-            populateCourseListModelFromData(model, selectedCourseId, selectedYear, pagination.pageSize(), pageResult, uniqueYears);
+            populateCourseListModelFromData(model, allCourses, selectedCourseId, selectedYear, pagination.pageSize(), pageResult, uniqueYears);
             model.addAttribute(ControllerSettings.ATTR_LOGGED_IN_USER, loggedInUser);
             return ControllerSettings.VIEW_COURSE_LIST;
         } catch (HttpClientErrorException.Forbidden ex) {
@@ -157,9 +158,10 @@ public class ThyCourseController {
     /**
      * Populates model with course list data from filtered/paginated result.
      */
-    private void populateCourseListModelFromData(Model model, Long selectedCourseId, String selectedYear, int pageSize,
+    private void populateCourseListModelFromData(Model model, CourseDto[] allCourses, Long selectedCourseId, String selectedYear, int pageSize,
                                                  CoursePageResult pageResult, Set<String> uniqueYears) {
-        model.addAttribute(ControllerSettings.ATTR_COURSES, pageResult.courses());
+        model.addAttribute(ControllerSettings.ATTR_COURSES, Arrays.asList(allCourses));
+        model.addAttribute(ControllerSettings.ATTR_FILTER_COURSES, pageResult.courses());
         model.addAttribute(ControllerSettings.ATTR_YEARS, uniqueYears);
         model.addAttribute(ControllerSettings.ATTR_SELECTED_COURSE_ID, selectedCourseId);
         model.addAttribute(ControllerSettings.ATTR_SELECTED_YEAR, selectedYear);
@@ -174,6 +176,7 @@ public class ThyCourseController {
      */
     private void populateCourseListModelFallback(Model model, Long selectedCourseId, String selectedYear, PaginationParams pagination) {
         model.addAttribute(ControllerSettings.ATTR_COURSES, new CourseDto[0]);
+        model.addAttribute(ControllerSettings.ATTR_FILTER_COURSES, List.of());
         model.addAttribute(ControllerSettings.ATTR_YEARS, Set.of());
         model.addAttribute(ControllerSettings.ATTR_SELECTED_COURSE_ID, selectedCourseId);
         model.addAttribute(ControllerSettings.ATTR_SELECTED_YEAR, selectedYear);
@@ -380,6 +383,38 @@ public class ThyCourseController {
             redirectUrl.append(separator).append(ControllerSettings.ATTR_PAGE_SIZE).append("=").append(pagination.pageSize());
         }
         return redirectUrl.toString();
+    }
+
+    @PostMapping("/{id}/delete-duplicate-questions")
+    public String deleteDuplicateQuestionsInCourse(@PathVariable Long id, @RequestParam(value = ControllerSettings.ATTR_SELECTED_COURSE_ID, required = false) Long selectedCourseId,
+                                                   @RequestParam(value = ControllerSettings.ATTR_SELECTED_YEAR, required = false) String selectedYear,
+                                                   @RequestParam(value = ControllerSettings.ATTR_PAGE_NUMBER, required = false) Integer page,
+                                                   @RequestParam(value = ControllerSettings.ATTR_PAGE_SIZE, required = false) Integer pageSize, RedirectAttributes redirectAttributes) {
+        String redirect = sessionService.validateSessionOrRedirect();
+        if (redirect != null) {
+            return redirect;
+        }
+
+        HttpEntity<Void> entity = sessionService.getAuthorizationHeader();
+        String endpoint = UriComponentsBuilder.fromUriString(apiBaseUrl + ControllerSettings.API_COURSES + id)
+                .path("/delete-duplicate-questions")
+                .toUriString();
+        try {
+            restTemplate.exchange(endpoint, HttpMethod.POST, entity, String.class);
+            redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_MESSAGE,
+                "Duplicate questions deletion started for this course. Check the recompute history once it completes.");
+        } catch (HttpClientErrorException.NotFound e) {
+            redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_ERROR_MSG, ControllerSettings.MSG_COURSE_NOT_FOUND_RECOMPUTE);
+        } catch (HttpClientErrorException.Forbidden | HttpClientErrorException.Unauthorized e) {
+            sessionService.invalidateCurrentSession();
+            redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_ERROR_MSG, ControllerSettings.MSG_SESSION_EXPIRED_LOGIN_AGAIN);
+            return ControllerSettings.VIEW_REDIRECT_AUTH_LOGIN;
+        } catch (Exception e) {
+            log.atError().setCause(e).addArgument(id).addArgument(e.getMessage()).log("Failed to delete duplicate questions for course {}: {}");
+            redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_ERROR_MSG, "Failed to delete duplicate questions: " + e.getMessage());
+        }
+
+        return buildCourseListRedirectUrl(selectedCourseId, selectedYear, page, pageSize);
     }
 
     @GetMapping("/{id}/export-xml")

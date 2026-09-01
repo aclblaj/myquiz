@@ -76,7 +76,7 @@
         </tr>
         </thead>
         <tbody>
-        <tr th:each="course : ${courses}" class="data-row">
+        <tr th:each="course : ${filterCourses}" class="data-row">
             <td>
                 <a th:if="${course.id != null}" th:href="@{'/courses/' + ${course.id}}" th:text="${course.id}">1</a>
                 <span th:if="${course.id == null}">-</span>

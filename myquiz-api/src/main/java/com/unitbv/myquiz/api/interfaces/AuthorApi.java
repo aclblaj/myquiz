@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -59,7 +60,7 @@ public interface AuthorApi {
             }
     )
     @PostMapping("")
-    ResponseEntity<AuthorDto> createAuthor(@Parameter(description = "Author data", required = true) @RequestBody AuthorUpsertDto authorUpsertDto);
+    ResponseEntity<AuthorDto> createAuthor(@Parameter(description = "Author data", required = true) @Valid @RequestBody AuthorUpsertDto authorUpsertDto);
 
     @Operation(summary = "Update author", description = "Update an existing author by ID")
     @ApiResponses(
@@ -73,7 +74,7 @@ public interface AuthorApi {
     @PutMapping("/{id}")
     ResponseEntity<AuthorDto> updateAuthor(
             @Parameter(description = "Author ID", required = true) @PathVariable Long id,
-            @Parameter(description = "Author data", required = true) @RequestBody AuthorUpsertDto authorUpsertDto
+            @Parameter(description = "Author data", required = true) @Valid @RequestBody AuthorUpsertDto authorUpsertDto
     );
 
     @Operation(summary = "Delete author", description = "Delete an author by ID")
@@ -96,7 +97,7 @@ public interface AuthorApi {
             }
     )
     @GetMapping("/name/{authorName}/questions")
-    ResponseEntity<AuthorFormDataDto> getQuestionsForAuthorName(@PathVariable String authorName);
+    ResponseEntity<AuthorFormDataDto> getQuestionsForAuthorName(@PathVariable("authorName") String authorName);
 
     @Operation(summary = "Get questions by author ID", description = "Retrieve questions created by a specific author using their ID")
     @ApiResponses(
@@ -107,7 +108,7 @@ public interface AuthorApi {
             }
     )
     @GetMapping("/id/{authorId}/questions")
-    ResponseEntity<AuthorFormDataDto> getQuestionsForAuthorId(@PathVariable Long authorId);
+    ResponseEntity<AuthorFormDataDto> getQuestionsForAuthorId(@PathVariable("authorId") Long authorId);
 
     @Operation(summary = "Get author by name", description = "Retrieve a specific author by their name")
     @ApiResponses(
@@ -118,7 +119,7 @@ public interface AuthorApi {
             }
     )
     @GetMapping("/name/{name}")
-    ResponseEntity<AuthorDto> getAuthorByName(@PathVariable String name);
+    ResponseEntity<AuthorDto> getAuthorByName(@PathVariable("name") String name);
 
     @Operation(summary = "List authors filtered", description = "Filter authors by course, authorId, page, pageSize", tags = {"Authors"}, operationId = "listAuthors", security = {@SecurityRequirement(name = "bearerAuth")})
     @ApiResponses(
@@ -129,7 +130,7 @@ public interface AuthorApi {
             }
     )
     @PostMapping("/filter")
-    ResponseEntity<AuthorFilterResponseDto> listAuthors(@RequestBody AuthorFilterRequestDto filterInput);
+    ResponseEntity<AuthorFilterResponseDto> listAuthors(@Valid @RequestBody AuthorFilterRequestDto filterInput);
 
     @Operation(summary = "Get author details", description = "Retrieve detailed information about a specific author by their ID")
     @ApiResponses(

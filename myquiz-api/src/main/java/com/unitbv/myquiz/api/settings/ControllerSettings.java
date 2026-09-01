@@ -30,6 +30,7 @@ public class ControllerSettings {
     public static final String KEY_TOKEN = "token";
     // Course
     public static final String ATTR_COURSES = "courses";
+    public static final String ATTR_FILTER_COURSES = "filterCourses";
     public static final String ATTR_COURSE = "course";
     public static final String ATTR_COURSE_ID = "courseId";
     public static final String ATTR_MESSAGE = "message";

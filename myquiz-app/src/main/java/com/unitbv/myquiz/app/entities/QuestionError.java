@@ -19,6 +19,7 @@ import lombok.NoArgsConstructor;
 import lombok.ToString;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 
 /**
  * Primary persisted error entity attached to a single question.
@@ -62,7 +63,7 @@ public class QuestionError {
 
     @PrePersist
     protected void onCreate() {
-        createdAt = OffsetDateTime.now();
+        createdAt = OffsetDateTime.now(ZoneId.systemDefault());
     }
 }
 

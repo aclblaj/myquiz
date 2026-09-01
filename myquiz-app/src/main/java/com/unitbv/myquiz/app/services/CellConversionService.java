@@ -370,6 +370,8 @@ public class CellConversionService {
      * Get exception class name without package.
      */
     private String getExceptionClassName(Exception e) {
-        return e.getClass().getName().replaceAll(".*\\.", "");
+        String className = e.getClass().getName();
+        int lastDot = className.lastIndexOf('.');
+        return lastDot >= 0 ? className.substring(lastDot + 1) : className;
     }
 }

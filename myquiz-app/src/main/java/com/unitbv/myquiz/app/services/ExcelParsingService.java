@@ -43,7 +43,6 @@ public class ExcelParsingService {
     // Excel Parser Configuration Constants
     private static final int MIN_MULTICHOICE_VALUES = 11;
     private static final int MIN_TRUEFALSE_VALUES = 6;
-    private static final int MIN_QUESTIONS_PER_SHEET = 3;
     private static final int MAX_CONSECUTIVE_EMPTY_ROWS_TRUEFALSE = 2;
     private static final int MAX_CONSECUTIVE_EMPTY_ROWS_MULTICHOICE = 20;
     private static final int MAX_RECURSION_DEPTH = 10;
@@ -445,9 +444,6 @@ public class ExcelParsingService {
         return TemplateType.Other;
     }
 
-    /**
-     * Detect template type based on first non-empty row.
-     */
     /**
      * Enum representing the result of row processing
      */

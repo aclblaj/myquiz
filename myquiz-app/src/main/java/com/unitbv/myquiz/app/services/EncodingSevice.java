@@ -3,11 +3,9 @@ package com.unitbv.myquiz.app.services;
 import com.unitbv.myquiz.app.repositories.QuestionRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
 @Service
@@ -16,18 +14,19 @@ public class EncodingSevice {
     public static final String UTF_8 = "UTF-8";
     public static final String UTF_16 = "UTF-16";
     public static final String ISO_8859_1 = "ISO-8859-1";
-    Logger logger = LoggerFactory.getLogger(EncodingSevice.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(EncodingSevice.class.getName());
 
-    @Autowired
-    QuestionRepository questionRepository;
+    private final QuestionRepository questionRepository;
 
-    
-    public String getServerEncoding() {
-        String encoding = questionRepository.getEncoding();
-        return encoding;
+    public EncodingSevice(QuestionRepository questionRepository) {
+        this.questionRepository = questionRepository;
     }
 
-    
+    public String getServerEncoding() {
+        return questionRepository.getEncoding();
+    }
+
+
     public boolean checkServerEncoding() {
         String result = getServerEncoding();
         logger.atInfo().addArgument(result).log("Server encoding: {}");
@@ -47,7 +46,7 @@ public class EncodingSevice {
         return false;
     }
 
-    
+
     public String convertToUTF8(String value) {
         String enc = this.detectEncoding(value);
         if (enc.equals(ISO_8859_1)) {
