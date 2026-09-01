@@ -1929,4 +1929,149 @@ public class QuestionDuplicationService {
         }
     }
 
+    /**
+     * Delete duplicate questions from a course, keeping only one instance of each unique question.
+     * Duplicates are identified by exact title match and exact answer match.
+     * For multiple choice questions, all 4 answers must match (regardless of order).
+     * For true/false questions, the single answer must match.
+     *
+     * @param courseQuestions All questions in the course
+     * @return Number of questions deleted
+     */
+    @Transactional
+    public int deleteDuplicateQuestions(List<Question> courseQuestions) {
+        if (courseQuestions == null || courseQuestions.isEmpty()) {
+            logger.atWarn().log("No questions provided for duplicate deletion");
+            return 0;
+        }
+
+        int deletedCount = 0;
+        Map<String, List<Question>> groupedByTitle = new HashMap<>();
+
+        // Group questions by exact title match
+        for (Question question : courseQuestions) {
+            if (question != null && question.getTitle() != null) {
+                String title = question.getTitle().trim();
+                groupedByTitle.computeIfAbsent(title, k -> new ArrayList<>()).add(question);
+            }
+        }
+
+        // Process each group to find and delete duplicates
+        for (Map.Entry<String, List<Question>> entry : groupedByTitle.entrySet()) {
+            List<Question> group = entry.getValue();
+            if (group.size() <= 1) {
+                continue; // No duplicates in this group
+            }
+
+            // Check which questions are actual duplicates
+            List<Question> toDelete = new ArrayList<>();
+            Question keepQuestion = group.get(0); // Keep the first one
+
+            for (int i = 1; i < group.size(); i++) {
+                Question candidate = group.get(i);
+                if (areQuestionsExactlyDuplicate(keepQuestion, candidate)) {
+                    toDelete.add(candidate);
+                }
+            }
+
+            // Delete the duplicate questions
+            for (Question questionToDelete : toDelete) {
+                try {
+                    // Remove duplicate associations first
+                    removeAllDuplicateAssociationsForQuestion(questionToDelete.getId());
+                    // Delete the question
+                    questionRepository.delete(questionToDelete);
+                    deletedCount++;
+                    logger.atInfo()
+                          .addArgument(questionToDelete.getId())
+                          .addArgument(keepQuestion.getId())
+                          .addArgument(entry.getKey())
+                          .log("Deleted duplicate question id={} (keeping id={}) with title '{}'");
+                } catch (Exception e) {
+                    logger.atError()
+                          .setCause(e)
+                          .addArgument(questionToDelete.getId())
+                          .addArgument(entry.getKey())
+                          .log("Error deleting duplicate question id={} with title '{}': {}");
+                }
+            }
+        }
+
+        if (deletedCount > 0) {
+            logger.atInfo()
+                  .addArgument(deletedCount)
+                  .log("Duplicate question deletion completed: {} questions deleted");
+        }
+
+        return deletedCount;
+    }
+
+    /**
+     * Check if two questions are exactly duplicates.
+     * Exact match means:
+     * - Same title (case-sensitive)
+     * - Same type
+     * - For MC: all 4 answers match exactly (regardless of order)
+     * - For TF: single answer matches exactly
+     *
+     * @param q1 First question
+     * @param q2 Second question
+     * @return true if questions are exactly duplicates
+     */
+    private boolean areQuestionsExactlyDuplicate(Question q1, Question q2) {
+        if (q1 == null || q2 == null) {
+            return false;
+        }
+
+        // Titles must match exactly
+        if (!Objects.equals(q1.getTitle(), q2.getTitle())) {
+            return false;
+        }
+
+        // Types must match
+        if (!Objects.equals(q1.getType(), q2.getType())) {
+            return false;
+        }
+
+        // Check answers based on type
+        if (q1.getType() == QuestionType.MULTICHOICE) {
+            return areMultichoiceAnswersExactlyDuplicate(q1, q2);
+        } else if (q1.getType() == QuestionType.TRUEFALSE) {
+            return areTrueFalseAnswersExactlyDuplicate(q1, q2);
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if two multiple choice questions have exactly duplicate answers.
+     * All 4 answers must match, but order doesn't matter.
+     */
+    private boolean areMultichoiceAnswersExactlyDuplicate(Question q1, Question q2) {
+        Set<String> answers1 = new HashSet<>(Arrays.asList(q1.getResponse1(), q1.getResponse2(), q1.getResponse3(), q1.getResponse4()));
+        Set<String> answers2 = new HashSet<>(Arrays.asList(q2.getResponse1(), q2.getResponse2(), q2.getResponse3(), q2.getResponse4()));
+
+        // Both must have exactly 4 non-null answers
+        answers1.remove(null);
+        answers2.remove(null);
+
+        return answers1.size() == NUM_ANSWERS && answers2.size() == NUM_ANSWERS && answers1.equals(answers2);
+    }
+
+    /**
+     * Check if two true/false questions have exactly duplicate answers.
+     * The single answer (response1) must match exactly.
+     */
+    private boolean areTrueFalseAnswersExactlyDuplicate(Question q1, Question q2) {
+        String answer1 = q1.getResponse1();
+        String answer2 = q2.getResponse1();
+
+        // Both must have a non-null, non-blank answer
+        if (answer1 == null || answer1.isBlank() || answer2 == null || answer2.isBlank()) {
+            return false;
+        }
+
+        return answer1.equals(answer2);
+    }
+
 }

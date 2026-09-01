@@ -36,24 +36,14 @@ public class QuestionDuplicateMapper {
         if (duplicateLink != null) {
             Question q1 = duplicateLink.getQuestion();
             Question q2 = duplicateLink.getDuplicateQuestion();
-            if (q1 != null) {
-                duplicateDto.setQuestion1Id(q1.getId());
-                duplicateDto.setQuestion1Title(q1.getTitle());
-                duplicateDto.setType1(q1.getType());
-                duplicateDto.setResponse1Q1(q1.getResponse1());
-                duplicateDto.setResponse2Q1(q1.getResponse2());
-                duplicateDto.setResponse3Q1(q1.getResponse3());
-                duplicateDto.setResponse4Q1(q1.getResponse4());
-            }
-            if (q2 != null) {
-                duplicateDto.setQuestion2Id(q2.getId());
-                duplicateDto.setQuestion2Title(q2.getTitle());
-                duplicateDto.setType2(q2.getType());
-                duplicateDto.setResponse1Q2(q2.getResponse1());
-                duplicateDto.setResponse2Q2(q2.getResponse2());
-                duplicateDto.setResponse3Q2(q2.getResponse3());
-                duplicateDto.setResponse4Q2(q2.getResponse4());
-            }
+            setQuestion1Data(
+                    q1,
+                    duplicateDto
+            );
+            setQuestion2Data(
+                    q2,
+                    duplicateDto
+            );
         }
 
         if (question.getQuestionBankAuthor() != null) {
@@ -74,5 +64,29 @@ public class QuestionDuplicateMapper {
         }
 
         return duplicateDto;
+    }
+
+    private static void setQuestion2Data(Question q2, QuestionDuplicateDto duplicateDto) {
+        if (q2 != null) {
+            duplicateDto.setQuestion2Id(q2.getId());
+            duplicateDto.setQuestion2Title(q2.getTitle());
+            duplicateDto.setType2(q2.getType());
+            duplicateDto.setResponse1Q2(q2.getResponse1());
+            duplicateDto.setResponse2Q2(q2.getResponse2());
+            duplicateDto.setResponse3Q2(q2.getResponse3());
+            duplicateDto.setResponse4Q2(q2.getResponse4());
+        }
+    }
+
+    private static void setQuestion1Data(Question q1, QuestionDuplicateDto duplicateDto) {
+        if (q1 != null) {
+            duplicateDto.setQuestion1Id(q1.getId());
+            duplicateDto.setQuestion1Title(q1.getTitle());
+            duplicateDto.setType1(q1.getType());
+            duplicateDto.setResponse1Q1(q1.getResponse1());
+            duplicateDto.setResponse2Q1(q1.getResponse2());
+            duplicateDto.setResponse3Q1(q1.getResponse3());
+            duplicateDto.setResponse4Q1(q1.getResponse4());
+        }
     }
 }

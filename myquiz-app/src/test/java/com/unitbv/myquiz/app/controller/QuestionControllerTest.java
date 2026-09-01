@@ -11,6 +11,7 @@ import com.unitbv.myquiz.api.types.QuestionType;
 import com.unitbv.myquiz.app.entities.QuestionBankAuthor;
 import com.unitbv.myquiz.app.services.AuthorService;
 import com.unitbv.myquiz.app.services.CourseService;
+import com.unitbv.myquiz.app.services.FilterOptionsService;
 import com.unitbv.myquiz.app.services.QuestionBankAuthorService;
 import com.unitbv.myquiz.app.services.QuestionBankService;
 import com.unitbv.myquiz.app.services.QuestionCorrectionService;
@@ -49,6 +50,8 @@ class QuestionControllerTest {
     private QuestionBankAuthorService questionBankAuthorService;
     @Mock
     private QuestionCorrectionService questionCorrectionService;
+    @Mock
+    private FilterOptionsService filterOptionsService;
 
     private QuestionController controller;
 
@@ -60,7 +63,8 @@ class QuestionControllerTest {
                 courseService,
                 questionBankService,
                 questionBankAuthorService,
-                questionCorrectionService
+                questionCorrectionService,
+                filterOptionsService
         );
     }
 

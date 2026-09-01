@@ -23,22 +23,24 @@ public class JwtUtil {
             throw new IllegalStateException("JWT secret is not configured");
         }
         if (jwtSecret.length() < 32) { // 256 bits ~ 32 bytes
-            log.warn("[JwtUtil] Provided jwt.secret may be too short (length={}), consider using at least 32+ characters.", jwtSecret.length());
+            log.warn(
+                    "[JwtUtil] Provided jwt.secret may be too short (length={}), consider using at least 32+ characters.",
+                    jwtSecret.length());
         }
         return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
     }
 
-
     /**
      * Generate JWT token with username, roles, and permissions
-     * @param username User's username
-     * @param roles Set of role names
+     * 
+     * @param username    User's username
+     * @param roles       Set of role names
      * @param permissions Set of permission names
      * @return JWT token string
      */
     public String generateToken(String username, Set<String> roles, Set<String> permissions) {
         log.debug("[JwtUtil] Generating token for user: {}, roles: {}, permissions count: {}",
-                  username, roles, permissions.size());
+                username, roles, permissions.size());
 
         return Jwts.builder()
                 .subject(username)
@@ -49,6 +51,7 @@ public class JwtUtil {
                 .signWith(getSecretKey())
                 .compact();
     }
+
     public String extractUsername(String token) {
         try {
             return Jwts.parser()
@@ -62,12 +65,14 @@ public class JwtUtil {
             throw e;
         }
     }
+
     public boolean validateToken(String token, UserDetails userDetails) {
         try {
             String extracted = extractUsername(token);
             boolean expired = isTokenExpired(token);
             boolean valid = extracted.equals(userDetails.getUsername()) && !expired;
-            log.debug("[JwtUtil] Validation result for user {}: {} (expired={})", userDetails.getUsername(), valid, expired);
+            log.debug("[JwtUtil] Validation result for user {}: {} (expired={})", userDetails.getUsername(), valid,
+                    expired);
             return valid;
         } catch (Exception e) {
             log.error("[JwtUtil] Token validation error: {}", e.getMessage());
@@ -77,6 +82,7 @@ public class JwtUtil {
 
     /**
      * Extract roles from JWT token
+     * 
      * @param token JWT token
      * @return Set of role names
      */
@@ -101,6 +107,7 @@ public class JwtUtil {
 
     /**
      * Extract permissions from JWT token
+     * 
      * @param token JWT token
      * @return Set of permission names
      */

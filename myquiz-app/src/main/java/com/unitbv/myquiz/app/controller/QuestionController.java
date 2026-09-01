@@ -17,6 +17,7 @@ import com.unitbv.myquiz.api.util.PaginationSupport;
 import com.unitbv.myquiz.app.entities.QuestionBankAuthor;
 import com.unitbv.myquiz.app.services.AuthorService;
 import com.unitbv.myquiz.app.services.CourseService;
+import com.unitbv.myquiz.app.services.FilterOptionsService;
 import com.unitbv.myquiz.app.services.QuestionBankAuthorService;
 import com.unitbv.myquiz.app.services.QuestionBankService;
 import com.unitbv.myquiz.app.services.QuestionCorrectionService;
@@ -51,6 +52,7 @@ public class QuestionController implements QuestionApi {
     // Use SLF4J's log.info for consistency and compatibility
     private static final Logger log = LoggerFactory.getLogger(QuestionController.class);
     private static final String SAMPLE_CHAPTER = "Databases";
+    public static final String QUESTION_NOT_FOUND = "Question not found: {}";
     // Use constructor injection for all dependencies
     private final QuestionService questionService;
     private final AuthorService authorService;
@@ -58,10 +60,11 @@ public class QuestionController implements QuestionApi {
     private final QuestionBankService questionBankService;
     private final QuestionBankAuthorService questionBankAuthorService;
     private final QuestionCorrectionService questionCorrectionService;
+    private final FilterOptionsService filterOptionsService;
 
     public QuestionController(
             QuestionService questionService, AuthorService authorService, CourseService courseService, QuestionBankService questionBankService, QuestionBankAuthorService questionBankAuthorService,
-            QuestionCorrectionService questionCorrectionService
+            QuestionCorrectionService questionCorrectionService, FilterOptionsService filterOptionsService
     ) {
         this.questionService = questionService;
         this.authorService = authorService;
@@ -69,6 +72,7 @@ public class QuestionController implements QuestionApi {
         this.questionBankService = questionBankService;
         this.questionBankAuthorService = questionBankAuthorService;
         this.questionCorrectionService = questionCorrectionService;
+        this.filterOptionsService = filterOptionsService;
     }
 
     @Override
@@ -90,7 +94,10 @@ public class QuestionController implements QuestionApi {
         log.atInfo().addArgument(id).log("Getting question by id: {}");
         try {
             QuestionDto question = questionService.getQuestionById(id);
-            return question != null ? ResponseEntity.ok(question) : ResponseEntity.notFound().build();
+            if (question == null) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.ok(question);
         }
         catch (ResourceNotFoundException e) {
             log.atWarn().addArgument(id).log(ControllerSettings.LOG_QUESTION_NOT_FOUND);
@@ -140,7 +147,10 @@ public class QuestionController implements QuestionApi {
             }
             questionDto.setId(id);
             QuestionDto updatedQuestion = questionService.updateQuestion(questionDto);
-            return updatedQuestion != null ? ResponseEntity.ok(updatedQuestion) : ResponseEntity.notFound().build();
+            if (updatedQuestion == null) {
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.ok(updatedQuestion);
         }
         catch (ResourceNotFoundException e) {
             log.atWarn().addArgument(id).log(ControllerSettings.LOG_QUESTION_NOT_FOUND);
@@ -158,7 +168,11 @@ public class QuestionController implements QuestionApi {
         log.atInfo().addArgument(id).log("Deleting question with id: {}");
         try {
             boolean deleted = questionService.deleteQuestion(id);
-            return deleted ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
+            if (!deleted) {
+                log.atDebug().addArgument(id).log("Question not found for deletion: {}");
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.noContent().build();
         }
         catch (ResourceNotFoundException e) {
             log.atWarn().addArgument(id).log(ControllerSettings.LOG_QUESTION_NOT_FOUND);
@@ -239,6 +253,7 @@ public class QuestionController implements QuestionApi {
         // Enrich response with resolved author information (name resolved from ID)
         filteredQuestions.setAuthorName(authorInfo.getName());
         filteredQuestions.setSelectedCourseId(selectedCourseId);
+        filteredQuestions.setAuthors(filterOptionsService.resolveAuthorOptions(questionBankId, selectedCourse));
 
         return ResponseEntity.ok(filteredQuestions);
     }
@@ -264,7 +279,7 @@ public class QuestionController implements QuestionApi {
         try {
             QuestionDto questionWithDuplicates = questionService.getQuestionWithDuplicates(id);
             if (questionWithDuplicates == null) {
-                log.atWarn().addArgument(id).log("Question not found: {}");
+                log.atWarn().addArgument(id).log(QUESTION_NOT_FOUND);
                 return ResponseEntity.notFound().build();
             }
             return ResponseEntity.ok(questionWithDuplicates);
@@ -310,7 +325,7 @@ public class QuestionController implements QuestionApi {
                 log.atInfo().addArgument(id).addArgument(selectionDto.getDuplicateQuestionIds().size()).log("Removed {} duplication links for question {}");
                 return ResponseEntity.noContent().build();
             } else {
-                log.atWarn().addArgument(id).log("Question not found: {}");
+                log.atWarn().addArgument(id).log(QUESTION_NOT_FOUND);
                 return ResponseEntity.notFound().build();
             }
         }
@@ -345,7 +360,7 @@ public class QuestionController implements QuestionApi {
                 log.atInfo().addArgument(id).log("Removed all duplication links for question {}");
                 return ResponseEntity.noContent().build();
             } else {
-                log.atWarn().addArgument(id).log("Question not found: {}");
+                log.atWarn().addArgument(id).log(QUESTION_NOT_FOUND);
                 return ResponseEntity.notFound().build();
             }
         }

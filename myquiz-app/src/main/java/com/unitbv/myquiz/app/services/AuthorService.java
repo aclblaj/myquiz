@@ -64,7 +64,7 @@ public class AuthorService {
     /** Initials of the fallback dummy author. */
     public static final String DUMMY_AUTHOR_INITIALS = "NA";
 
-    // All dependencies are now final for thread safety
+    // All dependencies are final for thread safety
     private final AuthorRepository authorRepository;
     private final QuestionRepository questionRepository;
     private final QuestionService questionService;
@@ -72,21 +72,20 @@ public class AuthorService {
     private final QuestionBankRepository questionBankRepository;
     private final QuestionErrorService questionErrorService;
     private final QuestionBankAuthorService questionBankAuthorService;
-    private final QuestionBankService questionBankService;
     private final QuestionErrorRepository questionErrorRepository;
     private final QuestionDuplicateRepository questionDuplicateRepository;
     private final QuestionMapper questionMapper;
     private final CourseService courseService;
 
     // Self-reference for calling @Cacheable methods (enables cache proxy)
-    private AuthorService self;
+    private final AuthorService self;
 
     @Lazy
     @Autowired
     public AuthorService(AuthorRepository authorRepository, QuestionRepository questionRepository, QuestionService questionService, QuestionBankAuthorRepository questionBankAuthorRepository,
                          QuestionBankRepository questionBankRepository, QuestionErrorService questionErrorService, QuestionBankAuthorService questionBankAuthorService,
-                         QuestionBankService questionBankService, QuestionErrorRepository questionErrorRepository, QuestionDuplicateRepository questionDuplicateRepository,
-                         QuestionMapper questionMapper, CourseService courseService) {
+                         QuestionErrorRepository questionErrorRepository, QuestionDuplicateRepository questionDuplicateRepository,
+                         QuestionMapper questionMapper, CourseService courseService, @Lazy AuthorService self) {
         this.authorRepository = authorRepository;
         this.questionRepository = questionRepository;
         this.questionService = questionService;
@@ -94,24 +93,15 @@ public class AuthorService {
         this.questionBankRepository = questionBankRepository;
         this.questionErrorService = questionErrorService;
         this.questionBankAuthorService = questionBankAuthorService;
-        this.questionBankService = questionBankService;
         this.questionErrorRepository = questionErrorRepository;
-        this.questionDuplicateRepository = questionDuplicateRepository;
-        this.questionMapper = questionMapper;
-        this.courseService = courseService;
+       this.questionDuplicateRepository = questionDuplicateRepository;
+       this.questionMapper = questionMapper;
+       this.courseService = courseService;
+       this.self = self != null ? self : this;
     }
 
-    private static boolean testIfMultichoice(Question q) {
-        return q.getType() != null && q.getType().equals(QuestionType.MULTICHOICE);
-    }
-
-    /**
-     * Sets self-reference to enable @Cacheable methods to work when called internally.
-     * This is automatically called by Spring after bean initialization.
-     */
-    @Autowired
-    public void setSelf(@Lazy AuthorService self) {
-        this.self = self;
+    private AuthorService getSelf() {
+        return self != null ? self : this;
     }
 
     public String extractAuthorNameFromPath(String filePath) {
@@ -156,7 +146,6 @@ public class AuthorService {
         }
         return initials.toString();
     }
-
 
     @Transactional
     @CacheEvict(value = {"allAuthorsBasic", "authorsByCourse"}, allEntries = true)
@@ -205,7 +194,6 @@ public class AuthorService {
         return dto;
     }
 
-
     public List<AuthorDto> getAllAuthors() {
         try {
             return authorRepository.findAll().stream().map(a -> {
@@ -213,19 +201,23 @@ public class AuthorService {
                 // Compute question counts for each author
                 long mcCount = 0L;
                 long tfCount = 0L;
-                long totalCount; // Will be computed from mcCount + tfCount
                 List<QuestionBankAuthor> questionBankAuthors = getQuestionBankAuthors(a);
                 for (QuestionBankAuthor qa : questionBankAuthors) {
                     mcCount += getQuestionBankAuthorQuestions(qa).stream().filter(q -> q.getType() != null && q.getType().equals(QuestionType.MULTICHOICE)).count();
                     tfCount += getQuestionBankAuthorQuestions(qa).stream().filter(q -> q.getType() != null && q.getType().equals(QuestionType.TRUEFALSE)).count();
                 }
-                totalCount = mcCount + tfCount;
+                long totalCount = mcCount + tfCount;
                 dto.setNumberOfMultipleChoiceQuestions(mcCount);
                 dto.setNumberOfTrueFalseQuestions(tfCount);
                 dto.setNumberOfQuestions(totalCount);
+
                 // Count questions with duplicate links
-                List<Long> questionIds = questionBankAuthors.stream().flatMap(qa -> getQuestionBankAuthorQuestions(qa).stream()).map(q -> q.getId()).filter(java.util.Objects::nonNull).distinct()
-                                                            .toList();
+                List<Long> questionIds = questionBankAuthors.stream()
+                        .flatMap(qa -> getQuestionBankAuthorQuestions(qa).stream())
+                        .map(Question::getId)
+                        .filter(java.util.Objects::nonNull)
+                        .distinct()
+                        .toList();
                 long duplicatesCount = 0L;
                 if (!questionIds.isEmpty()) {
                     for (Long qid : questionIds) {
@@ -260,11 +252,9 @@ public class AuthorService {
         }
     }
 
-
     public boolean existsById(Long id) {
         return authorRepository.existsById(id);
     }
-
 
     @Transactional
     @CacheEvict(value = {"allAuthorsBasic", "authorsByCourse"}, allEntries = true)
@@ -272,13 +262,11 @@ public class AuthorService {
         authorRepository.deleteById(id);
     }
 
-
     @Transactional
     @CacheEvict(value = {"allAuthorsBasic", "authorsByCourse"}, allEntries = true)
     public void deleteAll() {
         authorRepository.deleteAll();
     }
-
 
     @Transactional(readOnly = true)
     public AuthorDto getAuthorWithQuestionBankStats(Long authorId, String courseName) {
@@ -293,33 +281,19 @@ public class AuthorService {
         Set<Long> questionIds = new HashSet<>();
 
         for (QuestionBankAuthor questionBankAuthor : getQuestionBankAuthors(author)) {
-            QuestionBank questionBank = questionBankAuthor.getQuestionBank();
-            if (questionBank == null) {
-                questionBank = getAuthorFromQuestionBank(questionBankAuthor);
+            QuestionBankAuthorStats stats = collectQuestionBankAuthorStats(questionBankAuthor, courseName);
+            if (stats != null) {
+                mcCount += stats.mcCount();
+                tfCount += stats.tfCount();
+                errorCount += stats.errorCount();
+                questionIds.addAll(stats.questionIds());
+
+                authorDto.setQuestionBankName(stats.questionBank().getName());
+                authorDto.setTemplateType(questionBankAuthor.getTemplateType() != null ? questionBankAuthor.getTemplateType().toString() : TemplateType.Other.toString());
+                authorDto.setCourse(stats.questionBank().getCourseName());
+
+                log.atInfo().log("Author '{}', QuestionBank '{}', Course '{}': MCQ count = {}, TF count = {}", author.getName(), stats.questionBank().getName(), stats.questionBank().getCourseName(), stats.mcCount(), stats.tfCount());
             }
-            if (questionBank == null) {
-                continue;
-            }
-
-            boolean includeByCourse = (courseName == null || courseName.isBlank())
-                    || (questionBank.getCourse() != null && questionBank.getCourseName().equalsIgnoreCase(courseName));
-            if (!includeByCourse) {
-                continue;
-            }
-
-            List<Question> questions = getQuestionBankAuthorQuestions(questionBankAuthor);
-            long noMC = questions.stream().filter(AuthorService::testIfMultichoice).count();
-            long noTF = questions.stream().filter(this::testIfTruefalse).count();
-            mcCount += noMC;
-            tfCount += noTF;
-            errorCount += getQuestionBankAuthorQuestionErrors(questionBankAuthor).size();
-            questions.stream().map(Question::getId).filter(java.util.Objects::nonNull).forEach(questionIds::add);
-
-            authorDto.setQuestionBankName(questionBank.getName());
-            authorDto.setTemplateType(questionBankAuthor.getTemplateType() != null ? questionBankAuthor.getTemplateType().toString() : TemplateType.Other.toString());
-            authorDto.setCourse(questionBank.getCourseName());
-
-            log.atInfo().log("Author '{}', QuestionBank '{}', Course '{}': MCQ count = {}, TF count = {}", author.getName(), questionBank.getName(), questionBank.getCourseName(), noMC, noTF);
         }
 
         authorDto.setNumberOfMultipleChoiceQuestions(mcCount);
@@ -338,16 +312,36 @@ public class AuthorService {
         return authorDto;
     }
 
+    private QuestionBankAuthorStats collectQuestionBankAuthorStats(QuestionBankAuthor questionBankAuthor, String courseName) {
+        QuestionBank questionBank = questionBankAuthor.getQuestionBank();
+        if (questionBank == null) {
+            questionBank = getQuestionBankFromAuthorLink(questionBankAuthor);
+        }
+        boolean includeByCourse = questionBank != null
+                && ((courseName == null || courseName.isBlank())
+                || (questionBank.getCourse() != null
+                && questionBank.getCourseName().equalsIgnoreCase(courseName)));
+        if (!includeByCourse) {
+            return null;
+        }
+
+        List<Question> questions = getQuestionBankAuthorQuestions(questionBankAuthor);
+        long noMC = questions.stream()
+                .filter(q -> q.getType() != null && q.getType().equals(QuestionType.MULTICHOICE))
+                .count();
+        long noTF = questions.stream().filter(this::testIfTruefalse).count();
+        long errorCount = getQuestionBankAuthorQuestionErrors(questionBankAuthor).size();
+        Set<Long> questionIds = new HashSet<>();
+        questions.stream().map(Question::getId).filter(java.util.Objects::nonNull).forEach(questionIds::add);
+        return new QuestionBankAuthorStats(questionBank, noMC, noTF, errorCount, questionIds);
+    }
+
+    private record QuestionBankAuthorStats(QuestionBank questionBank, long mcCount, long tfCount, long errorCount, Set<Long> questionIds) {
+    }
+
     private boolean testIfTruefalse(Question q) {
         return q.getType() != null && q.getType().equals(QuestionType.TRUEFALSE);
     }
-
-    private boolean isCourseNameEqualTo(String courseName, Question q) {
-        var questionBankAuthor = q.getQuestionBankAuthor();
-        var questionBank = questionBankAuthor != null ? questionBankAuthor.getQuestionBank() : null;
-        return (questionBank != null && questionBank.getCourse() != null && questionBank.getCourseName().equalsIgnoreCase(courseName)) || (courseName == null || courseName.isEmpty());
-    }
-
 
     public Page<AuthorDto> findPaginated(int pageNo, int pageSize, String sortField, String sortDirection) {
         Pageable paging = MyUtil.getPageable(pageNo, pageSize, sortField, sortDirection);
@@ -356,18 +350,17 @@ public class AuthorService {
         return new PageImpl<>(content, paging, page.getTotalElements());
     }
 
-
     @Transactional(readOnly = true)
     public Page<AuthorDto> findPaginatedFiltered(String course, Long authorId, Long questionBankId, int pageNo, int pageSize, String sortField, String sortDirection) {
         log.atInfo().log(
-                "Finding paginated filtered authors - course: '{}', authorId: '{}', questionBankId: '{}', " + "pageNo: {}, pageSize: {}, sortField: {}, sortDirection: {}", course, authorId,
+                "Finding paginated filtered authors - course: '{}', authorId: '{}', questionBankId: '{}', pageNo: {}, pageSize: {}, sortField: {}, sortDirection: {}", course, authorId,
                 questionBankId, pageNo, pageSize, sortField, sortDirection
         );
 
         Pageable paging = MyUtil.getPageable(pageNo, pageSize, sortField, sortDirection);
 
         Page<Author> page;
-        if (course != null && !course.isEmpty() && authorId == null && questionBankId == null) {
+        if (course != null && !course.isBlank() && authorId == null && questionBankId == null) {
             // Use specification for course filtering
             Specification<Author> specification = AuthorSpecification.byCourse(course);
             page = authorRepository.findAll(specification, paging);
@@ -384,78 +377,27 @@ public class AuthorService {
             page = authorRepository.findAll(paging);
         }
 
-        List<AuthorDto> content = page.getContent().stream().map(a -> getAuthorWithQuestionBankStats(a.getId(), course)).toList();
+        List<AuthorDto> content = page.getContent().stream().map(a -> getSelf().getAuthorWithQuestionBankStats(a.getId(), course)).toList();
 
         return new PageImpl<>(content, paging, page.getTotalElements());
     }
 
     /**
-     * Filters authors with pagination and sorting.
-     * Implementation for author-sd.md Section 2.1.1
-     *
-     * @param filterInput the filter criteria including page, pageSize, course, authorId
-     * @return AuthorFilterResponseDto with paginated results and filter metadata
-     */
-    public AuthorFilterResponseDto filterAuthors(AuthorFilterRequestDto filterInput) {
-        log.atInfo().addArgument(filterInput).log("Filtering authors with input: {}");
-
-        // Apply defaults for null parameters
-        PaginationParams pagination = PaginationSupport.normalize(filterInput.getPage(), filterInput.getPageSize());
-        int pageNo = pagination.page();
-        int pageSize = pagination.pageSize();
-        String sortField = "name"; // Default sort field
-        String sortDirection = "asc"; // Default sort direction
-
-        // Call the existing pagination method
-        String selectedCourse = filterInput.getCourse();
-        if (filterInput.getCourseId() != null) {
-            selectedCourse = courseService.getCourseName(filterInput.getCourseId());
-        }
-
-        Page<AuthorDto> page = findPaginatedFiltered(selectedCourse, filterInput.getAuthorId(), filterInput.getQuestionBankId(), pageNo, pageSize, sortField, sortDirection);
-
-        // Build the response DTO
-        AuthorFilterResponseDto result = new AuthorFilterResponseDto();
-        result.setAuthors(page.getContent());
-        result.setPage(pageNo);
-        result.setTotalPages(page.getTotalPages());
-        result.setTotalElements(page.getTotalElements());
-        result.setCourses(courseService.getAllCourses().stream().map(CourseInfo::from).toList());
-        result.setSelectedCourse(selectedCourse);
-        result.setSelectedCourseId(filterInput.getCourseId());
-
-        // Populate authorList with distinct authors based on course filter
-        // If course is selected, get authors for that course; otherwise get all authors
-        List<AuthorInfo> authorList;
-        String courseTrimmed = selectedCourse != null ? selectedCourse.trim() : null;
-        if (courseTrimmed != null && !courseTrimmed.isEmpty() && !"All Courses".equalsIgnoreCase(courseTrimmed)) {
-            // Get distinct authors for the selected course (cached) - use self-reference for cache to work
-            authorList = self.getAuthorsByCourse(courseTrimmed);
-        } else {
-            // Get all distinct authors (no course filter or "All Courses" selected) - use self-reference for cache to work
-            authorList = self.getAllAuthorsBasic();
-        }
-        result.setAuthorOptions(authorList);
-
-        log.atInfo().addArgument(page.getContent().size()).addArgument(page.getTotalElements()).addArgument(page.getTotalPages()).addArgument(authorList.size()).log(
-                "Filtered {} authors, total: {}, pages: {}, authorList size: {}");
-
-        return result;
-    }
-
-    /**
      * Updates an existing author.
-     * Implementation for author-sd.md Section 2.1.3
      *
      * @param id        the author ID to update
      * @param authorDto the updated author data
-     * @return the updated AuthorDto
+     * @return updated AuthorDto
      * @throws jakarta.persistence.EntityNotFoundException if author not found
      */
     @Transactional
     @CacheEvict(value = {"allAuthorsBasic", "authorsByCourse"}, allEntries = true)
     public AuthorDto updateAuthor(Long id, AuthorDto authorDto) {
         log.atInfo().addArgument(id).log("Updating author with id: {}");
+
+        if (authorDto == null) {
+            throw new IllegalArgumentException("AuthorDto cannot be null");
+        }
 
         Author author = authorRepository.findById(id).orElseThrow(() -> new jakarta.persistence.EntityNotFoundException("Author with id " + id + " not found"));
 
@@ -473,7 +415,6 @@ public class AuthorService {
 
     /**
      * Deletes an author by ID.
-     * Implementation for author-sd.md Section 2.1.2
      * Throws EntityNotFoundException if author doesn't exist.
      *
      * @param id the author ID
@@ -493,12 +434,13 @@ public class AuthorService {
         log.atInfo().addArgument(id).log("Successfully deleted author with id: {}");
     }
 
-
     public boolean authorNameExists(String name) {
+        if (name == null || name.isBlank()) {
+            return false;
+        }
         Specification<Author> spec = AuthorSpecification.byName(name);
         return authorRepository.findOne(spec).isPresent();
     }
-
 
     public AuthorDto getAuthorByName(String name) {
         // Input validation
@@ -526,13 +468,15 @@ public class AuthorService {
         if (author == null) return null;
         AuthorDto authorDto = mapToAuthorDto(author);
         getQuestionBankAuthors(author).forEach(questionBankAuthor -> {
-            long noMC = getQuestionBankAuthorQuestions(questionBankAuthor).stream().filter(AuthorService::testIfMultichoice).count();
+            long noMC = getQuestionBankAuthorQuestions(questionBankAuthor).stream()
+                    .filter(q -> q.getType() != null && q.getType().equals(QuestionType.MULTICHOICE))
+                    .count();
             authorDto.setNumberOfMultipleChoiceQuestions(authorDto.getNumberOfMultipleChoiceQuestions() + noMC);
             long noTF = getQuestionBankAuthorQuestions(questionBankAuthor).stream().filter(q -> q.getType() != null && q.getType().equals(QuestionType.TRUEFALSE)).count();
             authorDto.setNumberOfTrueFalseQuestions(authorDto.getNumberOfTrueFalseQuestions() + noTF);
             authorDto.setNumberOfErrors(authorDto.getNumberOfErrors() + getQuestionBankAuthorQuestionErrors(questionBankAuthor).size());
             authorDto.setNumberOfQuestions(authorDto.getNumberOfQuestions() + noMC + noTF);
-            QuestionBank questionBank = getAuthorFromQuestionBank(questionBankAuthor);
+            QuestionBank questionBank = getQuestionBankFromAuthorLink(questionBankAuthor);
             if (questionBank == null) {
                 return;
             }
@@ -543,7 +487,7 @@ public class AuthorService {
         return authorDto;
     }
 
-    private QuestionBank getAuthorFromQuestionBank(QuestionBankAuthor questionBankAuthor) {
+    private QuestionBank getQuestionBankFromAuthorLink(QuestionBankAuthor questionBankAuthor) {
         if (questionBankAuthor == null) {
             return null;
         }
@@ -576,7 +520,6 @@ public class AuthorService {
         return questionBankRepository.findAll().stream().map(QuestionBank::getCourseName).filter(course -> course != null && !course.isEmpty()).distinct().sorted(String::compareToIgnoreCase).toList();
     }
 
-
     @Transactional
     public void deleteAuthorsWithoutQuestionBank() {
         List<Author> authorsList = authorRepository.findAll();
@@ -598,9 +541,10 @@ public class AuthorService {
         }
 
         int pageNo = 1;
-        Page<AuthorDto> page = findPaginatedFiltered(selectedCourse, null, null, pageNo, ControllerSettings.PAGE_SIZE, "name", "desc");
+        Page<AuthorDto> page = getSelf().findPaginatedFiltered(selectedCourse, null, null, pageNo, ControllerSettings.PAGE_SIZE, "name", "desc");
         String finalSelectedCourse = selectedCourse;
-        page.stream().forEach(authorDto -> authorDtos.add(getAuthorWithQuestionBankStats(authorDto.getId(), finalSelectedCourse)));
+        page.stream().forEach(authorDto -> authorDtos.add(
+                getSelf().getAuthorWithQuestionBankStats(authorDto.getId(), finalSelectedCourse)));
 
         authorFilterDto.setCourses(courses);
         authorFilterDto.setPage(pageNo);
@@ -628,7 +572,10 @@ public class AuthorService {
 
         List<QuestionBankDto> questionBankDtos = new ArrayList<>();
         questionBankAuthorService.getQuestionBankAuthorsForAuthorName(authorName).forEach(questionBankAuthor -> {
-            QuestionBank questionBank = getAuthorFromQuestionBank(questionBankAuthor);
+            QuestionBank questionBank = getQuestionBankFromAuthorLink(questionBankAuthor);
+            if (questionBank == null) {
+                return;
+            }
             QuestionBankDto questionBankDto = new QuestionBankDto();
             questionBankDto.setId(questionBank.getId());
             questionBankDto.setName(questionBank.getName());
@@ -639,7 +586,10 @@ public class AuthorService {
             questionBankDtos.add(questionBankDto);
         });
 
-        questionBankDtos.sort(Comparator.comparing(QuestionBankDto::getCourse));
+        questionBankDtos.sort(Comparator.comparing(
+                dto -> dto != null ? dto.getCourse() : null,
+                Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)
+        ));
 
         questionBankDtos.forEach(questionBankDto -> {
             List<QuestionDto> questionDtos = new ArrayList<>();
@@ -650,11 +600,7 @@ public class AuthorService {
                     QuestionDto dto = questionMapper.toDto(question);
                     questionDtos.add(dto);
                 } else if (question.getType() == QuestionType.TRUEFALSE) {
-                    QuestionDto dto = new QuestionDto();
-                    dto.setId(question.getId());
-                    dto.setTitle(question.getTitle());
-                    dto.setText(question.getText());
-                    dto.setChapter(question.getChapter());
+                    QuestionDto dto = questionMapper.toDto(question);
                     questionDtosTF.add(dto);
                 }
             });
@@ -667,22 +613,19 @@ public class AuthorService {
 
         authorDataDto.setQuestionBankDtos(questionBankDtos);
         // Use self-reference for cache to work
-        List<AuthorInfo> authorsList = self.getAuthorsByCourse(!questionBankDtos.isEmpty() ? questionBankDtos.getFirst().getCourse() : "");
+        List<AuthorInfo> authorsList = getSelf().getAuthorsByCourse(!questionBankDtos.isEmpty() ? questionBankDtos.getFirst().getCourse() : "");
 
         authorDataDto.setAuthorsList(authorsList);
         authorDataDto.setAuthor(authorDto);
         return authorDataDto;
     }
 
-
     @Cacheable(value = "authorsByCourse", key = "#course")
     public List<AuthorInfo> getAuthorsByCourse(String course) {
         // Use Specification pattern with optimized query to fetch distinct authors for a course
-        // This creates lightweight DTOs with only id, name, and initials
         return questionBankAuthorRepository.findAll(QuestionBankAuthorSpecification.hasCourse(course).and(QuestionBankAuthorSpecification.fetchAuthor())).stream().map(QuestionBankAuthor::getAuthor)
                                            .distinct().map(this::mapToAuthorInfo).toList();
     }
-
 
     public AuthorDto getAuthorById(Long selectedAuthorObj) {
         if (selectedAuthorObj == null) {
@@ -724,7 +667,7 @@ public class AuthorService {
             log.atInfo().addArgument(authorDto.getName()).log("Author {} already exists in the database");
             authorDto = getAuthorByName(authorDto.getName());
         } else {
-            authorDto = saveAuthorDto(authorDto);
+            authorDto = getSelf().saveAuthorDto(authorDto);
         }
 
         if (authorDto == null) {
@@ -746,21 +689,22 @@ public class AuthorService {
         Map<Long, List<QuestionErrorDto>> errorsByQuestionBank = new java.util.HashMap<>();
         for (QuestionBankAuthor qa : questionBankAuthors) {
             QuestionBank questionBank = questionBankRepository.findOne(QuestionBankSpecification.byQuestionBankAuthorId(qa.getId())).orElse(null);
-            if (questionBank == null) continue;
-            QuestionBankDto questionBankDto = new QuestionBankDto();
-            questionBankDto.setId(questionBank.getId());
-            questionBankDto.setName(questionBank.getName());
-            questionBankDto.setStudyYear(questionBank.getStudyYear());
-            questionBankDto.setCourse(questionBank.getCourseName());
-            questionBanks.add(questionBankDto);
-            // Questions for this questionBank and author - use the new clear specification method
-            Specification<Question> spec = QuestionSpecification.byQuestionBankAuthorId(qa.getId());
-            List<Question> filteredQuestions = questionRepository.findAll(spec);
-            List<QuestionDto> questionDtos = filteredQuestions.stream().map(questionMapper::toDto).toList();
-            questionsByQuestionBank.put(questionBank.getId(), questionDtos);
-            // Errors for this questionBank and author
-            List<QuestionErrorDto> errorDtos = questionErrorService.getErrorsByQuestionBankAndAuthor(questionBank.getId(), id);
-            errorsByQuestionBank.put(questionBank.getId(), errorDtos);
+            if (questionBank != null) {
+                QuestionBankDto questionBankDto = new QuestionBankDto();
+                questionBankDto.setId(questionBank.getId());
+                questionBankDto.setName(questionBank.getName());
+                questionBankDto.setStudyYear(questionBank.getStudyYear());
+                questionBankDto.setCourse(questionBank.getCourseName());
+                questionBanks.add(questionBankDto);
+                // Questions for this questionBank and author
+                Specification<Question> spec = QuestionSpecification.byQuestionBankAuthorId(qa.getId());
+                List<Question> filteredQuestions = questionRepository.findAll(spec);
+                List<QuestionDto> questionDtos = filteredQuestions.stream().map(questionMapper::toDto).toList();
+                questionsByQuestionBank.put(questionBank.getId(), questionDtos);
+                // Errors for this questionBank and author
+                List<QuestionErrorDto> errorDtos = questionErrorService.getErrorsByQuestionBankAndAuthor(questionBank.getId(), id);
+                errorsByQuestionBank.put(questionBank.getId(), errorDtos);
+            }
         }
         AuthorDetailsDto details = new AuthorDetailsDto();
         details.setAuthor(authorDto);
@@ -806,7 +750,7 @@ public class AuthorService {
      * Finds an existing "Unknown Author" dummy entry or creates one.
      * Used to assign a single shared author to all records whose initials cannot be resolved.
      *
-     * @return the dummy Author entity (never null)
+     * @return dummy Author entity (never null)
      */
     @Transactional
     public Author findOrCreateDummyAuthor() {

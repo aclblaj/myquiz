@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.client.HttpClientErrorException;
@@ -114,12 +115,16 @@ public class ThyAuthorController {
         );
     }
 
-    @GetMapping("/filter")
-    @PostMapping("/filter")
+    @RequestMapping(
+            value = "/filter",
+            method = { RequestMethod.GET, RequestMethod.POST }
+        )
     public String filterAuthorsByCourse(
-            @RequestParam(value = ControllerSettings.ATTR_COURSE_ID, required = false) Long courseId, @RequestParam(value = ControllerSettings.ATTR_AUTHOR_ID, required = false) Long authorId,
+            @RequestParam(value = ControllerSettings.ATTR_COURSE_ID, required = false) Long courseId,
+            @RequestParam(value = ControllerSettings.ATTR_AUTHOR_ID, required = false) Long authorId,
             @RequestParam(value = ControllerSettings.ATTR_QUESTION_BANK_ID, required = false) Long questionBankId,
-            @RequestParam(value = ControllerSettings.ATTR_PAGE_NUMBER, required = false) Integer page, @RequestParam(value = ControllerSettings.ATTR_PAGE_SIZE, required = false) Integer pageSize,
+            @RequestParam(value = ControllerSettings.ATTR_PAGE_NUMBER, required = false) Integer page,
+            @RequestParam(value = ControllerSettings.ATTR_PAGE_SIZE, required = false) Integer pageSize,
             Model model
     ) {
         return renderAuthorList(

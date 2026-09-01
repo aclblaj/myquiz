@@ -26,6 +26,7 @@ import lombok.NoArgsConstructor;
 import lombok.ToString;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -70,13 +71,13 @@ public class QuestionBank {
 
     @PrePersist
     protected void onCreate() {
-        createdAt = OffsetDateTime.now();
-        updatedAt = OffsetDateTime.now();
+        createdAt = OffsetDateTime.now(ZoneId.systemDefault());
+        updatedAt = OffsetDateTime.now(ZoneId.systemDefault());
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = OffsetDateTime.now();
+        updatedAt = OffsetDateTime.now(ZoneId.systemDefault());
     }
 
     // Helper methods

@@ -153,9 +153,9 @@ public class QuestionBankAuthorService {
      * Used for duplicate validation after bulk uploads.
      *
      * @param questionBankId The questionBank ID
-     * @return ArrayList of Author entities
+     * @return List of Author entities
      */
-    public ArrayList<Author> getAuthorsForQuestionBank(Long questionBankId) {
+    public List<Author> getAuthorsForQuestionBank(Long questionBankId) {
         // Input validation
         if (questionBankId == null) {
             throw new IllegalArgumentException("QuestionBank ID cannot be null");

@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class ThreadPoolTaskProperties {
     private PoolProperties readAndParse = new PoolProperties(10, 25, 0);
     private PoolProperties duplicateCheck = new PoolProperties(20, 20, 200);
+    private PoolProperties deleteExactDuplicates = new PoolProperties(2, 4, 50);
 
     public PoolProperties getReadAndParse() {
         return readAndParse;
@@ -21,6 +22,14 @@ public class ThreadPoolTaskProperties {
 
     public void setDuplicateCheck(PoolProperties duplicateCheck) {
         this.duplicateCheck = duplicateCheck;
+    }
+
+    public PoolProperties getDeleteExactDuplicates() {
+        return deleteExactDuplicates;
+    }
+
+    public void setDeleteExactDuplicates(PoolProperties deleteExactDuplicates) {
+        this.deleteExactDuplicates = deleteExactDuplicates;
     }
 
     public static class PoolProperties {

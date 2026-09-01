@@ -17,6 +17,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 
 @Entity
 @Table(name = "archive_import", indexes = {@Index(name = "idx_archive_import_size", columnList = "file_size"), @Index(name = "idx_archive_import_created_at", columnList = "processed_at")})
@@ -53,7 +54,7 @@ public class ArchiveImport {
     @PrePersist
     protected void onCreate() {
         if (processedAt == null) {
-            processedAt = OffsetDateTime.now();
+            processedAt = OffsetDateTime.now(ZoneId.systemDefault());
         }
     }
 }

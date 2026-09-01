@@ -776,4 +776,44 @@ public class CourseService {
         return createdCount;
     }
 
+    /**
+     * Returns the number of questions scoped to a course, used by {@link DuplicateDeletionTaskService}
+     * to record "before" counts for the delete-exact-duplicates history entry.
+     */
+    @Transactional(readOnly = true)
+    public int loadScopedQuestionsCount(String courseName) {
+        return loadScopedQuestions(courseName, null, null).size();
+    }
+
+    /**
+     * Delete duplicate questions from all question banks in a course.
+     * Keeps only one instance of each unique question based on exact title and answer match.
+     *
+     * @param courseId The course ID
+     * @return Number of questions deleted
+     */
+    @Transactional
+    public int deleteDuplicateQuestionsInCourse(Long courseId) {
+        if (courseId == null) {
+            throw new IllegalArgumentException("Course ID cannot be null");
+        }
+
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new IllegalArgumentException(MSG_COURSE_NOT_FOUND_WITH_ID + courseId));
+
+        // Get all questions in the course
+        List<Question> courseQuestions = loadScopedQuestions(course.getCourse(), null, null);
+
+        if (courseQuestions.isEmpty()) {
+            log.atInfo().addArgument(course.getCourse()).log("No questions found in course '{}' to delete duplicates");
+            return 0;
+        }
+
+        // Delete duplicate questions
+        int deletedCount = questionDuplicationService.deleteDuplicateQuestions(courseQuestions);
+        log.atInfo().addArgument(deletedCount).addArgument(course.getCourse()).log("Deleted {} duplicate questions from course '{}'");
+
+        return deletedCount;
+    }
+
 }

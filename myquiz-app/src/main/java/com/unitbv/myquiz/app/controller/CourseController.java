@@ -7,6 +7,7 @@ import com.unitbv.myquiz.api.dto.DuplicateStatisticsDto;
 import com.unitbv.myquiz.api.interfaces.CourseApi;
 import com.unitbv.myquiz.api.settings.ControllerSettings;
 import com.unitbv.myquiz.app.services.CourseService;
+import com.unitbv.myquiz.app.services.DuplicateDeletionTaskService;
 import com.unitbv.myquiz.app.services.ExportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -39,6 +40,7 @@ public class CourseController implements CourseApi {
     private static final Logger log = LoggerFactory.getLogger(CourseController.class);
     private final CourseService courseService;
     private final ExportService exportService;
+    private final DuplicateDeletionTaskService duplicateDeletionTaskService;
 
     @GetMapping({"/", ""})
     @Operation(
@@ -371,5 +373,48 @@ public class CourseController implements CourseApi {
             log.atError().setCause(e).log("Failed to create default courses");
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    @PostMapping("/{id}/delete-duplicate-questions")
+    @Operation(
+        summary = "Delete Duplicate Questions in Course",
+        description = "Starts a background task that deletes duplicate questions from all question banks in a course, " +
+                "keeping only one instance of each unique question. Returns immediately once the task has started; " +
+                "the result is persisted as a recompute history entry when the task completes."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "202", description = "Duplicate questions deletion started"),
+        @ApiResponse(responseCode = "404", description = "Course not found"),
+        @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
+    public ResponseEntity<String> deleteDuplicateQuestionsInCourse(@PathVariable Long id) {
+        log.info("Starting background deletion of duplicate questions for course id: {}", id);
+        try {
+            duplicateDeletionTaskService.startDeleteDuplicateQuestionsInCourseAsync(id);
+            return ResponseEntity.status(HttpStatus.ACCEPTED)
+                .body("Duplicate questions deletion started for course id: " + id);
+        } catch (IllegalArgumentException e) {
+            log.atWarn().addArgument(id).addArgument(e.getMessage())
+                .log("Could not start duplicate questions deletion for course {}: {}");
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            log.atError().setCause(e).addArgument(id)
+                .log("Failed to start duplicate questions deletion for course {}");
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping("/{id}/delete-duplicate-questions/status")
+    @Operation(
+        summary = "Get last delete-exact-duplicates background error",
+        description = "Returns the error message from the most recent background delete-exact-duplicates run for the course, or no content if the last run succeeded (or none has run yet)."
+    )
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "Last error message returned"),
+        @ApiResponse(responseCode = "204", description = "No error recorded for the last run")
+    })
+    public ResponseEntity<String> getDeleteDuplicateQuestionsStatus(@PathVariable Long id) {
+        String lastError = duplicateDeletionTaskService.getDeleteExactDuplicatesLastError(id);
+        return lastError != null ? ResponseEntity.ok(lastError) : ResponseEntity.noContent().build();
     }
 }

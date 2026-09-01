@@ -13,6 +13,11 @@ import java.util.concurrent.ThreadPoolExecutor;
  * String Boot manages the custom thread pool. For each file we start a new thread.
  * The thread pool is used to limit the number of files processed in parallel.
  * Using CompletableFuture.supplyAsync() we can start a new thread for each method call.
+ *
+ * <p>Also provides {@code deleteExactDuplicatesTaskExecutor}, a small bounded pool used by
+ * {@code com.unitbv.myquiz.app.services.DuplicateDeletionTaskService} so that multiple
+ * "delete exact duplicates" course requests triggered concurrently are queued and run with a
+ * bounded number of worker threads instead of spawning one unmanaged {@link Thread} per request.
 */
 @Configuration
 @EnableConfigurationProperties(ThreadPoolTaskProperties.class)
@@ -46,6 +51,20 @@ public class ThreadPoolConfig {
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.setWaitForTasksToCompleteOnShutdown(properties.getDuplicateCheck().isWaitForTasksToCompleteOnShutdown());
         executor.setAwaitTerminationSeconds(properties.getDuplicateCheck().getAwaitTerminationSeconds());
+        executor.initialize();
+        return executor;
+    }
+
+    @Bean(name = "deleteExactDuplicatesTaskExecutor")
+    public Executor deleteExactDuplicatesTaskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(properties.getDeleteExactDuplicates().getCorePoolSize());
+        executor.setMaxPoolSize(properties.getDeleteExactDuplicates().getMaxPoolSize());
+        executor.setQueueCapacity(properties.getDeleteExactDuplicates().getQueueCapacity());
+        executor.setThreadNamePrefix("deleteExactDuplicatesTaskExecutor-");
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.setWaitForTasksToCompleteOnShutdown(properties.getDeleteExactDuplicates().isWaitForTasksToCompleteOnShutdown());
+        executor.setAwaitTerminationSeconds(properties.getDeleteExactDuplicates().getAwaitTerminationSeconds());
         executor.initialize();
         return executor;
     }

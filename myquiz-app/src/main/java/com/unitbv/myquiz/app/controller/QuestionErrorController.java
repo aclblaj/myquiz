@@ -63,7 +63,12 @@ public class QuestionErrorController implements QuestionErrorApi {
         log.info("Deleting error with id: {}", id);
         try {
             boolean deleted = questionErrorService.deleteErrorById(id);
-            return deleted ? ResponseEntity.noContent().build() : ResponseEntity.notFound().build();
+            if (!deleted) {
+                log.atDebug().addArgument(id).log("Error with id {} not found for deletion", id);
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.noContent().build();
+
         } catch (Exception e) {
             log.error("Error deleting error with id: {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -94,7 +99,11 @@ public class QuestionErrorController implements QuestionErrorApi {
         log.info("Getting error with id: {}", id);
         try {
             QuestionErrorDto result = questionErrorService.getErrorById(id);
-            return result != null ? ResponseEntity.ok(result) : ResponseEntity.notFound().build();
+            if (result == null) {
+                log.atDebug().addArgument(id).log("Error with id {} not found", id);
+                return ResponseEntity.notFound().build();
+            }
+            return ResponseEntity.ok(result);
         } catch (Exception e) {
             log.error("Error getting error with id: {}", id, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

@@ -1,10 +1,13 @@
 package com.unitbv.myquiz.api.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.unitbv.myquiz.api.types.StudyYear;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -17,7 +20,9 @@ import java.util.List;
 @Schema(description = "Question Bank DTO for question bank management")
 @Getter
 @Setter
+@Builder
 @NoArgsConstructor
+@AllArgsConstructor
 @ToString(of = {"id", "name", "course", "studyYear"})
 @EqualsAndHashCode(of = "id")
 public class QuestionBankDto {
@@ -26,7 +31,7 @@ public class QuestionBankDto {
     @JsonProperty("id")
     private Long id;
 
-    @Schema(description = "Question bank name", required = true)
+    @Schema(description = "Question bank name", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "Question bank name cannot be blank")
     @Size(max = 255, message = "Question bank name cannot exceed 255 characters")
     @JsonProperty("name")
@@ -42,6 +47,7 @@ public class QuestionBankDto {
 
     @Schema(description = "Question bank study year")
     @JsonProperty("study_year")
+    @JsonAlias({"studyYear", "study_year"})
     private StudyYear studyYear;
 
     @Schema(description = "Source file")
@@ -58,19 +64,23 @@ public class QuestionBankDto {
 
     @Schema(description = "Multiple choice questions")
     @JsonProperty("questionsMultichoice")
+    @Builder.Default
     private List<QuestionDto> questionsMultichoice = new ArrayList<>();
 
     @Schema(description = "True/false questions")
     @JsonProperty("questionsTruefalse")
+    @Builder.Default
     private List<QuestionDto> questionsTruefalse = new ArrayList<>();
 
     @Schema(description = "Question error DTOs")
     @JsonProperty("questionErrorDtos")
-    private List<QuestionErrorDto> questionErrorDtos;
+    @Builder.Default
+    private List<QuestionErrorDto> questionErrorDtos = new ArrayList<>();
 
     @Schema(description = "Authors")
     @JsonProperty("authors")
-    private List<AuthorDto> authors;
+    @Builder.Default
+    private List<AuthorDto> authors = new ArrayList<>();
 
     @Schema(description = "Number of MC questions")
     @JsonProperty("mcQuestionsCount")
@@ -82,18 +92,24 @@ public class QuestionBankDto {
 
     @Schema(description = "Number of duplicated questions in this question bank")
     @JsonProperty("numberOfDuplicates")
+    @Builder.Default
     private Long numberOfDuplicates = 0L;
 
     /** Convert list of raw Object[] rows from a projection query to lightweight DTOs. */
     public static List<QuestionBankDto> toDtoList(List<Object[]> questionBankData) {
         List<QuestionBankDto> dtos = new ArrayList<>();
+        if (questionBankData == null) {
+            return dtos;
+        }
         for (Object[] data : questionBankData) {
-            QuestionBankDto dto = new QuestionBankDto();
-            dto.setId((Long) data[0]);
-            dto.setName((String) data[1]);
-            dto.setCourse((String) data[2]);
-            dto.setStudyYear((StudyYear) data[3]);
-            dtos.add(dto);
+            if (data != null && data.length >= 4) {
+                QuestionBankDto dto = new QuestionBankDto();
+                dto.setId((Long) data[0]);
+                dto.setName((String) data[1]);
+                dto.setCourse((String) data[2]);
+                dto.setStudyYear((StudyYear) data[3]);
+                dtos.add(dto);
+            }
         }
         return dtos;
     }
@@ -103,7 +119,9 @@ public class QuestionBankDto {
         List<AuthorInfo> authorInfos = new ArrayList<>();
         if (authors != null) {
             for (AuthorDto authorDto : authors) {
-                authorInfos.add(new AuthorInfo(authorDto.getId(), authorDto.getName(), authorDto.getInitials()));
+                if (authorDto != null) {
+                    authorInfos.add(new AuthorInfo(authorDto.getId(), authorDto.getName(), authorDto.getInitials()));
+                }
             }
         }
         return authorInfos;

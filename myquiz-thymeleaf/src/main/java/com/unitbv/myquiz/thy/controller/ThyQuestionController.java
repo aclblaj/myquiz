@@ -119,7 +119,9 @@ public class ThyQuestionController {
     }
 
 
-    private String renderQuestionList(Integer page, Long courseId, Long authorId, String type, Long questionBankId, Integer pageSize, Model model) {
+    private String renderQuestionList(
+            Integer page, Long courseId, Long authorId, String type,
+            Long questionBankId, Integer pageSize, Model model) {
         log.info("Listing all questions with filters - page: {}, courseId: {}, authorId: {}, type: {}, questionBankId: {}, pageSize: {}", page, courseId, authorId, type, questionBankId, pageSize);
 
         String redirect = sessionService.validateSessionOrRedirect();
@@ -881,7 +883,9 @@ public class ThyQuestionController {
      * Populates model with question list data from filter DTO.
      * Ensures all required filter dropdown data is included.
      */
-    private void populateQuestionListModelFromDto(Model model, QuestionFilterResponseDto filterDto, Integer page, Integer pageSize, String type) {
+    private void populateQuestionListModelFromDto(
+            Model model,
+            QuestionFilterResponseDto filterDto, Integer page, Integer pageSize, String type) {
         PaginationParams pagination = PaginationSupport.normalize(page, pageSize);
         int currentPage = filterDto.getPage() != null ? filterDto.getPage() : pagination.page();
         int effectivePageSize = filterDto.getPageSize() != null ? filterDto.getPageSize() : pagination.pageSize();

@@ -21,6 +21,7 @@ import lombok.NoArgsConstructor;
 import lombok.ToString;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 
 /**
  * Optional 1:1 reference text attached to a question.
@@ -59,13 +60,13 @@ public class AnswersReference {
 
     @PrePersist
     protected void onCreate() {
-        createdAt = OffsetDateTime.now();
-        updatedAt = OffsetDateTime.now();
+        createdAt = OffsetDateTime.now(ZoneId.systemDefault());
+        updatedAt = OffsetDateTime.now(ZoneId.systemDefault());
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = OffsetDateTime.now();
+        updatedAt = OffsetDateTime.now(ZoneId.systemDefault());
     }
 }
 

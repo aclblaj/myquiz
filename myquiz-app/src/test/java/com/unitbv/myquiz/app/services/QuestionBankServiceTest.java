@@ -12,6 +12,7 @@ import com.unitbv.myquiz.app.entities.QuestionBank;
 import com.unitbv.myquiz.app.entities.QuestionBankAuthor;
 import com.unitbv.myquiz.app.entities.QuestionDuplicate;
 import com.unitbv.myquiz.app.entities.QuestionError;
+import com.unitbv.myquiz.app.repositories.QuestionBankRepository;
 import com.unitbv.myquiz.app.repositories.QuestionDuplicateRepository;
 import com.unitbv.myquiz.app.repositories.QuestionErrorRepository;
 import com.unitbv.myquiz.app.repositories.QuestionRepository;
@@ -29,7 +30,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -54,6 +57,9 @@ class QuestionBankServiceTest {
 
     @Autowired
     private QuestionBankService questionBankService;
+
+    @Autowired
+    private QuestionBankRepository questionBankRepository;
 
     @Autowired
     private QuestionRepository questionRepository;
@@ -492,9 +498,68 @@ class QuestionBankServiceTest {
         assertEquals(1, testAuthorSection.getDuplicateQuestions().size());
         assertEquals("MC Title", testAuthorSection.getDuplicateQuestions().getFirst().getTitle());
     }
+
+    @Test
+    void createQuestionBankReturnsExistingBankWhenAlreadyPresent() {
+        QuestionBank first = questionBankService.createQuestionBank(
+                "Existing Course",
+                "Existing Bank",
+                StudyYear.Y2024_2025
+        );
+
+        QuestionBank second = questionBankService.createQuestionBank(
+                "Existing Course",
+                "Existing Bank",
+                StudyYear.Y2024_2025
+        );
+
+        assertEquals(first.getId(), second.getId());
+    }
+
+    @Test
+    void getQuestionBankByIdRejectsMissingQuestionBank() {
+        assertThrows(IllegalArgumentException.class, () -> questionBankService.getQuestionBankById(-1L));
+    }
+
+    @Test
+    void updateQuestionBankUpdatesPersistedValues() {
+        QuestionBank questionBank = questionBankService.createQuestionBank(
+                "Old Course",
+                "Old Bank",
+                StudyYear.Y2024_2025
+        );
+
+        QuestionBank updated = questionBankService.updateQuestionBank(
+                questionBank.getId(),
+                "New Course",
+                "New Bank",
+                StudyYear.Y2026_2027
+        );
+
+        assertNotNull(updated);
+        assertEquals("New Bank", updated.getName());
+        assertEquals("New Course", updated.getCourseName());
+        assertEquals(StudyYear.Y2026_2027, updated.getStudyYear());
+    }
+
+    @Test
+    void updateQuestionBankReturnsNullForMissingId() {
+        assertNull(questionBankService.updateQuestionBank(-1L, "Course", "Bank", StudyYear.Y2024_2025));
+    }
+
+    @Test
+    void deleteQuestionBankByIdRemovesQuestionBank() {
+        QuestionBank questionBank = questionBankService.createQuestionBank(
+                "Delete Course",
+                "Delete Bank",
+                StudyYear.Y2024_2025
+        );
+
+        questionBankService.deleteQuestionBankById(questionBank.getId());
+
+        assertFalse(questionBankRepository.findById(questionBank.getId()).isPresent());
+    }
 }
-
-
 
 
 

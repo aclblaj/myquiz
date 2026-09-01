@@ -25,6 +25,7 @@ import lombok.EqualsAndHashCode;
 import lombok.ToString;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -117,17 +118,18 @@ public class Question {
     private OffsetDateTime updatedAt;
 
     public Question() {
+        // Default constructor for JPA
     }
 
     @PrePersist
     protected void onCreate() {
-        createdAt = OffsetDateTime.now();
-        updatedAt = OffsetDateTime.now();
+        createdAt = OffsetDateTime.now(ZoneId.systemDefault());
+        updatedAt = OffsetDateTime.now(ZoneId.systemDefault());
     }
 
     @PreUpdate
     protected void onUpdate() {
-        updatedAt = OffsetDateTime.now();
+        updatedAt = OffsetDateTime.now(ZoneId.systemDefault());
     }
 
     // Utility method for row number

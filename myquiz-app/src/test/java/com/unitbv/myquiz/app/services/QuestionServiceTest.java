@@ -1,6 +1,7 @@
 package com.unitbv.myquiz.app.services;
 
 import com.unitbv.myquiz.api.dto.CourseDto;
+import com.unitbv.myquiz.api.dto.QuestionDto;
 import com.unitbv.myquiz.api.types.QuestionType;
 import com.unitbv.myquiz.api.types.StudyYear;
 import com.unitbv.myquiz.app.entities.Author;
@@ -33,9 +34,12 @@ import java.util.List;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
@@ -315,7 +319,7 @@ class QuestionServiceTest {
         // Step 6: Validate questions for duplicates (as per upload-sd.md Section 2.2, Step 3)
         // Note: authorEntities list should be populated from the parsing results
         // Currently empty as the author tracking was commented out in the service
-        ArrayList<Author> authorEntities = questionBankAuthorService.getAuthorsForQuestionBank(questionBank.getId());
+        List<Author> authorEntities = questionBankAuthorService.getAuthorsForQuestionBank(questionBank.getId());
 
         questionDuplicationService.checkDuplicateQuestionsForAuthors(
                 authorEntities,
@@ -671,6 +675,122 @@ class QuestionServiceTest {
         result.forEach(question -> logger.atInfo().addArgument(question).log("Question: {}"));
         assertNotNull(result);
         assertTrue(result.stream().allMatch(q -> q.getQuestionBankAuthor().getAuthor().getName().contains(authorName)));
+    }
+
+    @Test
+    void findQuestionByIdReturnsSavedQuestion() {
+        QuestionBankAuthor questionBankAuthor = createQuestionBankWithQuestions();
+        Question saved = testEntityFactory.createQuestion(
+                questionBankAuthor,
+                QuestionType.MULTICHOICE,
+                "Lookup title",
+                "Lookup text"
+        );
+
+        Question result = questionService.findQuestionById(saved.getId());
+
+        assertNotNull(result);
+        assertEquals(saved.getId(), result.getId());
+        assertEquals(saved.getTitle(), result.getTitle());
+    }
+
+    @Test
+    void findQuestionByIdReturnsNullForMissingQuestion() {
+        assertNull(questionService.findQuestionById(-1L));
+    }
+
+    @Test
+    void saveQuestionPersistsEntity() {
+        QuestionBankAuthor questionBankAuthor = createQuestionBankWithQuestions();
+        Question question = ServiceTestData.questionBuilder()
+                                            .crtNo(9)
+                                            .title("Saved title")
+                                            .text("Saved text")
+                                            .type(QuestionType.MULTICHOICE)
+                                            .questionBankAuthor(questionBankAuthor)
+                                            .build();
+
+        Question saved = questionService.saveQuestion(question);
+
+        assertNotNull(saved.getId());
+        assertEquals("Saved title", saved.getTitle());
+        assertEquals(questionBankAuthor.getId(), saved.getQuestionBankAuthor().getId());
+    }
+
+    @Test
+    void deleteQuestionRemovesExistingQuestion() {
+        QuestionBankAuthor questionBankAuthor = createQuestionBankWithQuestions();
+        Question saved = testEntityFactory.createQuestion(
+                questionBankAuthor,
+                QuestionType.MULTICHOICE,
+                "Delete title",
+                "Delete text"
+        );
+
+        assertTrue(questionService.deleteQuestion(saved.getId()));
+        assertNull(questionService.findQuestionById(saved.getId()));
+    }
+
+    @Test
+    void deleteQuestionReturnsFalseForMissingQuestion() {
+        assertFalse(questionService.deleteQuestion(-1L));
+    }
+
+    @Test
+    void getQuestionsByQuestionBankIdReturnsOnlyMatchingQuestions() {
+        QuestionBankAuthor questionBankAuthor = createQuestionBankWithQuestions();
+        QuestionBankAuthor otherQuestionBankAuthor = testEntityFactory.createQuestionBankAuthorFixture(
+                ServiceTestData.questionBankAuthorSpecBuilder()
+                              .authorName("Other author")
+                              .initials("OA")
+                              .questionBankName("Other bank")
+                              .course(questionBankAuthor.getQuestionBank().getCourseName())
+                              .studyYear(StudyYear.Y2024_2025)
+                              .source("source")
+                              .build()
+        ).questionBankAuthor();
+        testEntityFactory.createQuestion(otherQuestionBankAuthor, QuestionType.MULTICHOICE, "Other title", "Other text");
+
+        List<QuestionDto> result = questionService.getQuestionsByQuestionBankId(questionBankAuthor.getQuestionBank().getId());
+
+        assertNotNull(result);
+        assertTrue(result.stream().allMatch(dto -> dto.getQuestionBankId().equals(questionBankAuthor.getQuestionBank().getId())));
+    }
+
+    @Test
+    void getQuestionsByQuestionBankIdReturnsEmptyListForMissingBank() {
+        assertTrue(questionService.getQuestionsByQuestionBankId(-1L).isEmpty());
+    }
+
+    @Test
+    void getQuestionDtosForQuestionBankAuthorRejectsNullId() {
+        assertThrows(IllegalArgumentException.class, () -> questionService.getQuestionDtosForQuestionBankAuthor(null));
+    }
+
+    @Test
+    void getQuestionDtosForQuestionBankAuthorReturnsDtos() {
+        QuestionBankAuthor questionBankAuthor = createQuestionBankWithQuestions();
+
+        List<QuestionDto> result = questionService.getQuestionDtosForQuestionBankAuthor(questionBankAuthor.getId());
+
+        assertNotNull(result);
+        assertTrue(result.size() >= 2);
+    }
+
+    @Test
+    void getQuestionBankQuestionsForAuthorReturnsQuestions() {
+        QuestionBankAuthor questionBankAuthor = createQuestionBankWithQuestions();
+
+        List<Question> result = questionService.getQuestionBankQuestionsForAuthor(questionBankAuthor.getId());
+
+        assertNotNull(result);
+        assertTrue(result.size() >= 2);
+        assertTrue(result.stream().allMatch(q -> q.getQuestionBankAuthor().getId().equals(questionBankAuthor.getId())));
+    }
+
+    @Test
+    void getQuestionBankQuestionsForAuthorReturnsEmptyListForMissingAuthor() {
+        assertTrue(questionService.getQuestionBankQuestionsForAuthor(-1L).isEmpty());
     }
 
     private QuestionBankAuthor createQuestionBankWithQuestions() {
