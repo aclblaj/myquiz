@@ -169,21 +169,24 @@ function deleteAuthor(authorId) {
 }
 
 // Auto-submit form when course filter changes to refresh the author list and questionBank list
-// document.addEventListener('DOMContentLoaded', function() {
-//     var courseFilter = document.getElementById('courseFilter');
-//     var form = courseFilter.closest('form');
-//
-//     courseFilter.addEventListener('change', function() {
-//         // Reset author filter to "All Authors" when course changes
-//         var authorFilter = document.getElementById('authorFilter');
-//         authorFilter.value = '';
-//         // Reset questionBank filter to "All Question Banks" when course changes
-//         var questionBankFilter = document.getElementById('questionBankFilter');
-//         questionBankFilter.value = '';
-//         // Submit the form to get the updated author list and questionBank list from the server
-//         form.submit();
-//     });
-// });
+document.addEventListener('DOMContentLoaded', function() {
+    var courseFilter = document.getElementById('courseFilter');
+    var form = courseFilter.closest('form');
+
+    courseFilter.addEventListener('change', function() {
+        // Reset author filter to "All Authors" when course changes
+        var authorFilter = document.getElementById('authorFilter');
+        authorFilter.value = '';
+        // Reset questionBank filter to "All Question Banks" when course changes
+        var questionBankFilter = document.getElementById('questionBankFilter');
+        questionBankFilter.value = '';
+        // Reset current page to 1 when course changes
+        var currentPageInput = document.getElementById('currentPage');
+        currentPageInput.value = 1;
+        // Submit the form to get the updated author list and questionBank list from the server
+        form.submit();
+    });
+});
 </script>
 </body>
 </html>
