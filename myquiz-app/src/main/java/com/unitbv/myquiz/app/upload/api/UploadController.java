@@ -3,22 +3,15 @@ package com.unitbv.myquiz.app.upload.api;
 import com.unitbv.myquiz.api.dto.ArchiveFolderUploadResultDto;
 import com.unitbv.myquiz.api.dto.ArchiveUploadResult;
 import com.unitbv.myquiz.api.interfaces.UploadApi;
-import com.unitbv.myquiz.api.settings.ControllerSettings;
 import com.unitbv.myquiz.api.types.StudyYear;
 import com.unitbv.myquiz.api.types.TemplateType;
 import com.unitbv.myquiz.app.upload.application.UploadApplicationService;
 import com.unitbv.myquiz.app.upload.api.support.UploadResponseFactory;
 import com.unitbv.myquiz.app.upload.api.support.TemplateTypeResolver;
 import com.unitbv.myquiz.app.upload.api.support.UploadRequestValidator;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -37,7 +30,6 @@ import org.springframework.web.multipart.MultipartFile;
  */
 @RestController
 @RequestMapping("/api")
-@Tag(name = "Upload", description = "File upload operations for questionBank questions")
 public class UploadController implements UploadApi {
     private static final Logger logger = LoggerFactory.getLogger(UploadController.class);
     private static final String MSG_FILE_EMPTY = "File is empty";
@@ -82,15 +74,12 @@ public class UploadController implements UploadApi {
      * @return Success message or error details
      */
     @Override
-    @PostMapping(value = ControllerSettings.API_UPLOAD_EXCEL, consumes = "multipart/form-data")
-    @Operation(summary = "Upload Excel file with questionBank questions", description = "Upload and process a single Excel file containing questionBank questions from one author. " + "The file will be parsed according to the specified template type, and questions " + "will be validated for duplicates.")
-    @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Excel file uploaded and processed successfully"), @ApiResponse(responseCode = "400", description = "Bad request - invalid course ID or file format"), @ApiResponse(responseCode = "500", description = "Internal server error during processing")})
     public ResponseEntity<String> uploadExcelFile(
-            @Parameter(description = "Excel file containing questionBank questions", required = true) @RequestParam("file") MultipartFile file,
-            @Parameter(description = "Author name (username)", required = true) @RequestParam("username") String username,
-            @Parameter(description = "Course ID", required = true) @RequestParam("courseId") Long courseId,
-            @Parameter(description = "QuestionBank short name (e.g., Q1, Q2)", required = true) @RequestParam("name") String name,
-            @Parameter(description = "Template type for parsing", required = true) @RequestParam("template") String template
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("username") String username,
+            @RequestParam("courseId") Long courseId,
+            @RequestParam("name") String name,
+            @RequestParam("template") String template
     ) {
 
         logger.atInfo().addArgument(file.getOriginalFilename()).addArgument(username).addArgument(courseId).log("uploadExcelFile called: file='{}', author='{}', courseId={}");
@@ -130,14 +119,11 @@ public class UploadController implements UploadApi {
      * @return Success message with count of imported files or error details
      */
     @Override
-    @PostMapping(value = ControllerSettings.API_UPLOAD_ARCHIVE, consumes = "multipart/form-data")
-    @Operation(summary = "Upload ZIP archive with multiple Excel files", description = "Upload and process a ZIP archive containing multiple Excel files from different authors. " + "The archive will be extracted, and all Excel files will be processed to create questionBank questions. " + "Author names are extracted from file names or folder structure.")
-    @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Archive uploaded and processed successfully"), @ApiResponse(responseCode = "400", description = "Bad request - invalid course ID or archive format"), @ApiResponse(responseCode = "500", description = "Internal server error during processing")})
     public ResponseEntity<String> uploadArchiveFile(
-            @Parameter(description = "ZIP archive containing Excel files", required = true) @RequestParam("archive") MultipartFile archive,
-            @Parameter(description = "Course ID", required = true) @RequestParam("courseId") Long courseId,
-            @Parameter(description = "Question bank name", required = true) @RequestParam("questionBankName") String questionBankName,
-            @Parameter(description = "QuestionBank study year", required = true) @RequestParam("studyYear") StudyYear studyYear
+            @RequestParam("archive") MultipartFile archive,
+            @RequestParam("courseId") Long courseId,
+            @RequestParam("questionBank") String questionBankName,
+            @RequestParam("studyYear") StudyYear studyYear
     ) {
 
         logger.atInfo().addArgument(archive.getOriginalFilename()).addArgument(questionBankName).addArgument(studyYear).log("uploadArchiveFile called: archive='{}', questionBank='{}', studyYear={}");
@@ -168,12 +154,9 @@ public class UploadController implements UploadApi {
     }
 
     @Override
-    @PostMapping(value = ControllerSettings.API_UPLOAD_ARCHIVE_FOLDER, consumes = "multipart/form-data")
-    @Operation(summary = "Upload a folder of archive files", description = "Process all selected ZIP archives one by one with generated unique course and questionBank names. " + "Files matching previously processed file sizes are skipped.")
-    @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Folder archives processed"), @ApiResponse(responseCode = "400", description = "No valid archives provided"), @ApiResponse(responseCode = "500", description = "Internal server error")})
     public ResponseEntity<ArchiveFolderUploadResultDto> uploadArchiveFolder(
-            @Parameter(description = "ZIP archives selected from a folder", required = true) @RequestParam("archives") MultipartFile[] archives,
-            @Parameter(description = "Study year to use for generated questionBanks", required = true) @RequestParam("studyYear") StudyYear studyYear
+            @RequestParam("archives") MultipartFile[] archives,
+            @RequestParam("studyYear") StudyYear studyYear
     ) {
         int providedFiles = archives == null ? 0 : archives.length;
         logger.atInfo().addArgument(providedFiles).addArgument(studyYear).log("uploadArchiveFolder called: files={}, studyYear={}");
@@ -192,15 +175,11 @@ public class UploadController implements UploadApi {
     }
 
     @Override
-    @PostMapping(value = ControllerSettings.API_UPLOAD_XML, consumes = "multipart/form-data")
-    @Operation(summary = "Upload XML file with questions", description = "Upload and process Moodle XML generated by MyQuiz export endpoint. " +
-            "Questions are imported into a new question bank and skipped when title+text already exist in the selected course.")
-    @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "XML uploaded and processed successfully"), @ApiResponse(responseCode = "400", description = "Bad request - invalid course ID or XML format"), @ApiResponse(responseCode = "500", description = "Internal server error during processing")})
     public ResponseEntity<String> uploadXmlFile(
-            @Parameter(description = "XML file containing questions", required = true) @RequestParam("xml") MultipartFile xml,
-            @Parameter(description = "Course ID", required = true) @RequestParam("courseId") Long courseId,
-            @Parameter(description = "Question bank name", required = true) @RequestParam("questionBankName") String questionBankName,
-            @Parameter(description = "QuestionBank study year", required = true) @RequestParam("studyYear") StudyYear studyYear
+            @RequestParam("xml") MultipartFile xml,
+            @RequestParam("courseId") Long courseId,
+            @RequestParam("questionBankName") String questionBankName,
+            @RequestParam("studyYear") StudyYear studyYear
     ) {
         logger.atInfo().addArgument(xml.getOriginalFilename()).addArgument(questionBankName).addArgument(studyYear)
                 .log("uploadXmlFile called: xml='{}', questionBank='{}', studyYear={}");

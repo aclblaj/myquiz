@@ -17,7 +17,6 @@ import com.unitbv.myquiz.app.services.CourseService;
 import com.unitbv.myquiz.app.services.FilterOptionsService;
 import com.unitbv.myquiz.app.services.QuestionBankAuthorService;
 import com.unitbv.myquiz.app.services.QuestionBankService;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -36,7 +35,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/authors")
 @CrossOrigin(origins = "${FRONTEND_URL}")
-@Tag(name = "Authors", description = "Author management operations - Manage questionBank authors and their contributions")
 public class AuthorController implements AuthorApi {
 
     private static final Logger log = LoggerFactory.getLogger(AuthorController.class);

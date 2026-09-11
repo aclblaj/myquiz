@@ -5,19 +5,14 @@ import com.unitbv.myquiz.api.dto.QuestionErrorFilterRequestDto;
 import com.unitbv.myquiz.api.dto.QuestionErrorFilterResponseDto;
 import com.unitbv.myquiz.api.interfaces.QuestionErrorApi;
 import com.unitbv.myquiz.app.services.QuestionErrorService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -32,7 +27,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/errors")
 @CrossOrigin(origins = "${FRONTEND_URL}")
-@Tag(name = "Errors", description = "Question error management - Handle validation errors from imports")
 public class QuestionErrorController implements QuestionErrorApi {
 
     private static final Logger log = LoggerFactory.getLogger(QuestionErrorController.class);
@@ -40,9 +34,7 @@ public class QuestionErrorController implements QuestionErrorApi {
     private final QuestionErrorService questionErrorService;
 
     @Override
-    @PostMapping("/filter")
-    @Operation(summary = "Filter question errors", description = "Filter and paginate question errors by course, author, and questionBank")
-    public ResponseEntity<QuestionErrorFilterResponseDto> filterErrors(@RequestBody QuestionErrorFilterRequestDto filterInput) {
+    public ResponseEntity<QuestionErrorFilterResponseDto> filterErrors(@Valid @RequestBody QuestionErrorFilterRequestDto filterInput) {
         log.info("Filtering errors with input: {}", filterInput);
         try {
             QuestionErrorFilterResponseDto result = questionErrorService.filter(filterInput);
@@ -57,8 +49,6 @@ public class QuestionErrorController implements QuestionErrorApi {
     }
 
     @Override
-    @DeleteMapping("/{id}")
-    @Operation(summary = "Delete a question error", description = "Remove a specific question error by ID")
     public ResponseEntity<Void> deleteError(@PathVariable Long id) {
         log.info("Deleting error with id: {}", id);
         try {
@@ -76,8 +66,6 @@ public class QuestionErrorController implements QuestionErrorApi {
     }
 
     @Override
-    @PutMapping("/{id}/resolve")
-    @Operation(summary = "Resolve a question error", description = "Mark a question error as resolved")
     public ResponseEntity<QuestionErrorDto> resolveError(@PathVariable Long id) {
         log.info("Resolving error with id: {}", id);
         try {
@@ -93,8 +81,6 @@ public class QuestionErrorController implements QuestionErrorApi {
     }
 
     @Override
-    @GetMapping("/{id}")
-    @Operation(summary = "Get a question error by ID", description = "Retrieve details of a specific question error")
     public ResponseEntity<QuestionErrorDto> getErrorById(@PathVariable Long id) {
         log.info("Getting error with id: {}", id);
         try {
@@ -111,8 +97,6 @@ public class QuestionErrorController implements QuestionErrorApi {
     }
 
     @Override
-    @GetMapping
-    @Operation(summary = "Get all question errors", description = "Retrieve all question errors without filtering")
     public ResponseEntity<List<QuestionErrorDto>> getAllErrors() {
         log.info("Getting all errors");
         try {

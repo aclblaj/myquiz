@@ -9,11 +9,7 @@ import com.unitbv.myquiz.api.settings.ControllerSettings;
 import com.unitbv.myquiz.app.services.CourseService;
 import com.unitbv.myquiz.app.services.DuplicateDeletionTaskService;
 import com.unitbv.myquiz.app.services.ExportService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,56 +31,28 @@ import java.util.List;
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/courses")
-@Tag(name = "Courses", description = "Course management operations - Manage academic courses")
 public class CourseController implements CourseApi {
     private static final Logger log = LoggerFactory.getLogger(CourseController.class);
     private final CourseService courseService;
     private final ExportService exportService;
     private final DuplicateDeletionTaskService duplicateDeletionTaskService;
 
-    @GetMapping({"/", ""})
-    @Operation(
-        summary = "Get All Courses",
-        description = "Retrieve a list of all available courses"
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Courses retrieved successfully")
-    })
+    @Override
     public ResponseEntity<List<CourseDto>> getAllCourses() {
         log.info("Getting all courses");
         List<CourseDto> courses = courseService.getAllCourses();
         return ResponseEntity.ok(courses);
     }
 
-    @DeleteMapping({"/{id}"})
-    @Operation(
-        summary = "Delete Course",
-        description = "Delete a course by its ID"
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "204", description = "Course deleted successfully"),
-        @ApiResponse(responseCode = "404", description = "Course not found")
-    })
     @Override
-    public ResponseEntity<Void> deleteCourseById(
-            @Parameter(description = "Course ID", required = true) @PathVariable Long id) {
+    public ResponseEntity<Void> deleteCourseById(@PathVariable Long id) {
         log.info("Deleting course with id: {}", id);
         courseService.deleteCourseById(id);
         return ResponseEntity.noContent().build();
     }
 
-    @GetMapping({"/{id}"})
-    @Operation(
-        summary = "Get Course by ID",
-        description = "Retrieve a specific course by its ID"
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Course found"),
-        @ApiResponse(responseCode = "404", description = "Course not found")
-    })
     @Override
-    public ResponseEntity<CourseDto> findById(
-            @Parameter(description = "Course ID", required = true) @PathVariable Long id) {
+    public ResponseEntity<CourseDto> findById(@PathVariable Long id) {
         log.info("Finding course with id: {}", id);
         CourseDto course = courseService.findById(id);
         if (course == null) {
@@ -93,19 +61,10 @@ public class CourseController implements CourseApi {
         return ResponseEntity.ok(course);
     }
 
-    @PutMapping({"/{id}"})
-    @Operation(
-        summary = "Update Course",
-        description = "Update an existing course"
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "204", description = "Course updated successfully"),
-        @ApiResponse(responseCode = "404", description = "Course not found")
-    })
     @Override
     public ResponseEntity<Void> updateCourse(
-            @Parameter(description = "Course ID", required = true) @PathVariable Long id,
-            @RequestBody CourseDto courseDto) {
+            @PathVariable Long id,
+            @Valid @RequestBody CourseDto courseDto) {
         log.info("Updating course with id: {}", id);
         if (courseDto != null) {
             courseService.updateCourse(id, courseDto);
@@ -113,26 +72,16 @@ public class CourseController implements CourseApi {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping({"/", ""})
-    @Operation(
-        summary = "Create Course",
-        description = "Create a new course"
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Course created successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid course data")
-    })
     @Override
-    public ResponseEntity<CourseDto> createCourse(@RequestBody CourseDto courseDto) {
+    public ResponseEntity<CourseDto> createCourse(@Valid @RequestBody CourseDto courseDto) {
         if (courseDto == null) {
             log.warn("Attempted to create course with null CourseDto");
             return ResponseEntity.badRequest().build();
         }
         log.info("Creating new course: {}", courseDto);
-        return ResponseEntity.ok(courseService.createCourse(courseDto));
+        return ResponseEntity.status(HttpStatus.CREATED).body(courseService.createCourse(courseDto));
     }
 
-    @GetMapping("/{id}/export-xml")
     @Override
     public ResponseEntity<byte[]> exportCourseXml(@PathVariable Long id) {
         if (!hasExportXmlPermission()) {
@@ -164,7 +113,6 @@ public class CourseController implements CourseApi {
             .anyMatch(authority -> ControllerSettings.PERMISSION_EXPORT_XML.equals(authority.getAuthority()));
     }
 
-    @PostMapping("/{id}/recompute-duplicates")
     @Override
     public ResponseEntity<CourseDuplicateRecomputeResultDto> recomputeCourseDuplicates(@PathVariable Long id) {
         try {
@@ -181,12 +129,12 @@ public class CourseController implements CourseApi {
         }
     }
 
-    @PostMapping("/recompute-with-strategy")
+    @Override
     public ResponseEntity<CourseDuplicateRecomputeResultDto> recomputeCourseDuplicatesWithStrategy(
-            @RequestParam(required = false) Long courseId,
-            @RequestParam String strategy,
-            @RequestParam(required = false) Long questionBankId,
-            @RequestParam(required = false) Long authorId) {
+            @RequestParam(value = "courseId", required = false) Long courseId,
+            @RequestParam("strategy") String strategy,
+            @RequestParam(value = "questionBankId", required = false) Long questionBankId,
+            @RequestParam(value = "authorId", required = false) Long authorId) {
         try {
             CourseDuplicateRecomputeResultDto result;
             if (questionBankId != null && authorId != null) {
@@ -211,11 +159,11 @@ public class CourseController implements CourseApi {
         }
     }
 
-    @GetMapping("/duplicate-statistics")
+    @Override
     public ResponseEntity<DuplicateStatisticsDto> getDuplicateStatistics(
-            @RequestParam(required = false) Long courseId,
-            @RequestParam(required = false) Long questionBankId,
-            @RequestParam(required = false) Long authorId) {
+            @RequestParam(value = "courseId", required = false) Long courseId,
+            @RequestParam(value = "questionBankId", required = false) Long questionBankId,
+            @RequestParam(value = "authorId", required = false) Long authorId) {
         try {
             DuplicateStatisticsDto statistics;
             if (questionBankId != null && authorId != null) {
@@ -240,11 +188,11 @@ public class CourseController implements CourseApi {
         }
     }
 
-    @PostMapping("/clear-duplicates")
+    @Override
     public ResponseEntity<Integer> clearDuplicatesForCourse(
-            @RequestParam(required = false) Long courseId,
-            @RequestParam(required = false) Long questionBankId,
-            @RequestParam(required = false) Long authorId) {
+            @RequestParam(value = "courseId", required = false) Long courseId,
+            @RequestParam(value = "questionBankId", required = false) Long questionBankId,
+            @RequestParam(value = "authorId", required = false) Long authorId) {
         try {
             int clearedCount;
             if (questionBankId != null && authorId != null) {
@@ -271,13 +219,7 @@ public class CourseController implements CourseApi {
 
     // ---- Recompute History endpoints ----
 
-    @GetMapping("/recompute-history")
-    @Operation(summary = "Get duplicate recompute history",
-               description = "Returns all saved duplicate recompute history entries ordered by date descending")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "History retrieved successfully"),
-        @ApiResponse(responseCode = "500", description = "Internal server error")
-    })
+    @Override
     public ResponseEntity<List<DuplicateRecomputeHistoryDto>> getRecomputeHistory() {
         try {
             List<DuplicateRecomputeHistoryDto> history = courseService.getRecomputeHistory();
@@ -288,16 +230,9 @@ public class CourseController implements CourseApi {
         }
     }
 
-    @PostMapping("/recompute-history")
-    @Operation(summary = "Save a duplicate recompute history entry",
-               description = "Persists a completed recompute result as a history record")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "History entry saved successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid input"),
-        @ApiResponse(responseCode = "500", description = "Internal server error")
-    })
+    @Override
     public ResponseEntity<DuplicateRecomputeHistoryDto> saveRecomputeHistory(
-            @RequestBody DuplicateRecomputeHistoryDto historyDto) {
+            @Valid @RequestBody DuplicateRecomputeHistoryDto historyDto) {
         if (historyDto == null) {
             return ResponseEntity.badRequest().build();
         }
@@ -316,14 +251,7 @@ public class CourseController implements CourseApi {
         }
     }
 
-    @DeleteMapping("/recompute-history/{id}")
-    @Operation(summary = "Delete a duplicate recompute history entry",
-               description = "Deletes a history record by its ID")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "204", description = "History entry deleted successfully"),
-        @ApiResponse(responseCode = "404", description = "History entry not found"),
-        @ApiResponse(responseCode = "500", description = "Internal server error")
-    })
+    @Override
     public ResponseEntity<Void> deleteRecomputeHistoryEntry(@PathVariable Long id) {
         try {
             courseService.deleteRecomputeHistoryEntry(id);
@@ -355,15 +283,7 @@ public class CourseController implements CourseApi {
         return result;
     }
 
-    @PostMapping("/" + ControllerSettings.API_COURSES_CREATE_DEFAULTS_SUFFIX)
-    @Operation(
-        summary = "Create Default Courses",
-        description = "Create all default courses that don't already exist in the database"
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Default courses created successfully"),
-        @ApiResponse(responseCode = "500", description = "Internal server error")
-    })
+    @Override
     public ResponseEntity<Integer> createDefaultCourses() {
         try {
             int createdCount = courseService.createDefaultCourses();
@@ -375,18 +295,7 @@ public class CourseController implements CourseApi {
         }
     }
 
-    @PostMapping("/{id}/delete-duplicate-questions")
-    @Operation(
-        summary = "Delete Duplicate Questions in Course",
-        description = "Starts a background task that deletes duplicate questions from all question banks in a course, " +
-                "keeping only one instance of each unique question. Returns immediately once the task has started; " +
-                "the result is persisted as a recompute history entry when the task completes."
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "202", description = "Duplicate questions deletion started"),
-        @ApiResponse(responseCode = "404", description = "Course not found"),
-        @ApiResponse(responseCode = "500", description = "Internal server error")
-    })
+    @Override
     public ResponseEntity<String> deleteDuplicateQuestionsInCourse(@PathVariable Long id) {
         log.info("Starting background deletion of duplicate questions for course id: {}", id);
         try {
@@ -404,15 +313,7 @@ public class CourseController implements CourseApi {
         }
     }
 
-    @GetMapping("/{id}/delete-duplicate-questions/status")
-    @Operation(
-        summary = "Get last delete-exact-duplicates background error",
-        description = "Returns the error message from the most recent background delete-exact-duplicates run for the course, or no content if the last run succeeded (or none has run yet)."
-    )
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Last error message returned"),
-        @ApiResponse(responseCode = "204", description = "No error recorded for the last run")
-    })
+    @Override
     public ResponseEntity<String> getDeleteDuplicateQuestionsStatus(@PathVariable Long id) {
         String lastError = duplicateDeletionTaskService.getDeleteExactDuplicatesLastError(id);
         return lastError != null ? ResponseEntity.ok(lastError) : ResponseEntity.noContent().build();
