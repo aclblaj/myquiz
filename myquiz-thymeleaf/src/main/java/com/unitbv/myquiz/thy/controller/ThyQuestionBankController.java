@@ -3,13 +3,16 @@ package com.unitbv.myquiz.thy.controller;
 import com.unitbv.myquiz.api.dto.CourseDto;
 import com.unitbv.myquiz.api.dto.QuestionBankDto;
 import com.unitbv.myquiz.api.dto.QuestionBankExportDto;
+import com.unitbv.myquiz.api.dto.QuestionBankExportAuthorSectionDto;
 import com.unitbv.myquiz.api.dto.QuestionBankFilterRequestDto;
 import com.unitbv.myquiz.api.dto.QuestionBankFilterResponseDto;
 import com.unitbv.myquiz.api.dto.QuestionBankStatisticsDto;
 import com.unitbv.myquiz.api.settings.ControllerSettings;
 import com.unitbv.myquiz.api.util.PaginationParams;
+import com.unitbv.myquiz.api.util.PaginationResult;
 import com.unitbv.myquiz.api.util.PaginationSupport;
 import com.unitbv.myquiz.thy.service.SessionService;
+import com.unitbv.myquiz.thy.pagination.PaginationView;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +39,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Thymeleaf controller for QuestionBank management operations.
@@ -121,6 +126,7 @@ public class ThyQuestionBankController {
             model.addAttribute(ControllerSettings.ATTR_JWT_TOKEN_PRESENT, true);
             model.addAttribute(ControllerSettings.ATTR_SELECTED_COURSE_ID, courseId);
             model.addAttribute(ControllerSettings.ATTR_COURSES, courses);
+            addPaginationModel(model, result, safePage, safePageSize, courseId);
             return ControllerSettings.VIEW_QUESTION_BANK_LIST;
         } catch (HttpClientErrorException.Unauthorized e) {
             log.atError().addArgument(endpoint).log("[TheQuestionBankController] 401 Unauthorized when calling {}: Token may be invalid or expired");
@@ -160,6 +166,7 @@ public class ThyQuestionBankController {
                 model.addAttribute(ControllerSettings.ATTR_JWT_TOKEN_PRESENT, true);
                 model.addAttribute(ControllerSettings.ATTR_SELECTED_COURSE_ID, null);
                 model.addAttribute(ControllerSettings.ATTR_COURSES, courses != null ? courses : new ArrayList<>());
+                addPaginationModel(model, retryResult, defaultPagination.page(), defaultPagination.pageSize(), null);
                 return ControllerSettings.VIEW_QUESTION_BANK_LIST;
             } catch (Exception retryEx) {
                 log.atError().setCause(retryEx).addArgument(endpoint).log("[TheQuestionBankController] Retry with safe default filter failed for endpoint {}.");
@@ -172,6 +179,7 @@ public class ThyQuestionBankController {
             model.addAttribute(ControllerSettings.ATTR_JWT_TOKEN_PRESENT, true);
             model.addAttribute(ControllerSettings.ATTR_SELECTED_COURSE_ID, courseId);
             model.addAttribute(ControllerSettings.ATTR_COURSES, fetchCoursesFromAPI());
+            addPaginationModel(model, null, safePage, safePageSize, courseId);
             return ControllerSettings.VIEW_QUESTION_BANK_LIST;
         }
 
@@ -181,7 +189,23 @@ public class ThyQuestionBankController {
         model.addAttribute(ControllerSettings.ATTR_JWT_TOKEN_PRESENT, true);
         model.addAttribute(ControllerSettings.ATTR_SELECTED_COURSE_ID, courseId);
         model.addAttribute(ControllerSettings.ATTR_COURSES, fetchCoursesFromAPI());
+        addPaginationModel(model, null, safePage, safePageSize, courseId);
         return ControllerSettings.VIEW_QUESTION_BANK_LIST;
+    }
+
+    private void addPaginationModel(Model model, QuestionBankFilterResponseDto result, int page, int pageSize, Long courseId) {
+        int currentPage = result != null && result.getPage() != null ? result.getPage() : page;
+        int effectivePageSize = result != null && result.getPageSize() != null ? result.getPageSize() : pageSize;
+        int totalPages = result != null && result.getTotalPages() != null ? result.getTotalPages() : 0;
+        long totalElements = result != null && result.getTotalElements() != null ? result.getTotalElements() : 0L;
+        model.addAttribute(ControllerSettings.ATTR_CURRENT_PAGE, currentPage);
+        model.addAttribute(ControllerSettings.ATTR_PAGE_SIZE, effectivePageSize);
+        model.addAttribute(ControllerSettings.ATTR_TOTAL_PAGES, totalPages);
+        model.addAttribute(ControllerSettings.ATTR_TOTAL_ELEMENTS, totalElements);
+        Map<String, Object> filters = new LinkedHashMap<>();
+        filters.put("courseId", courseId);
+        model.addAttribute(ControllerSettings.ATTR_PAGINATION,
+                PaginationView.of("/question-banks", currentPage, effectivePageSize, totalPages, totalElements, filters));
     }
 
     @GetMapping({"/", ""})
@@ -255,8 +279,13 @@ public class ThyQuestionBankController {
 
     @GetMapping("/{id}/extended")
     public String getQuestionBankExtendedById(@PathVariable Long id, @RequestParam(value = ControllerSettings.ATTR_PAGE_NUMBER, required = false) Integer page,
-                                              @RequestParam(value = ControllerSettings.ATTR_PAGE_SIZE, required = false) Integer pageSize,
-                                              @RequestParam(value = ControllerSettings.ATTR_COURSE_ID, required = false) Long courseId, Model model, RedirectAttributes redirectAttributes) {
+                                               @RequestParam(value = ControllerSettings.ATTR_PAGE_SIZE, required = false) Integer pageSize,
+                                               @RequestParam(value = "authorsPage", required = false) Integer authorsPage,
+                                               @RequestParam(value = "mcPage", required = false) Integer mcPage,
+                                               @RequestParam(value = "tfPage", required = false) Integer tfPage,
+                                               @RequestParam(value = "errorsPage", required = false) Integer errorsPage,
+                                               @RequestParam(value = "duplicatesPage", required = false) Integer duplicatesPage,
+                                               @RequestParam(value = ControllerSettings.ATTR_COURSE_ID, required = false) Long courseId, Model model, RedirectAttributes redirectAttributes) {
         String redirect = sessionService.validateSessionOrRedirect();
         if (redirect != null) {
             return redirect;
@@ -274,7 +303,10 @@ public class ThyQuestionBankController {
             }
             model.addAttribute(ControllerSettings.ATTR_QUESTION_BANK_EXTENDED, questionBankExtended);
             model.addAttribute(ControllerSettings.ATTR_QUESTION_BANK, questionBankExtended.getQuestionBank());
-            model.addAttribute(ControllerSettings.ATTR_AUTHOR_SECTIONS, questionBankExtended.getAuthorSections());
+            addExtendedDetailsPagination(model, id, questionBankExtended.getAuthorSections(), pagination, courseId,
+                    authorsPage, mcPage, tfPage, errorsPage, duplicatesPage);
+            model.addAttribute(ControllerSettings.ATTR_CURRENT_PAGE, pagination.page());
+            model.addAttribute(ControllerSettings.ATTR_PAGE_SIZE, pagination.pageSize());
             model.addAttribute(ControllerSettings.ATTR_BACK_TO_QUESTION_BANK_URL,
                     buildQuestionBankListBackUrl(pagination.page(), pagination.pageSize(), courseId));
             model.addAttribute(ControllerSettings.ATTR_LOGGED_IN_USER, sessionService.getLoggedInUser());
@@ -291,6 +323,108 @@ public class ThyQuestionBankController {
             redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_ERROR_MSG, ControllerSettings.MSG_COULD_NOT_LOAD_EXPORT_VIEW);
             return ControllerSettings.VIEW_REDIRECT_QUESTION_BANK;
         }
+    }
+
+    private void addExtendedDetailsPagination(Model model, Long questionBankId,
+                                               List<QuestionBankExportAuthorSectionDto> allSections,
+                                               PaginationParams parentPagination, Long courseId,
+                                               Integer authorsPage, Integer mcPage, Integer tfPage,
+                                               Integer errorsPage, Integer duplicatesPage) {
+        List<QuestionBankExportAuthorSectionDto> sections = allSections != null ? allSections : List.of();
+        PaginationResult<QuestionBankExportAuthorSectionDto> authorsResult = PaginationSupport.paginate(
+                sections, authorsPage, parentPagination.pageSize());
+        model.addAttribute(ControllerSettings.ATTR_AUTHOR_SECTIONS, authorsResult.items());
+
+        Map<String, Object> authorFilters = new LinkedHashMap<>();
+        authorFilters.put(ControllerSettings.ATTR_PAGE_NUMBER, parentPagination.page());
+        authorFilters.put(ControllerSettings.ATTR_COURSE_ID, courseId);
+        authorFilters.put("mcPage", mcPage);
+        authorFilters.put("tfPage", tfPage);
+        authorFilters.put("errorsPage", errorsPage);
+        authorFilters.put("duplicatesPage", duplicatesPage);
+        model.addAttribute("authorSectionsPagination", PaginationView.of(
+                "/question-banks/" + questionBankId + "/extended", "authorsPage", ControllerSettings.ATTR_PAGE_SIZE,
+                authorsResult.page(), authorsResult.pageSize(), authorsResult.totalPages(), authorsResult.totalElements(), authorFilters));
+
+        Map<Long, PaginationView> mcPagination = new LinkedHashMap<>();
+        Map<Long, PaginationView> tfPagination = new LinkedHashMap<>();
+        Map<Long, PaginationView> errorPagination = new LinkedHashMap<>();
+        Map<Long, PaginationView> duplicatePagination = new LinkedHashMap<>();
+        Map<Long, Integer> mcTotals = new LinkedHashMap<>();
+        Map<Long, Integer> tfTotals = new LinkedHashMap<>();
+        Map<Long, Integer> errorTotals = new LinkedHashMap<>();
+        Map<Long, Integer> duplicateTotals = new LinkedHashMap<>();
+        for (QuestionBankExportAuthorSectionDto section : authorsResult.items()) {
+            if (section == null || section.getAuthor() == null || section.getAuthor().getId() == null) {
+                continue;
+            }
+            Long authorId = section.getAuthor().getId();
+            mcTotals.put(authorId, section.getMultipleChoiceQuestions() != null ? section.getMultipleChoiceQuestions().size() : 0);
+            tfTotals.put(authorId, section.getTrueFalseQuestions() != null ? section.getTrueFalseQuestions().size() : 0);
+            errorTotals.put(authorId, section.getErrors() != null ? section.getErrors().size() : 0);
+            duplicateTotals.put(authorId, section.getDuplicateQuestions() != null ? section.getDuplicateQuestions().size() : 0);
+            PaginationResult<com.unitbv.myquiz.api.dto.QuestionDto> mcResult = PaginationSupport.paginate(
+                    section.getMultipleChoiceQuestions(), mcPage, parentPagination.pageSize());
+            PaginationResult<com.unitbv.myquiz.api.dto.QuestionDto> tfResult = PaginationSupport.paginate(
+                    section.getTrueFalseQuestions(), tfPage, parentPagination.pageSize());
+            PaginationResult<com.unitbv.myquiz.api.dto.QuestionErrorDto> errorResult = PaginationSupport.paginate(
+                    section.getErrors(), errorsPage, parentPagination.pageSize());
+            PaginationResult<com.unitbv.myquiz.api.dto.QuestionDuplicateDto> duplicateResult = PaginationSupport.paginate(
+                    section.getDuplicateQuestions(), duplicatesPage, parentPagination.pageSize());
+
+            section.setMultipleChoiceQuestions(mcResult.items());
+            section.setTrueFalseQuestions(tfResult.items());
+            section.setErrors(errorResult.items());
+            section.setDuplicateQuestions(duplicateResult.items());
+
+            mcPagination.put(authorId, buildExtendedPagination(questionBankId, authorId, "mcPage", parentPagination,
+                    courseId, authorsPage, tfPage, errorsPage, duplicatesPage, mcResult));
+            tfPagination.put(authorId, buildExtendedPagination(questionBankId, authorId, "tfPage", parentPagination,
+                    courseId, authorsPage, mcPage, errorsPage, duplicatesPage, tfResult));
+            errorPagination.put(authorId, buildExtendedPagination(questionBankId, authorId, "errorsPage", parentPagination,
+                    courseId, authorsPage, mcPage, tfPage, duplicatesPage, errorResult));
+            duplicatePagination.put(authorId, buildExtendedPagination(questionBankId, authorId, "duplicatesPage", parentPagination,
+                    courseId, authorsPage, mcPage, tfPage, errorsPage, duplicateResult));
+        }
+        model.addAttribute("extendedMcPagination", mcPagination);
+        model.addAttribute("extendedTfPagination", tfPagination);
+        model.addAttribute("extendedErrorPagination", errorPagination);
+        model.addAttribute("extendedDuplicatePagination", duplicatePagination);
+        model.addAttribute("extendedMcTotals", mcTotals);
+        model.addAttribute("extendedTfTotals", tfTotals);
+        model.addAttribute("extendedErrorTotals", errorTotals);
+        model.addAttribute("extendedDuplicateTotals", duplicateTotals);
+    }
+
+    private <T> PaginationView buildExtendedPagination(Long questionBankId, Long authorId, String pageParam,
+                                                        PaginationParams parentPagination, Long courseId,
+                                                        Integer authorsPage, Integer firstOtherPage,
+                                                        Integer secondOtherPage, Integer thirdOtherPage,
+                                                        PaginationResult<T> result) {
+        Map<String, Object> filters = new LinkedHashMap<>();
+        filters.put(ControllerSettings.ATTR_PAGE_NUMBER, parentPagination.page());
+        filters.put(ControllerSettings.ATTR_COURSE_ID, courseId);
+        filters.put("authorsPage", authorsPage);
+        if ("mcPage".equals(pageParam)) {
+            filters.put("tfPage", firstOtherPage);
+            filters.put("errorsPage", secondOtherPage);
+            filters.put("duplicatesPage", thirdOtherPage);
+        } else if ("tfPage".equals(pageParam)) {
+            filters.put("mcPage", firstOtherPage);
+            filters.put("errorsPage", secondOtherPage);
+            filters.put("duplicatesPage", thirdOtherPage);
+        } else if ("errorsPage".equals(pageParam)) {
+            filters.put("mcPage", firstOtherPage);
+            filters.put("tfPage", secondOtherPage);
+            filters.put("duplicatesPage", thirdOtherPage);
+        } else {
+            filters.put("mcPage", firstOtherPage);
+            filters.put("tfPage", secondOtherPage);
+            filters.put("errorsPage", thirdOtherPage);
+        }
+        return PaginationView.of("/question-banks/" + questionBankId + "/extended", pageParam,
+                ControllerSettings.ATTR_PAGE_SIZE, result.page(), result.pageSize(), result.totalPages(),
+                result.totalElements(), filters);
     }
 
     private String buildQuestionBankListBackUrl(Integer page, Integer pageSize, Long courseId) {

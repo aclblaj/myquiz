@@ -32,6 +32,7 @@ import com.unitbv.myquiz.app.specifications.QuestionBankAuthorSpecification;
 import com.unitbv.myquiz.app.specifications.QuestionBankSpecification;
 import com.unitbv.myquiz.app.specifications.QuestionSpecification;
 import com.unitbv.myquiz.app.util.FileValidator;
+import com.unitbv.myquiz.app.util.SpringDataPaginationAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -344,8 +345,13 @@ public class AuthorService {
     }
 
     public Page<AuthorDto> findPaginated(int pageNo, int pageSize, String sortField, String sortDirection) {
-        Pageable paging = MyUtil.getPageable(pageNo, pageSize, sortField, sortDirection);
+        PaginationParams pagination = PaginationSupport.normalize(pageNo, pageSize);
+        Pageable paging = SpringDataPaginationAdapter.toPageable(pagination, sortField, sortDirection);
         Page<Author> page = authorRepository.findAll(paging);
+        if (page.getTotalPages() > 0 && pagination.page() > page.getTotalPages()) {
+            paging = SpringDataPaginationAdapter.toPageable(page.getTotalPages(), pagination.pageSize(), sortField, sortDirection);
+            page = authorRepository.findAll(paging);
+        }
         List<AuthorDto> content = page.getContent().stream().map(this::mapToAuthorDto).toList();
         return new PageImpl<>(content, paging, page.getTotalElements());
     }
@@ -357,24 +363,25 @@ public class AuthorService {
                 questionBankId, pageNo, pageSize, sortField, sortDirection
         );
 
-        Pageable paging = MyUtil.getPageable(pageNo, pageSize, sortField, sortDirection);
+        PaginationParams pagination = PaginationSupport.normalize(pageNo, pageSize);
+        Pageable paging = SpringDataPaginationAdapter.toPageable(pagination, sortField, sortDirection);
 
         Page<Author> page;
+        Specification<Author> specification = null;
         if (course != null && !course.isBlank() && authorId == null && questionBankId == null) {
             // Use specification for course filtering
-            Specification<Author> specification = AuthorSpecification.byCourse(course);
-            page = authorRepository.findAll(specification, paging);
+            specification = AuthorSpecification.byCourse(course);
         } else if (questionBankId != null) {
             // Filter by QuestionBank using specification
-            Specification<Author> specification = AuthorSpecification.byQuestionBank(questionBankId);
-            page = authorRepository.findAll(specification, paging);
+            specification = AuthorSpecification.byQuestionBank(questionBankId);
         } else if (authorId != null) {
             // Filter by authorId using specification
-            Specification<Author> specification = AuthorSpecification.hasId(authorId);
-            page = authorRepository.findAll(specification, paging);
-        } else {
-            // No filters
-            page = authorRepository.findAll(paging);
+            specification = AuthorSpecification.hasId(authorId);
+        }
+        page = specification != null ? authorRepository.findAll(specification, paging) : authorRepository.findAll(paging);
+        if (page.getTotalPages() > 0 && pagination.page() > page.getTotalPages()) {
+            paging = SpringDataPaginationAdapter.toPageable(page.getTotalPages(), pagination.pageSize(), sortField, sortDirection);
+            page = specification != null ? authorRepository.findAll(specification, paging) : authorRepository.findAll(paging);
         }
 
         List<AuthorDto> content = page.getContent().stream().map(a -> getSelf().getAuthorWithQuestionBankStats(a.getId(), course)).toList();

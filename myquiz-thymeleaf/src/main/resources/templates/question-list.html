@@ -16,7 +16,7 @@
 
     <!-- Search Filter Section -->
     <div class="searchfilter">
-        <form method="post" th:action="@{/questions/filter}" class="searchfilter-form">
+        <form method="get" th:action="@{/questions/filter}" class="searchfilter-form">
             <div class="list-filter-field">
                 <label for="courseFilter" class="searchfilter-label">Course</label>
                 <select id="courseFilter" name="courseId" class="searchfilter-select">
@@ -57,11 +57,9 @@
             </div>
             <div class="list-filter-field">
                 <label for="pageSize" class="searchfilter-label">Page Size</label>
-                <select id="pageSize" name="pageSize" class="searchfilter-select">
-                    <option th:selected="${pageSize == 5}" value="5">5</option>
-                    <option th:selected="${pageSize == 10}" value="10">10</option>
-                    <option th:selected="${pageSize == 20}" value="20">20</option>
-                    <option th:selected="${pageSize == 50}" value="50">50</option>
+                <select id="pageSize" name="pageSize" class="searchfilter-select"
+                        onchange="this.form.querySelector('[name=page]').value = 1">
+                    <th:block th:replace="~{fragments/pagination :: page-size-options(${pageSize})}"></th:block>
                 </select>
             </div>
             <div class="list-filter-field">
@@ -125,44 +123,7 @@
         </tbody>
     </table>
 
-    <!-- Pagination Controls -->
-    <div class="pagination-controls" th:if="${totalPages != null && totalPages > 1}">
-        <div class="list-pagination-row">
-            <!-- First Button -->
-            <a th:if="${currentPage != null && currentPage > 1}"
-               th:href="@{/questions(courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, authorId=${selectedAuthorId}, type=${selectedType}, page=1, pageSize=${pageSize != null ? pageSize : 10})}"
-               class="btn btn-outline">⏮️ First</a>
-            <span th:if="${currentPage == null || currentPage <= 1}"
-                  class="btn btn-outline disabled">⏮️ First</span>
-
-            <!-- Previous Button -->
-            <a th:if="${currentPage != null && currentPage > 1}"
-               th:href="@{/questions(courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, authorId=${selectedAuthorId}, type=${selectedType}, page=${currentPage - 1}, pageSize=${pageSize != null ? pageSize : 10})}"
-               class="btn btn-outline">◀️ Previous</a>
-            <span th:if="${currentPage == null || currentPage <= 1}"
-                  class="btn btn-outline disabled">◀️ Previous</span>
-
-            <span class="list-page-indicator">Page <span
-                    th:text="${currentPage != null ? currentPage : 1}"></span> of <span th:text="${totalPages}"></span></span>
-
-            <!-- Next Button -->
-            <a th:if="${currentPage != null && currentPage < totalPages}"
-               th:href="@{/questions(courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, authorId=${selectedAuthorId}, type=${selectedType}, page=${currentPage + 1}, pageSize=${pageSize != null ? pageSize : 10})}"
-               class="btn btn-outline">▶️ Next</a>
-            <span th:if="${currentPage == null || currentPage >= totalPages}" class="btn btn-outline disabled">▶️ Next</span>
-
-            <!-- Last Button -->
-            <a th:if="${currentPage != null && currentPage < totalPages}"
-               th:href="@{/questions(courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, authorId=${selectedAuthorId}, type=${selectedType}, page=${totalPages}, pageSize=${pageSize != null ? pageSize : 10})}"
-               class="btn btn-outline">⏭️ Last</a>
-            <span th:if="${currentPage == null || currentPage >= totalPages}" class="btn btn-outline disabled">⏭️ Last</span>
-        </div>
-    </div>
-
-    <!-- Total Elements -->
-    <div class="total-elements" th:if="${totalElements != null}">
-        Total: <span th:text="${totalElements}"></span> question(s) found
-    </div>
+    <div th:replace="~{fragments/pagination :: controls(${pagination}, 'question(s)')}"></div>
 
     <!-- Question bank-specific questions if viewing by questionBank -->
     <div th:if="${questionBank != null}">
@@ -190,7 +151,7 @@
             </tr>
             </thead>
             <tbody>
-            <tr th:each="questionDto : ${questionBank.questionsMC}" class="data-row">
+            <tr th:each="questionDto : ${questionBankQuestionsMC}" class="data-row">
                 <td>
                     <a th:if="${questionDto.id != null}"
                        th:href="@{/questions/{id}(id=${questionDto.id}, courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, authorId=${selectedAuthorId}, type=${selectedType}, page=${currentPage}, pageSize=${pageSize})}"
@@ -214,12 +175,13 @@
                     th:insert="~{fragments/forms :: question-actions(${questionDto}, ${currentPage}, ${pageSize}, ${selectedCourseId}, ${selectedAuthorId}, ${selectedQuestionBankId}, ${selectedType})}">
                 </td>
             </tr>
-            <tr th:if="${questionBank.questionsMC == null or #lists.isEmpty(questionBank.questionsMC)}"
+            <tr th:if="${questionBankQuestionsMC == null or #lists.isEmpty(questionBankQuestionsMC)}"
                 class="empty-row">
                 <td colspan="15">No multiple choice questions found for the selected criteria</td>
             </tr>
             </tbody>
         </table>
+        <div th:replace="~{fragments/pagination :: controls(${questionBankMcPagination}, 'multiple choice question(s)')}"></div>
 
         <h4>True/False Questions</h4>
         <table class="styled-table">
@@ -238,7 +200,7 @@
             </tr>
             </thead>
             <tbody>
-            <tr th:each="questionDto : ${questionBank.questionsTF}" class="data-row">
+            <tr th:each="questionDto : ${questionBankQuestionsTF}" class="data-row">
                 <td>
                     <a th:if="${questionDto.id != null}"
                        th:href="@{/questions/{id}(id=${questionDto.id}, courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, authorId=${selectedAuthorId}, type=${selectedType}, page=${currentPage}, pageSize=${pageSize})}"
@@ -257,12 +219,13 @@
                     th:insert="~{fragments/forms :: question-actions(${questionDto}, ${currentPage}, ${pageSize}, ${selectedCourseId}, ${selectedAuthorId}, ${selectedQuestionBankId}, ${selectedType})}">
                 </td>
             </tr>
-            <tr th:if="${questionBank.questionsTF == null or #lists.isEmpty(questionBank.questionsTF)}"
+            <tr th:if="${questionBankQuestionsTF == null or #lists.isEmpty(questionBankQuestionsTF)}"
                 class="empty-row">
                 <td colspan="10">No true/false questions found for the selected criteria</td>
             </tr>
             </tbody>
         </table>
+        <div th:replace="~{fragments/pagination :: controls(${questionBankTfPagination}, 'true/false question(s)')}"></div>
 
         <h4>Author Errors</h4>
         <table class="styled-table">
@@ -275,18 +238,19 @@
             </tr>
             </thead>
             <tbody>
-            <tr th:each="error : ${questionBank.authorErrors}" class="data-row">
+            <tr th:each="error : ${questionBankAuthorErrors}" class="data-row">
                 <td th:text="${error.id}"></td>
                 <td th:text="${error.row}"></td>
                 <td th:text="${error.description}"></td>
                 <td th:text="${error.authorName}"></td>
             </tr>
-            <tr th:if="${questionBank.authorErrors == null or #lists.isEmpty(questionBank.authorErrors)}"
+            <tr th:if="${questionBankAuthorErrors == null or #lists.isEmpty(questionBankAuthorErrors)}"
                 class="empty-row">
                 <td colspan="4">No author errors found for the selected criteria</td>
             </tr>
             </tbody>
         </table>
+        <div th:replace="~{fragments/pagination :: controls(${questionBankErrorsPagination}, 'author error(s)')}"></div>
     </div>
 </div>
 

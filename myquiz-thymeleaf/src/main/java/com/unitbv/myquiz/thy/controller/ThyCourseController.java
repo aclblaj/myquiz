@@ -5,7 +5,9 @@ import com.unitbv.myquiz.api.dto.CourseDuplicateRecomputeResultDto;
 import com.unitbv.myquiz.api.settings.ControllerSettings;
 import com.unitbv.myquiz.api.util.PaginationParams;
 import com.unitbv.myquiz.api.util.PaginationSupport;
+import com.unitbv.myquiz.api.util.PaginationResult;
 import com.unitbv.myquiz.thy.service.SessionService;
+import com.unitbv.myquiz.thy.pagination.PaginationView;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +27,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
@@ -36,6 +39,8 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -72,7 +77,7 @@ public class ThyCourseController {
         return renderCourseList(selectedCourseId, selectedYear, page, pageSize, model);
     }
 
-    @PostMapping("/filter")
+    @RequestMapping(value = "/filter", method = {RequestMethod.GET, RequestMethod.POST})
     public String filterCourses(@RequestParam(value = ControllerSettings.ATTR_SELECTED_COURSE_ID, required = false) Long selectedCourseId,
                                 @RequestParam(value = ControllerSettings.ATTR_SELECTED_YEAR, required = false) String selectedYear,
                                 @RequestParam(value = ControllerSettings.ATTR_PAGE_NUMBER, required = false) Integer page,
@@ -139,13 +144,8 @@ public class ThyCourseController {
      * Computes paginated course slice and metadata for the current filters.
      */
     private CoursePageResult paginateCourses(List<CourseDto> filteredCourses, PaginationParams pagination) {
-        int totalElements = filteredCourses.size();
-        int totalPages = totalElements == 0 ? 1 : (int) Math.ceil((double) totalElements / pagination.pageSize());
-        int currentPage = Math.min(pagination.page(), totalPages);
-        int startIndex = Math.min((currentPage - 1) * pagination.pageSize(), totalElements);
-        int endIndex = Math.min(startIndex + pagination.pageSize(), totalElements);
-        List<CourseDto> paginatedCourses = filteredCourses.subList(startIndex, endIndex);
-        return new CoursePageResult(paginatedCourses, currentPage, totalPages, totalElements);
+        PaginationResult<CourseDto> pageResult = PaginationSupport.paginate(filteredCourses, pagination);
+        return new CoursePageResult(pageResult.items(), pageResult.page(), pageResult.totalPages(), Math.toIntExact(pageResult.totalElements()));
     }
 
     /**
@@ -169,6 +169,7 @@ public class ThyCourseController {
         model.addAttribute(ControllerSettings.ATTR_TOTAL_PAGES, pageResult.totalPages());
         model.addAttribute(ControllerSettings.ATTR_TOTAL_ELEMENTS, pageResult.totalElements());
         model.addAttribute(ControllerSettings.ATTR_PAGE_SIZE, pageSize);
+        addPaginationModel(model, pageResult.currentPage(), pageSize, pageResult.totalPages(), pageResult.totalElements(), selectedCourseId, selectedYear);
     }
 
     /**
@@ -184,7 +185,17 @@ public class ThyCourseController {
         model.addAttribute(ControllerSettings.ATTR_TOTAL_PAGES, 1);
         model.addAttribute(ControllerSettings.ATTR_TOTAL_ELEMENTS, 0);
         model.addAttribute(ControllerSettings.ATTR_PAGE_SIZE, pagination.pageSize());
+        addPaginationModel(model, pagination.page(), pagination.pageSize(), 0, 0, selectedCourseId, selectedYear);
         model.addAttribute(ControllerSettings.ATTR_ERROR_MESSAGE, ControllerSettings.MSG_UNEXPECTED_ERROR_RETRY_LATER);
+    }
+
+    private void addPaginationModel(Model model, int page, int pageSize, int totalPages, long totalElements,
+                                    Long selectedCourseId, String selectedYear) {
+        Map<String, Object> filters = new LinkedHashMap<>();
+        filters.put("selectedCourseId", selectedCourseId);
+        filters.put("selectedYear", selectedYear);
+        model.addAttribute(ControllerSettings.ATTR_PAGINATION,
+                PaginationView.of("/courses", page, pageSize, totalPages, totalElements, filters));
     }
 
     @GetMapping("/{id}")

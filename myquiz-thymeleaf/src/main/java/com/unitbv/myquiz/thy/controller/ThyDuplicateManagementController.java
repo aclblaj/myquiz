@@ -12,6 +12,10 @@ import com.unitbv.myquiz.api.dto.QuestionBankFilterResponseDto;
 import com.unitbv.myquiz.api.dto.QuestionBankInfo;
 import com.unitbv.myquiz.api.settings.ControllerSettings;
 import com.unitbv.myquiz.api.types.DuplicateComparisonStrategy;
+import com.unitbv.myquiz.api.util.PaginationParams;
+import com.unitbv.myquiz.api.util.PaginationResult;
+import com.unitbv.myquiz.api.util.PaginationSupport;
+import com.unitbv.myquiz.thy.pagination.PaginationView;
 import com.unitbv.myquiz.thy.service.SessionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +35,8 @@ import org.springframework.web.util.UriComponentsBuilder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Thymeleaf controller for duplicate management operations.
@@ -60,13 +66,15 @@ public class ThyDuplicateManagementController {
             @RequestParam(required = false) Long courseId,
             @RequestParam(required = false) Long questionBankId,
             @RequestParam(required = false) Long authorId,
+            @RequestParam(value = ControllerSettings.ATTR_PAGE_NUMBER, required = false) Integer page,
+            @RequestParam(value = ControllerSettings.ATTR_PAGE_SIZE, required = false) Integer pageSize,
             Model model) {
         String redirect = sessionService.validateSessionOrRedirect();
         if (redirect != null) return redirect;
 
         try {
             populateFilterModel(model, courseId, questionBankId, authorId);
-            loadHistory(model);
+            loadHistory(model, page, pageSize, courseId, questionBankId, authorId);
             return ControllerSettings.VIEW_DUPLICATE_RECOMPUTE;
         } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden e) {
             sessionService.invalidateCurrentSession();
@@ -87,6 +95,8 @@ public class ThyDuplicateManagementController {
             @RequestParam String action,
             @RequestParam(required = false) Long questionBankId,
             @RequestParam(required = false) Long authorId,
+            @RequestParam(value = ControllerSettings.ATTR_PAGE_NUMBER, required = false) Integer page,
+            @RequestParam(value = ControllerSettings.ATTR_PAGE_SIZE, required = false) Integer pageSize,
             Model model) {
 
         String redirect = sessionService.validateSessionOrRedirect();
@@ -105,7 +115,7 @@ public class ThyDuplicateManagementController {
                 handleClearAction(courseId, questionBankId, authorId, model);
             }
 
-            loadHistory(model);
+            loadHistory(model, page, pageSize, courseId, questionBankId, authorId);
             return ControllerSettings.VIEW_DUPLICATE_RECOMPUTE;
         } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden e) {
             sessionService.invalidateCurrentSession();
@@ -139,6 +149,8 @@ public class ThyDuplicateManagementController {
             @RequestParam(required = false) String startedAt,
             @RequestParam(required = false) String endedAt,
             @RequestParam(defaultValue = "0") long durationMs,
+            @RequestParam(value = ControllerSettings.ATTR_PAGE_NUMBER, required = false) Integer page,
+            @RequestParam(value = ControllerSettings.ATTR_PAGE_SIZE, required = false) Integer pageSize,
             RedirectAttributes redirectAttributes) {
 
         String redirect = sessionService.validateSessionOrRedirect();
@@ -176,6 +188,9 @@ public class ThyDuplicateManagementController {
         if (courseId != null) builder.queryParam(ControllerSettings.ATTR_COURSE_ID, courseId);
         if (questionBankId != null) builder.queryParam(ControllerSettings.ATTR_QUESTION_BANK_ID, questionBankId);
         if (authorId != null) builder.queryParam(ControllerSettings.ATTR_AUTHOR_ID, authorId);
+        PaginationParams pagination = PaginationSupport.normalize(page, pageSize);
+        builder.queryParam(ControllerSettings.ATTR_PAGE_NUMBER, pagination.page());
+        builder.queryParam(ControllerSettings.ATTR_PAGE_SIZE, pagination.pageSize());
         return "redirect:" + builder.toUriString();
     }
 
@@ -188,6 +203,8 @@ public class ThyDuplicateManagementController {
             @RequestParam(required = false) Long courseId,
             @RequestParam(required = false) Long questionBankId,
             @RequestParam(required = false) Long authorId,
+            @RequestParam(value = ControllerSettings.ATTR_PAGE_NUMBER, required = false) Integer page,
+            @RequestParam(value = ControllerSettings.ATTR_PAGE_SIZE, required = false) Integer pageSize,
             RedirectAttributes redirectAttributes) {
 
         String redirect = sessionService.validateSessionOrRedirect();
@@ -212,6 +229,9 @@ public class ThyDuplicateManagementController {
         if (courseId != null) builder.queryParam(ControllerSettings.ATTR_COURSE_ID, courseId);
         if (questionBankId != null) builder.queryParam(ControllerSettings.ATTR_QUESTION_BANK_ID, questionBankId);
         if (authorId != null) builder.queryParam(ControllerSettings.ATTR_AUTHOR_ID, authorId);
+        PaginationParams pagination = PaginationSupport.normalize(page, pageSize);
+        builder.queryParam(ControllerSettings.ATTR_PAGE_NUMBER, pagination.page());
+        builder.queryParam(ControllerSettings.ATTR_PAGE_SIZE, pagination.pageSize());
         return "redirect:" + builder.toUriString();
     }
 
@@ -250,18 +270,37 @@ public class ThyDuplicateManagementController {
         model.addAttribute(ControllerSettings.ATTR_SELECTED_AUTHOR_ID, authorId);
     }
 
-    private void loadHistory(Model model) {
+    private void loadHistory(Model model, Integer page, Integer pageSize, Long courseId, Long questionBankId, Long authorId) {
+        PaginationParams pagination = PaginationSupport.normalize(page, pageSize);
         try {
             HttpEntity<Void> entity = sessionService.getAuthorizationHeader();
             String endpoint = getCoursesApiBaseUrl() + ControllerSettings.API_COURSES_RECOMPUTE_HISTORY_SUFFIX;
             ResponseEntity<DuplicateRecomputeHistoryDto[]> response = restTemplate.exchange(
                     endpoint, HttpMethod.GET, entity, DuplicateRecomputeHistoryDto[].class);
             DuplicateRecomputeHistoryDto[] arr = response.getBody();
-            model.addAttribute(ControllerSettings.ATTR_RECOMPUTE_HISTORY, arr != null ? Arrays.asList(arr) : List.of());
+            List<DuplicateRecomputeHistoryDto> history = arr != null ? Arrays.asList(arr) : List.of();
+            PaginationResult<DuplicateRecomputeHistoryDto> pageResult = PaginationSupport.paginate(history, pagination);
+            model.addAttribute(ControllerSettings.ATTR_RECOMPUTE_HISTORY, pageResult.items());
+            addHistoryPagination(model, pageResult, courseId, questionBankId, authorId);
         } catch (Exception e) {
             log.atWarn().setCause(e).log("Could not load recompute history");
             model.addAttribute(ControllerSettings.ATTR_RECOMPUTE_HISTORY, List.of());
+            addHistoryPagination(model, PaginationSupport.paginate(List.of(), pagination), courseId, questionBankId, authorId);
         }
+    }
+
+    private void addHistoryPagination(Model model, PaginationResult<?> pageResult, Long courseId, Long questionBankId, Long authorId) {
+        Map<String, Object> filters = new LinkedHashMap<>();
+        filters.put(ControllerSettings.ATTR_COURSE_ID, courseId);
+        filters.put(ControllerSettings.ATTR_QUESTION_BANK_ID, questionBankId);
+        filters.put(ControllerSettings.ATTR_AUTHOR_ID, authorId);
+        model.addAttribute(ControllerSettings.ATTR_CURRENT_PAGE, pageResult.page());
+        model.addAttribute(ControllerSettings.ATTR_PAGE_SIZE, pageResult.pageSize());
+        model.addAttribute(ControllerSettings.ATTR_TOTAL_PAGES, pageResult.totalPages());
+        model.addAttribute(ControllerSettings.ATTR_TOTAL_ELEMENTS, pageResult.totalElements());
+        model.addAttribute(ControllerSettings.ATTR_PAGINATION, PaginationView.of(
+                ControllerSettings.PATH_DUPLICATE_MANAGEMENT,
+                pageResult.page(), pageResult.pageSize(), pageResult.totalPages(), pageResult.totalElements(), filters));
     }
 
     // ---- Action handlers ----

@@ -6,6 +6,7 @@ import com.unitbv.myquiz.api.settings.ControllerSettings;
 import com.unitbv.myquiz.api.util.PaginationParams;
 import com.unitbv.myquiz.api.util.PaginationSupport;
 import com.unitbv.myquiz.thy.service.SessionService;
+import com.unitbv.myquiz.thy.pagination.PaginationView;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
@@ -27,6 +29,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Thymeleaf controller for error list operations.
@@ -66,7 +70,7 @@ public class ThyErrorController {
     /**
      * Filter errors via POST.
      */
-    @PostMapping("/filter")
+    @RequestMapping(value = "/filter", method = {RequestMethod.GET, RequestMethod.POST})
     public String filterErrors(@RequestParam(value = ControllerSettings.ATTR_PAGE_NUMBER, required = false, defaultValue = ControllerSettings.DEFAULT_PAGE) Integer page,
                                @RequestParam(value = ControllerSettings.ATTR_COURSE_ID, required = false) Long courseId,
                                @RequestParam(value = ControllerSettings.ATTR_AUTHOR, required = false) String author,
@@ -185,6 +189,7 @@ public class ThyErrorController {
             }
 
             populateErrorListModel(model, filterDto, safePage, safePageSize, courseId, author, questionBankId);
+            addPaginationModel(model, filterDto, safePage, safePageSize, courseId, author, questionBankId);
             model.addAttribute(ControllerSettings.ATTR_BACK_TO_ERRORS_URL, buildErrorsBackUrl(courseId, author, questionBankId, safePage, safePageSize));
             model.addAttribute(ControllerSettings.ATTR_LOGGED_IN_USER, loggedInUser);
             return ControllerSettings.VIEW_ERROR_LIST;
@@ -198,6 +203,7 @@ public class ThyErrorController {
             log.error("Error loading errors: {}", ex.getMessage(), ex);
             model.addAttribute(ControllerSettings.ATTR_ERROR_MESSAGE, ControllerSettings.MSG_ERROR_LOAD_FAILED);
             populateErrorListModelFallback(model, safePage, safePageSize, courseId, author, questionBankId);
+            addPaginationModel(model, null, safePage, safePageSize, courseId, author, questionBankId);
             model.addAttribute(ControllerSettings.ATTR_BACK_TO_ERRORS_URL, buildErrorsBackUrl(courseId, author, questionBankId, safePage, safePageSize));
             return ControllerSettings.VIEW_ERROR_LIST;
         }
@@ -238,6 +244,20 @@ public class ThyErrorController {
         model.addAttribute(ControllerSettings.ATTR_PAGE_SIZE, pageSize);
         model.addAttribute(ControllerSettings.ATTR_TOTAL_PAGES, 0);
         model.addAttribute(ControllerSettings.ATTR_TOTAL_ELEMENTS, 0L);
+    }
+
+    private void addPaginationModel(Model model, QuestionErrorFilterResponseDto filterDto, int page, int pageSize,
+                                    Long courseId, String author, Long questionBankId) {
+        int currentPage = filterDto != null && filterDto.getPage() != null ? filterDto.getPage() : page;
+        int effectivePageSize = filterDto != null && filterDto.getPageSize() != null ? filterDto.getPageSize() : pageSize;
+        int totalPages = filterDto != null && filterDto.getTotalPages() != null ? filterDto.getTotalPages() : 0;
+        long totalElements = filterDto != null && filterDto.getTotalElements() != null ? filterDto.getTotalElements() : 0L;
+        Map<String, Object> filters = new LinkedHashMap<>();
+        filters.put("courseId", courseId);
+        filters.put("author", author);
+        filters.put("questionBankId", questionBankId);
+        model.addAttribute(ControllerSettings.ATTR_PAGINATION,
+                PaginationView.of("/errors", currentPage, effectivePageSize, totalPages, totalElements, filters));
     }
 
     private String buildErrorsBackUrl(Long courseId, String author, Long questionBankId, Integer page, Integer pageSize) {

@@ -683,18 +683,23 @@ public class QuestionDuplicationService {
     @Transactional(readOnly = true)
     public QuestionDto getQuestionDuplicates(Long questionId) {
         Question question = questionRepository.findById(questionId).orElse(null);
-        logger.debug("Fetching duplicates for question id={}, no duplicates {}, no errors {}",
-                     questionId,
-                     question != null ? question.getDuplicateLinks().size() : "N/A",
-                     question != null ? question.getQuestionErrors().size() : "N/A");
         if (question == null) {
             return null;
         }
 
+        List<QuestionDuplicate> duplicateLinks = questionDuplicateRepository.findByQuestionIdOrDuplicateQuestionId(
+                questionId,
+                questionId
+        );
+        logger.debug("Fetching duplicates for question id={}, no duplicates {}, no errors {}",
+                     questionId,
+                     duplicateLinks.size(),
+                     question.getQuestionErrors().size());
         QuestionDto dto = questionMapper.toDto(question);
         questionDtoEnricher.enrichWithErrors(
                 dto,
-                question
+                question,
+                duplicateLinks
         );
         return dto;
     }

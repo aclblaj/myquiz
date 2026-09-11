@@ -1,6 +1,10 @@
 package com.unitbv.myquiz.thy.controller;
 
 import com.unitbv.myquiz.api.settings.ControllerSettings;
+import com.unitbv.myquiz.api.util.PaginationParams;
+import com.unitbv.myquiz.api.util.PaginationResult;
+import com.unitbv.myquiz.api.util.PaginationSupport;
+import com.unitbv.myquiz.thy.pagination.PaginationView;
 import com.unitbv.myquiz.thy.service.SessionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -96,10 +100,13 @@ public class ThyUserManagementController {
      * List all users
      */
     @GetMapping({"", "/"})
-    public String listUsers(Model model) {
+    public String listUsers(@RequestParam(value = ControllerSettings.ATTR_PAGE_NUMBER, required = false) Integer page,
+                            @RequestParam(value = ControllerSettings.ATTR_PAGE_SIZE, required = false) Integer pageSize,
+                            Model model) {
         String denied = requireManageUsersPermission();
         if (denied != null) return denied;
         logger.info("Fetching user list");
+        PaginationParams pagination = PaginationSupport.normalize(page, pageSize);
         try {
             HttpEntity<Void> request = sessionService.createAuthorizedRequest();
             ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
@@ -109,13 +116,28 @@ public class ThyUserManagementController {
                 new ParameterizedTypeReference<>() {}
             );
 
-            model.addAttribute(ControllerSettings.ATTR_USERS, response.getBody() != null ? response.getBody() : List.of());
+            List<Map<String, Object>> users = response.getBody() != null ? response.getBody() : List.of();
+            PaginationResult<Map<String, Object>> result = PaginationSupport.paginate(users, pagination);
+            model.addAttribute(ControllerSettings.ATTR_USERS, result.items());
+            model.addAttribute(ControllerSettings.ATTR_CURRENT_PAGE, result.page());
+            model.addAttribute(ControllerSettings.ATTR_PAGE_SIZE, result.pageSize());
+            model.addAttribute(ControllerSettings.ATTR_TOTAL_PAGES, result.totalPages());
+            model.addAttribute(ControllerSettings.ATTR_TOTAL_ELEMENTS, result.totalElements());
+            model.addAttribute(ControllerSettings.ATTR_PAGINATION, PaginationView.of(
+                    ControllerSettings.PATH_ADMIN_USERS, result.page(), result.pageSize(), result.totalPages(),
+                    result.totalElements(), Map.of()));
             model.addAttribute(ControllerSettings.ATTR_LOGGED_IN_USER, sessionService.getLoggedInUser());
             return ControllerSettings.VIEW_ADMIN_USER_LIST;
         } catch (Exception e) {
             logger.error("Error fetching users: {}", e.getMessage());
             model.addAttribute(ControllerSettings.ATTR_ERROR, ControllerSettings.MSG_FAILED_LOAD_USERS);
             model.addAttribute(ControllerSettings.ATTR_USERS, List.of());
+            model.addAttribute(ControllerSettings.ATTR_CURRENT_PAGE, pagination.page());
+            model.addAttribute(ControllerSettings.ATTR_PAGE_SIZE, pagination.pageSize());
+            model.addAttribute(ControllerSettings.ATTR_TOTAL_PAGES, 0);
+            model.addAttribute(ControllerSettings.ATTR_TOTAL_ELEMENTS, 0L);
+            model.addAttribute(ControllerSettings.ATTR_PAGINATION, PaginationView.of(
+                    ControllerSettings.PATH_ADMIN_USERS, pagination.page(), pagination.pageSize(), 0, 0, Map.of()));
             model.addAttribute(ControllerSettings.ATTR_LOGGED_IN_USER, sessionService.getLoggedInUser());
             return ControllerSettings.VIEW_ADMIN_USER_LIST;
         }

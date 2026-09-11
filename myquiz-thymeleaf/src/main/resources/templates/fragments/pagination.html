@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<th:block th:fragment="page-size-options(pageSize)">
+    <option th:selected="${pageSize == 5}" value="5">5</option>
+    <option th:selected="${pageSize == 10}" value="10">10</option>
+    <option th:selected="${pageSize == 20}" value="20">20</option>
+    <option th:selected="${pageSize == 50}" value="50">50</option>
+    <option th:selected="${pageSize == 100}" value="100">100</option>
+</th:block>
+
+<th:block th:fragment="controls(pagination, label)">
+    <div class="pagination-controls" th:if="${pagination != null && pagination.hasPages()}">
+        <div class="list-pagination-row">
+            <a th:if="${pagination.hasPrevious()}" th:href="${pagination.firstUrl}"
+               class="btn btn-outline">⏮️ First</a>
+            <span th:unless="${pagination.hasPrevious()}" class="btn btn-outline disabled">⏮️ First</span>
+
+            <a th:if="${pagination.hasPrevious()}" th:href="${pagination.previousUrl}"
+               class="btn btn-outline">◀️ Previous</a>
+            <span th:unless="${pagination.hasPrevious()}" class="btn btn-outline disabled">◀️ Previous</span>
+
+            <span class="list-page-indicator">Page <span th:text="${pagination.page}"></span>
+                of <span th:text="${pagination.totalPages}"></span></span>
+
+            <a th:if="${pagination.hasNext()}" th:href="${pagination.nextUrl}"
+               class="btn btn-outline">▶️ Next</a>
+            <span th:unless="${pagination.hasNext()}" class="btn btn-outline disabled">▶️ Next</span>
+
+            <a th:if="${pagination.hasNext()}" th:href="${pagination.lastUrl}"
+               class="btn btn-outline">⏭️ Last</a>
+            <span th:unless="${pagination.hasNext()}" class="btn btn-outline disabled">⏭️ Last</span>
+        </div>
+    </div>
+    <div class="total-elements" th:if="${pagination != null}">
+        Total: <span th:text="${pagination.totalElements}"></span> <span th:text="${label}"></span> found
+    </div>
+</th:block>
+
+</body>
+</html>

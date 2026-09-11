@@ -81,7 +81,7 @@
 </table>
 
 <!-- Duplicate Questions Table Fragment -->
-<table th:fragment="duplicate-table(duplicates, showSelection, showActions, backToQuestionsUrl, selectedCourseId, selectedQuestionBankId, selectedAuthorId, selectedType, currentPage, pageSize)"
+<table th:fragment="duplicate-table(duplicates, showSelection, showActions, backToQuestionsUrl, selectedCourseId, selectedQuestionBankId, selectedAuthorId, selectedType, currentPage, pageSize, primaryQuestionId)"
        class="styled-table">
     <thead>
     <tr>
@@ -143,23 +143,16 @@
         </td>
 
         <td th:if="${showActions}" class="action-cell">
-            <form method="post" th:action="@{/duplicates/{id}/mark-resolved(id=${duplicate.id})}" class="inline-form"
-                  th:if="${duplicate.status != T(com.unitbv.myquiz.api.settings.ControllerSettings).DUPLICATE_STATUS_RESOLVED}">
-                <input type="hidden" name="primaryQuestionId" th:value="${primaryQuestionId}" />
-                <input type="hidden" name="backUrl" th:value="${backToQuestionsUrl}" />
-                <input type="hidden" name="courseId" th:value="${selectedCourseId}" />
-                <input type="hidden" name="questionBankId" th:value="${selectedQuestionBankId}" />
-                <input type="hidden" name="authorId" th:value="${selectedAuthorId}" />
-                <input type="hidden" name="type" th:value="${selectedType}" />
-                <input type="hidden" name="page" th:value="${currentPage}" />
-                <input type="hidden" name="pageSize" th:value="${pageSize}" />
-                <button type="submit" class="btn btn-success btn-small"
-                        onclick="return confirm('Mark this duplicate pair as resolved (it will remain linked, just flagged as reviewed)?')">✔️ Resolve</button>
-            </form>
+            <button type="submit"
+                    th:if="${duplicate.status != T(com.unitbv.myquiz.api.settings.ControllerSettings).DUPLICATE_STATUS_RESOLVED}"
+                    th:formaction="@{/duplicates/{id}/mark-resolved(id=${duplicate.id})}"
+                    formmethod="post"
+                    class="btn btn-success btn-small"
+                    onclick="return confirm('Mark this duplicate pair as resolved (it will remain linked, just flagged as reviewed)?')">✔️ Resolve</button>
         </td>
     </tr>
     <tr th:if="${#lists.isEmpty(duplicates)}" class="empty-row">
-        <td th:colspan="${(showSelection ? 1 : 0) + (showActions ? 1 : 0)}" class="list-empty-message">No duplicate questions found</td>
+        <td th:colspan="${7 + (showSelection ? 1 : 0) + (showActions ? 1 : 0)}" class="list-empty-message">No duplicate questions found</td>
     </tr>
     </tbody>
 </table>

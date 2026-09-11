@@ -3,12 +3,14 @@ package com.unitbv.myquiz.api.settings;
 public class ControllerSettings {
 
     public static final int PAGE_SIZE = 10;
+    public static final int MAX_PAGE_SIZE = 100;
     public static final String DEFAULT_PAGE = "1";
     public static final String DEFAULT_PAGE_SIZE = "10";
     public static final String ATTR_PAGE_SIZE = "pageSize";
     public static final String ATTR_PAGE_NUMBER= "page";
     public static final String ATTR_TOTAL_PAGES = "totalPages";
     public static final String ATTR_TOTAL_ELEMENTS = "totalElements";
+    public static final String ATTR_PAGINATION = "pagination";
 
     public static final String ATTR_AUTHOR = "author";
     public static final String HEADER_AUTHORIZATION = "Authorization" ;
