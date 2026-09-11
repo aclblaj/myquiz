@@ -23,19 +23,12 @@ import com.unitbv.myquiz.app.services.QuestionBankService;
 import com.unitbv.myquiz.app.services.QuestionCorrectionService;
 import com.unitbv.myquiz.app.services.QuestionService;
 import com.unitbv.myquiz.app.web.ResourceNotFoundException;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -88,7 +81,6 @@ public class QuestionController implements QuestionApi {
         }
     }
 
-    @GetMapping("/{id}")
     @Override
     public ResponseEntity<QuestionDto> getQuestionById(@PathVariable Long id) {
         log.atInfo().addArgument(id).log("Getting question by id: {}");
@@ -109,14 +101,8 @@ public class QuestionController implements QuestionApi {
         }
     }
 
-    @PostMapping(
-            {
-                    "",
-                    "/"
-            }
-    )
     @Override
-    public ResponseEntity<QuestionDto> createQuestion(@RequestBody QuestionDto questionDto) {
+    public ResponseEntity<QuestionDto> createQuestion(@Valid @RequestBody QuestionDto questionDto) {
         log.atInfo().log("Creating new question");
         try {
             if (questionDto == null) {
@@ -136,9 +122,8 @@ public class QuestionController implements QuestionApi {
         }
     }
 
-    @PutMapping("/{id}")
     @Override
-    public ResponseEntity<QuestionDto> updateQuestion(@PathVariable Long id, @RequestBody QuestionDto questionDto) {
+    public ResponseEntity<QuestionDto> updateQuestion(@PathVariable Long id, @Valid @RequestBody QuestionDto questionDto) {
         log.atInfo().addArgument(id).log("Updating question with id: {}");
         try {
             if (questionDto == null) {
@@ -162,7 +147,6 @@ public class QuestionController implements QuestionApi {
         }
     }
 
-    @DeleteMapping("/{id}")
     @Override
     public ResponseEntity<Void> deleteQuestion(@PathVariable Long id) {
         log.atInfo().addArgument(id).log("Deleting question with id: {}");
@@ -184,7 +168,6 @@ public class QuestionController implements QuestionApi {
         }
     }
 
-    @GetMapping(ControllerSettings.API_QUESTION_BANKS_GET_BY_ID)
     @Override
     public ResponseEntity<QuestionFilterResponseDto> getQuestionsByQuestionBankId(@PathVariable Long questionBankId) {
         log.atInfo().addArgument(questionBankId).log("Getting questions by questionBank id: {}");
@@ -207,9 +190,8 @@ public class QuestionController implements QuestionApi {
         }
     }
 
-    @PostMapping("/filter")
     @Override
-    public ResponseEntity<QuestionFilterResponseDto> listQuestionsFiltered(@RequestBody QuestionFilterRequestDto filterInput) {
+    public ResponseEntity<QuestionFilterResponseDto> listQuestionsFiltered(@Valid @RequestBody QuestionFilterRequestDto filterInput) {
         log.atInfo().addArgument(filterInput).log("Filtering questions with input: {}");
 
         // Validate and normalize input
@@ -265,16 +247,8 @@ public class QuestionController implements QuestionApi {
      * @param id The question ID
      * @return Question DTO enriched with duplicates
      */
-    @GetMapping("/{id}/duplicates")
-    @Operation(summary = "Get question duplicates", description = "Retrieve a question and all its duplicate links")
-    @ApiResponses(
-            value = {
-                    @ApiResponse(responseCode = "200", description = "Duplicates retrieved successfully"),
-                    @ApiResponse(responseCode = "404", description = "Question not found"),
-                    @ApiResponse(responseCode = "500", description = "Internal server error")
-            }
-    )
-    public ResponseEntity<QuestionDto> getQuestionDuplicates(@Parameter(description = "Question ID") @PathVariable Long id) {
+    @Override
+    public ResponseEntity<QuestionDto> getQuestionDuplicates(@PathVariable Long id) {
         log.atInfo().addArgument(id).log("Getting duplicates for question {}");
         try {
             QuestionDto questionWithDuplicates = questionService.getQuestionWithDuplicates(id);
@@ -298,17 +272,8 @@ public class QuestionController implements QuestionApi {
      * @param selectionDto Contains list of duplicate IDs to unlink
      * @return Success response
      */
-    @PostMapping(ControllerSettings.API_QUESTION_BANKS_DUPLICATES_REMOVE_BY_ID)
     @Override
-    @Operation(summary = "Remove duplication links", description = "Remove specific duplication links without deleting questions")
-    @ApiResponses(
-            value = {
-                    @ApiResponse(responseCode = "204", description = "Duplication links removed successfully"),
-                    @ApiResponse(responseCode = "400", description = "Invalid input"),
-                    @ApiResponse(responseCode = "500", description = "Internal server error")
-            }
-    )
-    public ResponseEntity<Void> removeQuestionDuplicates(@PathVariable Long id, @RequestBody DuplicateUnlinkRequestDto selectionDto) {
+    public ResponseEntity<Void> removeQuestionDuplicates(@PathVariable Long id, @Valid @RequestBody DuplicateUnlinkRequestDto selectionDto) {
         log.atInfo().addArgument(id).log("Removing duplication links for question {}");
         try {
             if (selectionDto == null || selectionDto.getDuplicateQuestionIds() == null || selectionDto.getDuplicateQuestionIds().isEmpty()) {
@@ -341,16 +306,7 @@ public class QuestionController implements QuestionApi {
      * @param id The primary question ID
      * @return Success response
      */
-    @PostMapping(ControllerSettings.API_QUESTION_BANKS_DUPLICATES_REMOVE_ALL_BY_ID)
     @Override
-    @Operation(summary = "Remove all duplication links", description = "Remove every duplication link for a question without deleting questions")
-    @ApiResponses(
-            value = {
-                    @ApiResponse(responseCode = "204", description = "All duplication links removed successfully"),
-                    @ApiResponse(responseCode = "404", description = "Question not found"),
-                    @ApiResponse(responseCode = "500", description = "Internal server error")
-            }
-    )
     public ResponseEntity<Void> removeAllQuestionDuplicates(@PathVariable Long id) {
         log.atInfo().addArgument(id).log("Removing all duplication links for question {}");
         try {
@@ -377,15 +333,7 @@ public class QuestionController implements QuestionApi {
      * @param id The question ID to delete
      * @return Success response
      */
-    @DeleteMapping("/{id}/as-duplicate")
-    @Operation(summary = "Delete duplicate question", description = "Delete a question marked as duplicate including all associations")
-    @ApiResponses(
-            value = {
-                    @ApiResponse(responseCode = "204", description = "Duplicate question deleted successfully"),
-                    @ApiResponse(responseCode = "404", description = "Question not found"),
-                    @ApiResponse(responseCode = "500", description = "Internal server error")
-            }
-    )
+    @Override
     public ResponseEntity<Map<String, Object>> deleteDuplicateQuestion(@PathVariable Long id) {
         log.atInfo().addArgument(id).log("Deleting duplicate question {}");
         try {
@@ -420,15 +368,7 @@ public class QuestionController implements QuestionApi {
      * @param course The course name
      * @return List of questions with duplicates
      */
-    @GetMapping("/course/{course}/with-duplicates")
-    @Operation(summary = "Get duplicates in course", description = "Retrieve all questions with duplicates in a specific course")
-    @ApiResponses(
-            value = {
-                    @ApiResponse(responseCode = "200", description = "Duplicates list retrieved successfully"),
-                    @ApiResponse(responseCode = "400", description = "Invalid course name"),
-                    @ApiResponse(responseCode = "500", description = "Internal server error")
-            }
-    )
+    @Override
     public ResponseEntity<Map<String, Object>> getQuestionsWithDuplicatesInCourse(@PathVariable String course) {
         log.atInfo().addArgument(course).log("Getting questions with duplicates in course {}");
         try {
@@ -481,17 +421,8 @@ public class QuestionController implements QuestionApi {
         }
     }
 
-    @PostMapping("/{id}/correction/grammar")
-    @Operation(summary = "Correct grammar in question", description = "Use AI to correct grammar and spelling errors")
-    @ApiResponses(
-            value = {
-                    @ApiResponse(responseCode = "200", description = "Grammar correction completed successfully"),
-                    @ApiResponse(responseCode = "400", description = "Invalid correction payload"),
-                    @ApiResponse(responseCode = "503", description = "Correction request interrupted"),
-                    @ApiResponse(responseCode = "500", description = "Internal server error")
-            }
-    )
-    public ResponseEntity<QuestionCorrectionDto> correctGrammar(@PathVariable("id") Long id, @RequestBody QuestionCorrectionDto correctionDto) {
+    @Override
+    public ResponseEntity<QuestionCorrectionDto> correctGrammar(@PathVariable("id") Long id, @Valid @RequestBody QuestionCorrectionDto correctionDto) {
         try {
             if (correctionDto == null || correctionDto.getOriginalQuestion() == null) {
                 return ResponseEntity.badRequest().build();
@@ -511,17 +442,8 @@ public class QuestionController implements QuestionApi {
         }
     }
 
-    @PostMapping("/{id}/correction/improve")
-    @Operation(summary = "Improve question", description = "Use AI to improve question clarity and precision")
-    @ApiResponses(
-            value = {
-                    @ApiResponse(responseCode = "200", description = "Question improvement completed successfully"),
-                    @ApiResponse(responseCode = "400", description = "Invalid correction payload"),
-                    @ApiResponse(responseCode = "503", description = "Improvement request interrupted"),
-                    @ApiResponse(responseCode = "500", description = "Internal server error")
-            }
-    )
-    public ResponseEntity<QuestionCorrectionDto> improveQuestion(@PathVariable("id") Long id, @RequestBody QuestionCorrectionDto correctionDto) {
+    @Override
+    public ResponseEntity<QuestionCorrectionDto> improveQuestion(@PathVariable("id") Long id, @Valid @RequestBody QuestionCorrectionDto correctionDto) {
         try {
             if (correctionDto == null || correctionDto.getOriginalQuestion() == null) {
                 return ResponseEntity.badRequest().build();
@@ -541,17 +463,8 @@ public class QuestionController implements QuestionApi {
         }
     }
 
-    @PostMapping("/{id}/correction/alternatives")
-    @Operation(summary = "Generate alternative answers", description = "Use AI to generate plausible but incorrect alternatives")
-    @ApiResponses(
-            value = {
-                    @ApiResponse(responseCode = "200", description = "Alternatives generated successfully"),
-                    @ApiResponse(responseCode = "400", description = "Invalid correction payload"),
-                    @ApiResponse(responseCode = "503", description = "Alternatives request interrupted"),
-                    @ApiResponse(responseCode = "500", description = "Internal server error")
-            }
-    )
-    public ResponseEntity<Map<String, String>> generateAlternatives(@PathVariable("id") Long id, @RequestBody QuestionCorrectionDto correctionDto) {
+    @Override
+    public ResponseEntity<Map<String, String>> generateAlternatives(@PathVariable("id") Long id, @Valid @RequestBody QuestionCorrectionDto correctionDto) {
         try {
             if (correctionDto == null || correctionDto.getOriginalQuestion() == null) {
                 return ResponseEntity.badRequest().build();
@@ -580,17 +493,8 @@ public class QuestionController implements QuestionApi {
         }
     }
 
-    @PostMapping("/{id}/correction/explanation")
-    @Operation(summary = "Explain correct answer", description = "Use AI to explain why an answer is correct and others are wrong")
-    @ApiResponses(
-            value = {
-                    @ApiResponse(responseCode = "200", description = "Answer explanation generated successfully"),
-                    @ApiResponse(responseCode = "400", description = "Invalid correction payload"),
-                    @ApiResponse(responseCode = "503", description = "Explanation request interrupted"),
-                    @ApiResponse(responseCode = "500", description = "Internal server error")
-            }
-    )
-    public ResponseEntity<Map<String, String>> explainAnswer(@PathVariable("id") Long id, @RequestBody QuestionCorrectionDto correctionDto) {
+    @Override
+    public ResponseEntity<Map<String, String>> explainAnswer(@PathVariable("id") Long id, @Valid @RequestBody QuestionCorrectionDto correctionDto) {
         log.atInfo().addArgument(id).log("[APP] Processing explain answer for question {}");
         try {
             if (correctionDto == null || correctionDto.getOriginalQuestion() == null) {
@@ -642,18 +546,10 @@ public class QuestionController implements QuestionApi {
     }
 
 
-    @GetMapping("/author/{authorId}/question-bank/{questionBankId}")
-    @Operation(summary = "Get questions by author and QuestionBank", description = "Retrieve all questions for a specific QuestionBank created by a specific author")
-    @ApiResponses(
-            value = {
-                    @ApiResponse(responseCode = "200", description = "Successfully retrieved questions"),
-                    @ApiResponse(responseCode = "404", description = "QuestionBank author combination not found"),
-                    @ApiResponse(responseCode = "500", description = "Internal server error")
-            }
-    )
+    @Override
     public ResponseEntity<QuestionFilterResponseDto> getQuestionsByAuthorAndQuestionBank(
-            @Parameter(description = "Author ID", required = true) @PathVariable Long authorId,
-            @Parameter(description = "QuestionBank ID", required = true) @PathVariable Long questionBankId
+            @PathVariable Long authorId,
+            @PathVariable Long questionBankId
     ) {
         log.atInfo().addArgument(authorId).addArgument(questionBankId).log("Getting questions by author {} and questionBank {}");
         try {
@@ -690,8 +586,7 @@ public class QuestionController implements QuestionApi {
      * @param type question type: MULTICHOICE or TRUEFALSE
      * @return QuestionDto pre-filled with sample data
      */
-    @GetMapping("/sample")
-    @Operation(summary = "Get sample question", description = "Returns a pre-filled sample question for a given type")
+    @Override
     public ResponseEntity<QuestionDto> getSampleQuestion(@org.springframework.web.bind.annotation.RequestParam(value = "type", defaultValue = "MULTICHOICE") String type) {
         try {
             QuestionType qType = QuestionType.valueOf(type.toUpperCase());

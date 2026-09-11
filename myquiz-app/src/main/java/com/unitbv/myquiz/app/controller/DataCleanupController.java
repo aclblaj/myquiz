@@ -3,7 +3,6 @@ package com.unitbv.myquiz.app.controller;
 import com.unitbv.myquiz.api.interfaces.DataCleanupApi;
 import com.unitbv.myquiz.api.settings.ControllerSettings;
 import com.unitbv.myquiz.app.services.DataCleanupService;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +29,6 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/data")
 @CrossOrigin(origins = "${FRONTEND_URL}")
-@Tag(name = "Data Management", description = "Data cleanup and management operations")
 public class DataCleanupController implements DataCleanupApi {
     private static final Logger log = LoggerFactory.getLogger(DataCleanupController.class);
 

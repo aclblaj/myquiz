@@ -7,11 +7,16 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
+
+import java.util.List;
+import java.util.Map;
 
 /**
  * API interface for Ollama AI operations.
@@ -21,15 +26,20 @@ import org.springframework.web.bind.annotation.RequestParam;
 public interface OllamaApi {
 
     @Operation(summary = "Generate content with Ollama", description = "Send a prompt to Ollama AI for content generation")
-    @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Successfully generated content"), @ApiResponse(responseCode = "400", description = "Invalid request"), @ApiResponse(responseCode = "503", description = "AI service unavailable"), @ApiResponse(responseCode = "500", description = "Internal server error")})
+    @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Successfully generated content"), @ApiResponse(responseCode = "400", description = "Invalid request"), @ApiResponse(responseCode = "503", description = "AI service unavailable")})
     @PostMapping("/generate")
-    ResponseEntity<OllamaResponseDto> generateContent(@Parameter(description = "Ollama request data", required = true) @RequestBody OllamaRequestDto request);
+    ResponseEntity<OllamaResponseDto> generateContent(@Parameter(description = "Ollama request data", required = true) @Valid @RequestBody OllamaRequestDto request);
 
     @Operation(summary = "Generate questionBank questions", description = "Generate questionBank questions using AI based on a topic")
-    @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Successfully generated questions"), @ApiResponse(responseCode = "400", description = "Invalid topic"), @ApiResponse(responseCode = "503", description = "AI service unavailable"), @ApiResponse(responseCode = "500", description = "Internal server error")})
+    @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Successfully generated questions"), @ApiResponse(responseCode = "400", description = "Invalid topic"), @ApiResponse(responseCode = "503", description = "AI service unavailable")})
     @PostMapping("/questions")
-    ResponseEntity<OllamaResponseDto> generateQuestions(@Parameter(description = "Topic for question generation", required = true) @RequestParam String topic,
-                                                        @Parameter(description = "Number of questions to generate") @RequestParam(defaultValue = "5") Integer count);
+    ResponseEntity<OllamaResponseDto> generateQuestions(@Parameter(description = "Topic for question generation", required = true) @RequestParam("topic") String topic,
+                                                        @Parameter(description = "Number of questions to generate") @RequestParam(value = "count", defaultValue = "5") Integer count);
+
+    @Operation(summary = "Improve questions with AI", description = "Start an AI improvement process for the supplied question IDs")
+    @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Question improvement process initiated"), @ApiResponse(responseCode = "400", description = "Invalid question IDs"), @ApiResponse(responseCode = "500", description = "AI improvement service error")})
+    @PostMapping("/improve-questions")
+    ResponseEntity<Map<String, Object>> improveQuestions(@Parameter(description = "Question IDs to improve", required = true) @NotEmpty @RequestBody List<Long> questionIds);
 
     @Operation(summary = "Check Ollama service status", description = "Check if Ollama AI service is available")
     @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Service is available"), @ApiResponse(responseCode = "503", description = "Service unavailable")})

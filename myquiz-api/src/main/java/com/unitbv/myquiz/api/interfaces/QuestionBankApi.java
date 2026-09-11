@@ -2,11 +2,15 @@ package com.unitbv.myquiz.api.interfaces;
 
 import com.unitbv.myquiz.api.dto.QuestionBankDto;
 import com.unitbv.myquiz.api.dto.QuestionBankExportDto;
+import com.unitbv.myquiz.api.dto.QuestionBankFilterRequestDto;
+import com.unitbv.myquiz.api.dto.QuestionBankFilterResponseDto;
+import com.unitbv.myquiz.api.dto.QuestionBankStatisticsDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,7 +18,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-
 import java.util.List;
 
 /**
@@ -42,13 +45,13 @@ public interface QuestionBankApi {
     @Operation(summary = "Create new question bank", description = "Create a new question bank")
     @ApiResponses(value = {@ApiResponse(responseCode = "201", description = "Question bank created successfully"), @ApiResponse(responseCode = "400", description = "Invalid input"), @ApiResponse(responseCode = "500", description = "Internal server error")})
     @PostMapping
-    ResponseEntity<QuestionBankDto> createQuestionBank(@Parameter(description = "Question Bank data", required = true) @RequestBody QuestionBankDto questionBankDto);
+    ResponseEntity<QuestionBankDto> createQuestionBank(@Parameter(description = "Question Bank data", required = true) @Valid @RequestBody QuestionBankDto questionBankDto);
 
     @Operation(summary = "Update question bank", description = "Update an existing question bank")
     @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Question bank updated successfully"), @ApiResponse(responseCode = "400", description = "Invalid input"), @ApiResponse(responseCode = "404", description = "Question bank not found"), @ApiResponse(responseCode = "500", description = "Internal server error")})
     @PutMapping("/{id}")
     ResponseEntity<QuestionBankDto> updateQuestionBank(@Parameter(description = "Question Bank ID", required = true) @PathVariable Long id,
-                                                       @Parameter(description = "Updated question bank data", required = true) @RequestBody QuestionBankDto questionBankDto);
+                                                       @Parameter(description = "Updated question bank data", required = true) @Valid @RequestBody QuestionBankDto questionBankDto);
 
     @Operation(summary = "Delete question bank", description = "Delete a question bank by ID")
     @ApiResponses(value = {@ApiResponse(responseCode = "204", description = "Question bank deleted successfully"), @ApiResponse(responseCode = "404", description = "Question bank not found"), @ApiResponse(responseCode = "500", description = "Internal server error")})
@@ -69,6 +72,26 @@ public interface QuestionBankApi {
     @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Question bank XML exported successfully"), @ApiResponse(responseCode = "403", description = "Missing EXPORT_XML permission"), @ApiResponse(responseCode = "404", description = "Question bank not found")})
     @GetMapping("/{id}/export-xml")
     ResponseEntity<byte[]> exportQuestionBankToXml(@Parameter(description = "Question Bank ID", required = true) @PathVariable("id") Long id);
+
+    @Operation(summary = "Export multiple-choice questions as CSV", description = "Download multiple-choice questions from a question bank in CSV format")
+    @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "CSV export generated successfully"), @ApiResponse(responseCode = "404", description = "Question bank not found"), @ApiResponse(responseCode = "500", description = "Internal server error")})
+    @GetMapping("/{id}/export-mc")
+    ResponseEntity<byte[]> exportQuestionBankToCsv(@Parameter(description = "Question Bank ID", required = true) @PathVariable("id") Long id);
+
+    @Operation(summary = "Export true-false questions as CSV", description = "Download true-false questions from a question bank in CSV format")
+    @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "CSV export generated successfully"), @ApiResponse(responseCode = "404", description = "Question bank not found"), @ApiResponse(responseCode = "500", description = "Internal server error")})
+    @GetMapping("/{id}/export-tf")
+    ResponseEntity<byte[]> exportQuestionBankToCsvTF(@Parameter(description = "Question Bank ID", required = true) @PathVariable("id") Long id);
+
+    @Operation(summary = "Get question bank statistics", description = "Retrieve question and error statistics grouped by author for a question bank")
+    @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Statistics retrieved successfully"), @ApiResponse(responseCode = "404", description = "Question bank not found"), @ApiResponse(responseCode = "500", description = "Internal server error")})
+    @GetMapping("/{id}/statistics")
+    ResponseEntity<QuestionBankStatisticsDto> getQuestionBankStatistics(@Parameter(description = "Question Bank ID", required = true) @PathVariable Long id);
+
+    @Operation(summary = "Filter question banks", description = "Retrieve question banks according to the supplied filter criteria")
+    @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Question banks filtered successfully"), @ApiResponse(responseCode = "500", description = "Internal server error")})
+    @PostMapping("/filter")
+    ResponseEntity<QuestionBankFilterResponseDto> filterQuestionBanks(@Valid @RequestBody QuestionBankFilterRequestDto filterInput);
 }
 
 

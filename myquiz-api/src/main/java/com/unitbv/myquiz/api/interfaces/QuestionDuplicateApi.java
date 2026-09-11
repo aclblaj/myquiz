@@ -3,10 +3,12 @@ package com.unitbv.myquiz.api.interfaces;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 
+@Tag(name = "Duplicates", description = "Individual duplicate-link management")
 public interface QuestionDuplicateApi {
 
     @Operation(summary = "Resolve a duplicate link", description = "Mark a duplicate link as resolved without deleting it")
