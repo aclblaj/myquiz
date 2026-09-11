@@ -16,6 +16,7 @@ import com.unitbv.myquiz.api.types.QuestionType;
 import com.unitbv.myquiz.api.types.StudyYear;
 import com.unitbv.myquiz.api.util.PaginationParams;
 import com.unitbv.myquiz.api.util.PaginationSupport;
+import com.unitbv.myquiz.api.util.PaginationResult;
 import com.unitbv.myquiz.app.entities.Author;
 import com.unitbv.myquiz.app.entities.Question;
 import com.unitbv.myquiz.app.entities.QuestionBank;
@@ -321,8 +322,6 @@ public class QuestionBankService {
         }
 
         PaginationParams pagination = PaginationSupport.normalize(filterInput.getPage(), filterInput.getPageSize());
-        int page = pagination.page();
-        int pageSize = pagination.pageSize();
         Long courseId = filterInput.getCourseId();
 
         // Fetch all courses for the dropdown
@@ -331,14 +330,10 @@ public class QuestionBankService {
         List<QuestionBank> filtered = courseId == null
                 ? questionBankRepository.findAll()
                 : questionBankRepository.findAll(QuestionBankSpecification.byCourseId(courseId));
-        int totalElements = filtered.size();
-        int totalPages = (int) Math.ceil((double) totalElements / pageSize);
-        if (totalPages > 0 && page > totalPages) {
-            page = totalPages;
-        }
-        int fromIndex = Math.min((page - 1) * pageSize, totalElements);
-        int toIndex = Math.min(fromIndex + pageSize, totalElements);
-        List<QuestionBankDto> pageContent = filtered.subList(fromIndex, toIndex).stream().map(questionBank -> {
+        filtered = filtered.stream().sorted(Comparator.comparing(QuestionBank::getName, Comparator.nullsLast(String::compareToIgnoreCase))
+                .thenComparing(QuestionBank::getId, Comparator.nullsLast(Long::compareTo))).toList();
+        PaginationResult<QuestionBank> pageResult = PaginationSupport.paginate(filtered, pagination);
+        List<QuestionBankDto> pageContent = pageResult.items().stream().map(questionBank -> {
             QuestionBankDto dto = new QuestionBankDto();
             dto.setId(questionBank.getId());
             dto.setName(questionBank.getName());
@@ -362,10 +357,10 @@ public class QuestionBankService {
         }).toList();
         QuestionBankFilterResponseDto result = new QuestionBankFilterResponseDto();
         result.setQuestionBanks(pageContent);
-        result.setTotalElements((long) totalElements);
-        result.setTotalPages(totalPages);
-        result.setPage(page);
-        result.setPageSize(pageSize);
+        result.setTotalElements(pageResult.totalElements());
+        result.setTotalPages(pageResult.totalPages());
+        result.setPage(pageResult.page());
+        result.setPageSize(pageResult.pageSize());
         result.setCourses(allCourses);
         return result;
     }

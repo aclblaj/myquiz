@@ -8,6 +8,7 @@ import com.unitbv.myquiz.api.settings.ControllerSettings;
 import com.unitbv.myquiz.api.types.QuestionType;
 import com.unitbv.myquiz.api.util.PaginationParams;
 import com.unitbv.myquiz.api.util.PaginationSupport;
+import com.unitbv.myquiz.api.util.PaginationResult;
 import com.unitbv.myquiz.app.entities.Question;
 import com.unitbv.myquiz.app.entities.QuestionBankAuthor;
 import com.unitbv.myquiz.app.entities.QuestionError;
@@ -89,12 +90,9 @@ public class QuestionErrorService {
                 Comparator.comparing(QuestionError::getRowNumber, Comparator.nullsLast(Integer::compareTo))).toList();
 
         PaginationParams pagination = PaginationSupport.normalize(page, pageSize);
-        int safePage = pagination.page();
-        int safePageSize = pagination.pageSize();
-        int from = Math.min((safePage - 1) * safePageSize, filtered.size());
-        int to = Math.min(from + safePageSize, filtered.size());
+        PaginationResult<QuestionError> pageResult = PaginationSupport.paginate(filtered, pagination);
 
-        List<QuestionErrorDto> dtos = filtered.subList(from, to).stream().map(this::mapToQuestionErrorDto).toList();
+        List<QuestionErrorDto> dtos = pageResult.items().stream().map(this::mapToQuestionErrorDto).toList();
         Set<String> authorNames = filtered.stream().map(this::resolveAuthorName).filter(Objects::nonNull).collect(Collectors.toCollection(LinkedHashSet::new));
 
         QuestionErrorFilterResponseDto dto = new QuestionErrorFilterResponseDto();
@@ -107,10 +105,10 @@ public class QuestionErrorService {
         dto.setCourses(courseService.getAllCourses().stream().map(CourseInfo::from).toList());
         dto.setQuestionBanks(selectedCourse != null && !selectedCourse.isBlank() ? questionBankService.getQuestionBankInfoByCourse(selectedCourse) : List.of());
         dto.setQuestionErrorsByAuthor(groupByAuthor(dtos));
-        dto.setPage(safePage);
-        dto.setPageSize(safePageSize);
-        dto.setTotalElements((long) filtered.size());
-        dto.setTotalPages((int) Math.ceil((double) filtered.size() / safePageSize));
+        dto.setPage(pageResult.page());
+        dto.setPageSize(pageResult.pageSize());
+        dto.setTotalElements(pageResult.totalElements());
+        dto.setTotalPages(pageResult.totalPages());
         return dto;
     }
 

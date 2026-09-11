@@ -12,7 +12,9 @@ import com.unitbv.myquiz.api.dto.QuestionFilterRequestDto;
 import com.unitbv.myquiz.api.dto.QuestionFilterResponseDto;
 import com.unitbv.myquiz.api.settings.ControllerSettings;
 import com.unitbv.myquiz.api.util.PaginationParams;
+import com.unitbv.myquiz.api.util.PaginationResult;
 import com.unitbv.myquiz.api.util.PaginationSupport;
+import com.unitbv.myquiz.thy.pagination.PaginationView;
 import com.unitbv.myquiz.thy.service.SessionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +42,9 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Thymeleaf controller for Author management operations.
@@ -175,11 +179,27 @@ public class ThyAuthorController {
                 authorId,
                 pagination
         );
+        addPaginationModel(model, filterDto, courseId, authorId, questionBankId, pagination);
         model.addAttribute(
                 ControllerSettings.ATTR_LOGGED_IN_USER,
                 sessionService.getLoggedInUser()
         );
         return ControllerSettings.VIEW_AUTHOR_LIST;
+    }
+
+    private void addPaginationModel(Model model, AuthorFilterResponseDto filterDto, Long courseId, Long authorId,
+                                    Long questionBankId, PaginationParams pagination) {
+        int currentPage = filterDto != null && filterDto.getPage() != null ? filterDto.getPage() : pagination.page();
+        int pageSize = filterDto != null && filterDto.getPageSize() != null ? filterDto.getPageSize() : pagination.pageSize();
+        int totalPages = filterDto != null && filterDto.getTotalPages() != null ? filterDto.getTotalPages() : 0;
+        long totalElements = filterDto != null && filterDto.getTotalElements() != null ? filterDto.getTotalElements() : 0L;
+        Map<String, Object> filters = new LinkedHashMap<>();
+        filters.put("courseId", filterDto != null && filterDto.getSelectedCourseId() != null ? filterDto.getSelectedCourseId() : courseId);
+        filters.put("authorId", authorId);
+        filters.put("questionBankId", filterDto != null && filterDto.getSelectedQuestionBankId() != null
+                ? filterDto.getSelectedQuestionBankId() : questionBankId);
+        model.addAttribute(ControllerSettings.ATTR_PAGINATION,
+                PaginationView.of("/authors", currentPage, pageSize, totalPages, totalElements, filters));
     }
 
     /**
@@ -913,10 +933,13 @@ public class ThyAuthorController {
     @GetMapping("/{id}/details")
     public String showAuthorDetails(
             @PathVariable Long id, @RequestParam(value = ControllerSettings.ATTR_COURSE_ID, required = false) Long courseId,
-            @RequestParam(value = ControllerSettings.ATTR_AUTHOR_ID, required = false) Long authorId,
-            @RequestParam(value = ControllerSettings.ATTR_QUESTION_BANK_ID, required = false) Long questionBankId,
-            @RequestParam(value = ControllerSettings.ATTR_PAGE_NUMBER, required = false) Integer page, @RequestParam(value = ControllerSettings.ATTR_PAGE_SIZE, required = false) Integer pageSize,
-            Model model
+             @RequestParam(value = ControllerSettings.ATTR_AUTHOR_ID, required = false) Long authorId,
+             @RequestParam(value = ControllerSettings.ATTR_QUESTION_BANK_ID, required = false) Long questionBankId,
+             @RequestParam(value = ControllerSettings.ATTR_PAGE_NUMBER, required = false) Integer page,
+             @RequestParam(value = ControllerSettings.ATTR_PAGE_SIZE, required = false) Integer pageSize,
+             @RequestParam(value = "questionsPage", required = false) Integer questionsPage,
+             @RequestParam(value = "errorsPage", required = false) Integer errorsPage,
+             Model model
     ) {
         String redirect = sessionService.validateSessionOrRedirect();
         if (redirect != null) {
@@ -999,10 +1022,8 @@ public class ThyAuthorController {
                     "Successfully loaded details for author id: {}",
                     id
             );
-            populateAuthorDetailsModelFromDto(
-                    model,
-                    details
-            );
+            populateAuthorDetailsModelFromDto(model, details, id, pagination, courseId, authorId, questionBankId,
+                    questionsPage, errorsPage);
             return ControllerSettings.VIEW_AUTHOR_DETAILS;
 
         }
@@ -1044,7 +1065,10 @@ public class ThyAuthorController {
      * Populates model with author details data from details DTO.
      * Similar to populateQuestionListModelFromDto in ThyQuestionController.
      */
-    private void populateAuthorDetailsModelFromDto(Model model, AuthorDetailsDto details) {
+    private void populateAuthorDetailsModelFromDto(Model model, AuthorDetailsDto details, Long authorId,
+                                                   PaginationParams parentPagination, Long courseId,
+                                                   Long selectedAuthorId, Long selectedQuestionBankId,
+                                                   Integer questionsPage, Integer errorsPage) {
         model.addAttribute(
                 ControllerSettings.ATTR_AUTHOR,
                 details.getAuthor()
@@ -1053,14 +1077,39 @@ public class ThyAuthorController {
                 ControllerSettings.ATTR_QUESTION_BANKS,
                 details.getQuestionBanks()
         );
-        model.addAttribute(
-                ControllerSettings.ATTR_QUESTIONS_BY_QUESTION_BANK,
-                details.getQuestionsByQuestionBank()
-        );
-        model.addAttribute(
-                ControllerSettings.ATTR_ERRORS_BY_QUESTION_BANK,
-                details.getErrorsByQuestionBank()
-        );
+        Map<Long, List<QuestionDto>> pagedQuestions = new HashMap<>();
+        Map<Long, List<QuestionErrorDto>> pagedErrors = new HashMap<>();
+        Map<Long, PaginationView> questionPagination = new HashMap<>();
+        Map<Long, PaginationView> errorPagination = new HashMap<>();
+
+        Map<Long, List<QuestionDto>> questionsByQuestionBank = details.getQuestionsByQuestionBank() != null
+                ? details.getQuestionsByQuestionBank() : Map.of();
+        Map<Long, List<QuestionErrorDto>> errorsByQuestionBank = details.getErrorsByQuestionBank() != null
+                ? details.getErrorsByQuestionBank() : Map.of();
+        Map<String, Object> filters = new LinkedHashMap<>();
+        filters.put(ControllerSettings.ATTR_PAGE_NUMBER, parentPagination.page());
+        filters.put(ControllerSettings.ATTR_COURSE_ID, courseId);
+        filters.put(ControllerSettings.ATTR_AUTHOR_ID, selectedAuthorId);
+        filters.put(ControllerSettings.ATTR_QUESTION_BANK_ID, selectedQuestionBankId);
+
+        for (Map.Entry<Long, List<QuestionDto>> entry : questionsByQuestionBank.entrySet()) {
+            PaginationResult<QuestionDto> result = PaginationSupport.paginate(entry.getValue(), questionsPage, parentPagination.pageSize());
+            pagedQuestions.put(entry.getKey(), result.items());
+            questionPagination.put(entry.getKey(), PaginationView.of(
+                    "/authors/" + authorId + "/details", "questionsPage", ControllerSettings.ATTR_PAGE_SIZE,
+                    result.page(), result.pageSize(), result.totalPages(), result.totalElements(), filters));
+        }
+        for (Map.Entry<Long, List<QuestionErrorDto>> entry : errorsByQuestionBank.entrySet()) {
+            PaginationResult<QuestionErrorDto> result = PaginationSupport.paginate(entry.getValue(), errorsPage, parentPagination.pageSize());
+            pagedErrors.put(entry.getKey(), result.items());
+            errorPagination.put(entry.getKey(), PaginationView.of(
+                    "/authors/" + authorId + "/details", "errorsPage", ControllerSettings.ATTR_PAGE_SIZE,
+                    result.page(), result.pageSize(), result.totalPages(), result.totalElements(), filters));
+        }
+        model.addAttribute(ControllerSettings.ATTR_QUESTIONS_BY_QUESTION_BANK, pagedQuestions);
+        model.addAttribute(ControllerSettings.ATTR_ERRORS_BY_QUESTION_BANK, pagedErrors);
+        model.addAttribute("questionPaginationByQuestionBank", questionPagination);
+        model.addAttribute("errorPaginationByQuestionBank", errorPagination);
         model.addAttribute(
                 ControllerSettings.ATTR_LOGGED_IN_USER,
                 sessionService.getLoggedInUser()

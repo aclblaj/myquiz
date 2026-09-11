@@ -1,14 +1,10 @@
 package com.unitbv.myquiz.app.services;
 
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-
 import java.util.List;
 
 /**
  * Utility class providing common constants and helper methods for the MyQuiz application.
- * Contains validation error messages, forbidden question titles, and pagination utilities.
+ * Contains validation error messages and forbidden question titles.
  * This class cannot be instantiated.
  */
 public final class MyUtil {
@@ -59,38 +55,4 @@ public final class MyUtil {
         throw new UnsupportedOperationException("Utility class cannot be instantiated");
     }
 
-    /**
-     * Creates a Pageable object with sorting support.
-     *
-     * @param pageNo        the page number (1-based indexing). Use -1 for unpaged results.
-     * @param pageSize      the number of items per page. Must be positive.
-     * @param sortField     the field name to sort by. If null or empty, no sorting is applied.
-     * @param sortDirection the sort direction ("asc" or "desc"). If null or empty, defaults to "asc".
-     * @return Pageable object configured with the specified parameters
-     * @throws IllegalArgumentException if pageSize is less than 1 (when pageNo is not -1)
-     */
-    public static Pageable getPageable(int pageNo, int pageSize, String sortField, String sortDirection) {
-        // Handle unpaged results
-        if (pageNo == -1) {
-            return Pageable.unpaged();
-        }
-
-        // Validate pageSize
-        if (pageSize < 1) {
-            throw new IllegalArgumentException("Page size must be at least 1");
-        }
-
-        // Create sort if sortField is provided
-        if (sortField != null && !sortField.trim().isEmpty()) {
-            Sort.Direction direction = Sort.Direction.ASC;
-            if (sortDirection != null && sortDirection.equalsIgnoreCase("desc")) {
-                direction = Sort.Direction.DESC;
-            }
-            Sort sort = Sort.by(direction, sortField);
-            return PageRequest.of(pageNo - 1, pageSize, sort);
-        }
-
-        // Return without sorting if no sortField provided
-        return PageRequest.of(pageNo - 1, pageSize);
-    }
 }

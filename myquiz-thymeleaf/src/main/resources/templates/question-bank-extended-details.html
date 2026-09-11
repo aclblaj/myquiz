@@ -57,18 +57,19 @@
                     <a th:href="${'#author-' + section.author.id}" th:text="${section.author.name}">Author Name</a>
                 </td>
                 <td th:text="${section.author.initials != null and !#strings.isEmpty(section.author.initials) ? section.author.initials : '-'}">-</td>
-                <td th:text="${section.multipleChoiceQuestions != null ? #lists.size(section.multipleChoiceQuestions) : 0}">0</td>
-                <td th:text="${section.trueFalseQuestions != null ? #lists.size(section.trueFalseQuestions) : 0}">0</td>
-                <td th:text="${(section.multipleChoiceQuestions != null ? #lists.size(section.multipleChoiceQuestions) : 0) + (section.trueFalseQuestions != null ? #lists.size(section.trueFalseQuestions) : 0)}">0</td>
-                <td th:text="${section.errors != null ? #lists.size(section.errors) : 0}">0</td>
-                <td th:text="${section.duplicateQuestions != null ? #lists.size(section.duplicateQuestions) : 0}">0</td>
+                <td th:text="${extendedMcTotals[section.author.id]}">0</td>
+                <td th:text="${extendedTfTotals[section.author.id]}">0</td>
+                <td th:text="${extendedMcTotals[section.author.id] + extendedTfTotals[section.author.id]}">0</td>
+                <td th:text="${extendedErrorTotals[section.author.id]}">0</td>
+                <td th:text="${extendedDuplicateTotals[section.author.id]}">0</td>
                 <td class="action-cell">
                     <a th:href="${'#author-' + section.author.id}" class="btn btn-questions">⬆️ Jump</a>
                 </td>
             </tr>
-            </tbody>
-        </table>
-    </div>
+                 </tbody>
+             </table>
+             <div th:replace="~{fragments/pagination :: controls(${authorSectionsPagination}, 'author(s)')}"></div>
+         </div>
 
     <div th:if="${authorSections != null && !#lists.isEmpty(authorSections)}">
         <div th:each="section : ${authorSections}" class="form-container mt-4" th:id="${'author-' + section.author.id}">
@@ -98,8 +99,9 @@
                         <td class="text-cell" th:text="${question.text}">Question text</td>
                     </tr>
                     </tbody>
-                </table>
-                <div th:if="${section.multipleChoiceQuestions == null || #lists.isEmpty(section.multipleChoiceQuestions)}" class="alert">
+                 </table>
+                 <div th:replace="~{fragments/pagination :: controls(${extendedMcPagination[section.author.id]}, 'multiple choice question(s)')}"></div>
+                 <div th:if="${section.multipleChoiceQuestions == null || #lists.isEmpty(section.multipleChoiceQuestions)}" class="alert">
                     No multiple choice questions for this author.
                 </div>
             </div>
@@ -121,8 +123,9 @@
                         <td class="text-cell" th:text="${question.text}">Question text</td>
                     </tr>
                     </tbody>
-                </table>
-                <div th:if="${section.trueFalseQuestions == null || #lists.isEmpty(section.trueFalseQuestions)}" class="alert">
+                 </table>
+                 <div th:replace="~{fragments/pagination :: controls(${extendedTfPagination[section.author.id]}, 'true/false question(s)')}"></div>
+                 <div th:if="${section.trueFalseQuestions == null || #lists.isEmpty(section.trueFalseQuestions)}" class="alert">
                     No true/false questions for this author.
                 </div>
             </div>
@@ -130,8 +133,9 @@
             <div>
                 <h4 class="mt-3 mb-2">Errors</h4>
                 <div th:if="${section.errors != null && !#lists.isEmpty(section.errors)}">
-                    <div th:replace="~{fragments/tables::error-table(errors=${section.errors}, showActions=${false})}"></div>
-                </div>
+                     <div th:replace="~{fragments/tables::error-table(errors=${section.errors}, showActions=${false})}"></div>
+                     <div th:replace="~{fragments/pagination :: controls(${extendedErrorPagination[section.author.id]}, 'error(s)')}"></div>
+                 </div>
                 <div th:if="${section.errors == null || #lists.isEmpty(section.errors)}" class="alert">
                     No errors for this author.
                 </div>
@@ -152,8 +156,9 @@
                         currentPage=${null},
                         pageSize=${null},
                         primaryQuestionId=${null}
-                     )}"></div>
-                <div th:if="${section.duplicateQuestions == null || #lists.isEmpty(section.duplicateQuestions)}" class="alert">
+                      )}"></div>
+                 <div th:replace="~{fragments/pagination :: controls(${extendedDuplicatePagination[section.author.id]}, 'duplicate(s)')}"></div>
+                 <div th:if="${section.duplicateQuestions == null || #lists.isEmpty(section.duplicateQuestions)}" class="alert">
                     No duplicated questions for this author.
                 </div>
             </div>

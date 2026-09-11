@@ -14,7 +14,7 @@
 
     <!-- Search Filter Section -->
     <div class="searchfilter">
-        <form method="post" th:action="@{/authors/filter}" class="searchfilter-form">
+        <form method="get" th:action="@{/authors/filter}" class="searchfilter-form">
             <div class="list-filter-field">
                 <label for="courseFilter" class="searchfilter-label">Course</label>
                 <select id="courseFilter" name="courseId" class="searchfilter-select">
@@ -46,11 +46,9 @@
             </div>
             <div class="list-filter-field">
                 <label for="pageSize" class="searchfilter-label">Page Size</label>
-                <select id="pageSize" name="pageSize" class="searchfilter-select">
-                    <option th:selected="${pageSize == 5}" value="5">5</option>
-                    <option th:selected="${pageSize == 10}" value="10">10</option>
-                    <option th:selected="${pageSize == 20}" value="20">20</option>
-                    <option th:selected="${pageSize == 50}" value="50">50</option>
+                <select id="pageSize" name="pageSize" class="searchfilter-select"
+                        onchange="this.form.querySelector('[name=page]').value = 1">
+                    <th:block th:replace="~{fragments/pagination :: page-size-options(${pageSize})}"></th:block>
                 </select>
             </div>
             <div class="list-filter-field">
@@ -107,41 +105,7 @@
         </tbody>
     </table>
 
-    <!-- Pagination Controls -->
-    <div class="pagination-controls" th:if="${totalPages != null && totalPages > 1}">
-        <div class="list-pagination-row">
-            <!-- First Button -->
-            <a th:if="${currentPage != null && currentPage > 1}"
-               th:href="@{/authors(courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, page=1, pageSize=${pageSize})}"
-               class="btn btn-outline">⏮️ First</a>
-            <span th:if="${currentPage == null || currentPage <= 1}" class="btn btn-outline disabled">⏮️ First</span>
-
-            <!-- Previous Button -->
-            <a th:if="${currentPage != null && currentPage > 1}"
-               th:href="@{/authors(courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, page=${currentPage - 1}, pageSize=${pageSize})}"
-               class="btn btn-outline">◀️ Previous</a>
-            <span th:if="${currentPage == null || currentPage <= 1}" class="btn btn-outline disabled">◀️ Previous</span>
-
-            <span class="list-page-indicator">Page <span th:text="${currentPage != null ? currentPage : 1}"></span> of <span th:text="${totalPages}"></span></span>
-
-            <!-- Next Button -->
-            <a th:if="${currentPage != null && currentPage < totalPages}"
-               th:href="@{/authors(courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, page=${currentPage + 1}, pageSize=${pageSize})}"
-               class="btn btn-outline">▶️ Next</a>
-            <span th:if="${currentPage == null || currentPage >= totalPages}" class="btn btn-outline disabled">▶️ Next</span>
-
-            <!-- Last Button -->
-            <a th:if="${currentPage != null && currentPage < totalPages}"
-               th:href="@{/authors(courseId=${selectedCourseId}, questionBankId=${selectedQuestionBankId}, page=${totalPages}, pageSize=${pageSize})}"
-               class="btn btn-outline">⏭️ Last</a>
-            <span th:if="${currentPage == null || currentPage >= totalPages}" class="btn btn-outline disabled">⏭️ Last</span>
-        </div>
-    </div>
-
-    <!-- Total Elements -->
-    <div class="total-elements" th:if="${totalElements != null}">
-        Total: <span th:text="${totalElements}"></span> author(s) found
-    </div>
+    <div th:replace="~{fragments/pagination :: controls(${pagination}, 'author(s)')}"></div>
 </div>
 
 <script>

@@ -19,6 +19,21 @@
         <div th:if="${error}" class="error-message" th:text="${error}"></div>
 
         <div th:if="${menuPermissions['canManageUsers']}" class="table-container">
+            <form method="get" th:action="@{/admin/users}" class="searchfilter-form">
+                <div class="searchfilter-group">
+                    <label for="pageSize" class="searchfilter-label">Page Size</label>
+                    <select id="pageSize" name="pageSize" class="searchfilter-select">
+                        <th:block th:replace="~{fragments/pagination :: page-size-options(${pageSize})}"></th:block>
+                    </select>
+                </div>
+                <div class="searchfilter-group">
+                    <label for="currentPage" class="searchfilter-label">Page</label>
+                    <input type="number" id="currentPage" name="page"
+                           th:value="${currentPage != null ? currentPage : 1}"
+                           min="1" class="searchfilter-select searchfilter-select-small">
+                </div>
+                <button type="submit" class="btn btn-filter">Apply</button>
+            </form>
             <table class="styled-table">
                 <thead>
                     <tr>
@@ -46,14 +61,18 @@
                         </td>
                         <td th:text="${user.createdAt != null ? user.createdAt : 'N/A'}">2024-01-01</td>
                         <td class="action-cell">
-                            <a th:href="@{/admin/users/{id}/edit(id=${user.id})}" class="btn btn-questionBank-edit">✏️ Edit</a>
+                            <a th:href="@{/admin/users/{id}/edit(id=${user.id}, page=${currentPage}, pageSize=${pageSize})}" class="btn btn-questionBank-edit">✏️ Edit</a>
                             <form th:action="@{/admin/users/{id}/enabled(id=${user.id})}" method="post" style="display:inline;">
                                 <input type="hidden" name="enabled" th:value="${!user.enabled}">
+                                <input type="hidden" name="page" th:value="${currentPage}">
+                                <input type="hidden" name="pageSize" th:value="${pageSize}">
                                 <button type="submit" class="btn btn-questions"
                                         th:text="${user.enabled ? '🚫 Disable' : '✅ Enable'}">Toggle</button>
                             </form>
                             <form th:action="@{/admin/users/{id}/delete(id=${user.id})}" method="post"
                                   style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this user?');">
+                                <input type="hidden" name="page" th:value="${currentPage}">
+                                <input type="hidden" name="pageSize" th:value="${pageSize}">
                                 <button type="submit" class="btn btn-delete">🗑️ Delete</button>
                             </form>
                         </td>
@@ -63,6 +82,7 @@
                     </tr>
                 </tbody>
             </table>
+            <div th:replace="~{fragments/pagination :: controls(${pagination}, 'user(s)')}"></div>
         </div>
 
         <div class="actions">

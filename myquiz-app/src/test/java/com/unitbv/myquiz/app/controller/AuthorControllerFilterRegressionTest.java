@@ -93,7 +93,7 @@ class AuthorControllerFilterRegressionTest {
                 eq(1),
                 eq(10),
                 eq("name"),
-                eq("desc")
+                eq("asc")
         )).thenReturn(page);
         when(filterOptionsService.resolveAuthorOptions(isNull(), eq("Algorithms"))).thenReturn(List.of(new AuthorInfo(
                 1L,

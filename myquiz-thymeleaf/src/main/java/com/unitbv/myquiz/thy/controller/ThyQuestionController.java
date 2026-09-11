@@ -6,14 +6,17 @@ import com.unitbv.myquiz.api.dto.DuplicateUnlinkRequestDto;
 import com.unitbv.myquiz.api.dto.QuestionBankDto;
 import com.unitbv.myquiz.api.dto.QuestionCorrectionDto;
 import com.unitbv.myquiz.api.dto.QuestionDto;
+import com.unitbv.myquiz.api.dto.QuestionErrorDto;
 import com.unitbv.myquiz.api.dto.QuestionFilterRequestDto;
 import com.unitbv.myquiz.api.dto.QuestionFilterResponseDto;
 import com.unitbv.myquiz.api.settings.ControllerSettings;
 import com.unitbv.myquiz.api.types.QuestionType;
 import com.unitbv.myquiz.api.util.PaginationParams;
+import com.unitbv.myquiz.api.util.PaginationResult;
 import com.unitbv.myquiz.api.util.PaginationSupport;
 import com.unitbv.myquiz.thy.service.QuestionCorrectionService;
 import com.unitbv.myquiz.thy.service.SessionService;
+import com.unitbv.myquiz.thy.pagination.PaginationView;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,6 +35,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.client.HttpClientErrorException;
@@ -43,6 +47,8 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * Thymeleaf controller for Question management operations.
@@ -94,34 +100,45 @@ public class ThyQuestionController {
     public String listAllQuestions(@RequestParam(value = ControllerSettings.ATTR_PAGE_NUMBER, required = false, defaultValue = ControllerSettings.DEFAULT_PAGE) Integer page,
                                    @RequestParam(value = ControllerSettings.ATTR_COURSE_ID, required = false) String courseIdParam,
                                    @RequestParam(value = ControllerSettings.ATTR_AUTHOR_ID, required = false) String authorIdParam,
-                                   @RequestParam(value = ControllerSettings.ATTR_SELECTED_TYPE, required = false) String type,
+                                   @RequestParam(value = "type", required = false) String type,
                                    @RequestParam(value = ControllerSettings.ATTR_QUESTION_BANK_ID, required = false) String questionBankIdParam,
-                                   @RequestParam(value = ControllerSettings.ATTR_PAGE_SIZE, required = false) Integer pageSize, Model model) {
+                                   @RequestParam(value = ControllerSettings.ATTR_PAGE_SIZE, required = false) Integer pageSize,
+                                   @RequestParam(value = "mcPage", required = false) Integer mcPage,
+                                   @RequestParam(value = "tfPage", required = false) Integer tfPage,
+                                   @RequestParam(value = "errorsPage", required = false) Integer errorsPage,
+                                   Model model) {
         log.info("Listing all questions");
         Long courseId = parseOptionalLong(courseIdParam, ControllerSettings.ATTR_COURSE_ID);
         Long authorId = parseOptionalLong(authorIdParam, ControllerSettings.ATTR_AUTHOR_ID);
         Long questionBankId = parseOptionalLong(questionBankIdParam, ControllerSettings.ATTR_QUESTION_BANK_ID);
-        return renderQuestionList(page, courseId, authorId, type, questionBankId, pageSize, model);
+        return renderQuestionList(page, courseId, authorId, type, questionBankId, pageSize,
+                mcPage, tfPage, errorsPage, model);
     }
 
-    @PostMapping("/filter")
+    @RequestMapping(value = "/filter", method = {RequestMethod.GET, RequestMethod.POST})
     public String filterQuestions(@RequestParam(value = ControllerSettings.ATTR_PAGE_NUMBER, required = false, defaultValue = ControllerSettings.DEFAULT_PAGE) Integer page,
                                   @RequestParam(value = ControllerSettings.ATTR_COURSE_ID, required = false) String courseIdParam,
                                   @RequestParam(value = ControllerSettings.ATTR_AUTHOR_ID, required = false) String authorIdParam,
-                                  @RequestParam(value = ControllerSettings.ATTR_SELECTED_TYPE, required = false) String type,
+                                  @RequestParam(value = "type", required = false) String type,
                                   @RequestParam(value = ControllerSettings.ATTR_QUESTION_BANK_ID, required = false) String questionBankIdParam,
-                                  @RequestParam(value = ControllerSettings.ATTR_PAGE_SIZE, required = false) Integer pageSize, Model model) {
+                                  @RequestParam(value = ControllerSettings.ATTR_PAGE_SIZE, required = false) Integer pageSize,
+                                  @RequestParam(value = "mcPage", required = false) Integer mcPage,
+                                  @RequestParam(value = "tfPage", required = false) Integer tfPage,
+                                  @RequestParam(value = "errorsPage", required = false) Integer errorsPage,
+                                  Model model) {
         log.info("Filtering questions");
         Long courseId = parseOptionalLong(courseIdParam, ControllerSettings.ATTR_COURSE_ID);
         Long authorId = parseOptionalLong(authorIdParam, ControllerSettings.ATTR_AUTHOR_ID);
         Long questionBankId = parseOptionalLong(questionBankIdParam, ControllerSettings.ATTR_QUESTION_BANK_ID);
-        return renderQuestionList(page, courseId, authorId, type, questionBankId, pageSize, model);
+        return renderQuestionList(page, courseId, authorId, type, questionBankId, pageSize,
+                mcPage, tfPage, errorsPage, model);
     }
 
 
     private String renderQuestionList(
             Integer page, Long courseId, Long authorId, String type,
-            Long questionBankId, Integer pageSize, Model model) {
+            Long questionBankId, Integer pageSize, Integer mcPage, Integer tfPage,
+            Integer errorsPage, Model model) {
         log.info("Listing all questions with filters - page: {}, courseId: {}, authorId: {}, type: {}, questionBankId: {}, pageSize: {}", page, courseId, authorId, type, questionBankId, pageSize);
 
         String redirect = sessionService.validateSessionOrRedirect();
@@ -165,7 +182,8 @@ public class ThyQuestionController {
                 return ControllerSettings.VIEW_QUESTION_LIST;
             }
 
-            populateQuestionListModelFromDto(model, filterDto, safePage, safePageSize, type);
+            populateQuestionListModelFromDto(model, filterDto, safePage, safePageSize, courseId, authorId,
+                    questionBankId, type, mcPage, tfPage, errorsPage);
             model.addAttribute(ControllerSettings.ATTR_LOGGED_IN_USER, loggedInUser);
             return ControllerSettings.VIEW_QUESTION_LIST;
         } catch (HttpClientErrorException.Forbidden ex) {
@@ -199,7 +217,7 @@ public class ThyQuestionController {
                                    @RequestParam(value = ControllerSettings.ATTR_PAGE_SIZE, required = false) Integer pageSize,
                                    @RequestParam(value = ControllerSettings.ATTR_COURSE_ID, required = false) String courseIdParam,
                                    @RequestParam(value = ControllerSettings.ATTR_AUTHOR_ID, required = false) String authorIdParam,
-                                   @RequestParam(value = ControllerSettings.ATTR_SELECTED_TYPE, required = false) String type,
+                                   @RequestParam(value = "type", required = false) String type,
                                    @RequestParam(value = ControllerSettings.ATTR_QUESTION_BANK_ID, required = false) String questionBankIdParam,
                                    @RequestParam(value = ControllerSettings.ATTR_BACK_URL, required = false) String backUrl, Model model) {
         String redirect = sessionService.validateSessionOrRedirect();
@@ -439,7 +457,8 @@ public class ThyQuestionController {
                                                       @RequestParam(value = ControllerSettings.ATTR_PAGE_NUMBER, required = false, defaultValue = ControllerSettings.DEFAULT_PAGE) Integer page,
                                                       @RequestParam(value = ControllerSettings.ATTR_PAGE_SIZE, required = false) Integer pageSize, Model model) {
         log.info("Listing questions by author ID: {} and questionBank ID: {}", authorId, questionBankId);
-        return renderQuestionList(page, null, authorId, null, questionBankId, pageSize, model);
+        return renderQuestionList(page, null, authorId, null, questionBankId, pageSize,
+                null, null, null, model);
     }
 
     @GetMapping("/sample")
@@ -551,13 +570,12 @@ public class ThyQuestionController {
             String resolvedBackUrl = resolveBackToQuestionsUrl(navigationContext);
 
             List<?> allDuplicates = question.getDuplicates() != null ? question.getDuplicates() : new ArrayList<>();
-            int totalElements = allDuplicates.size();
-            int pageSizeValue = navigationContext.pageSize();
-            int totalPages = Math.max(1, (int) Math.ceil(totalElements / (double) pageSizeValue));
-            int currentPage = Math.min(Math.max(navigationContext.page(), 1), totalPages);
-            int fromIndex = Math.min((currentPage - 1) * pageSizeValue, totalElements);
-            int toIndex = Math.min(fromIndex + pageSizeValue, totalElements);
-            List<?> pagedDuplicates = allDuplicates.subList(fromIndex, toIndex);
+            PaginationResult<?> pageResult = PaginationSupport.paginate(allDuplicates, navigationContext.page(), navigationContext.pageSize());
+            int totalElements = Math.toIntExact(pageResult.totalElements());
+            int pageSizeValue = pageResult.pageSize();
+            int totalPages = pageResult.totalPages();
+            int currentPage = pageResult.page();
+            List<?> pagedDuplicates = pageResult.items();
 
             model.addAttribute(ControllerSettings.ATTR_QUESTION, question);
             model.addAttribute(ControllerSettings.ATTR_DUPLICATES, pagedDuplicates);
@@ -569,6 +587,14 @@ public class ThyQuestionController {
             model.addAttribute(ControllerSettings.ATTR_PAGE_SIZE, pageSizeValue);
             model.addAttribute(ControllerSettings.ATTR_TOTAL_PAGES, totalPages);
             model.addAttribute(ControllerSettings.ATTR_TOTAL_ELEMENTS, (long) totalElements);
+            Map<String, Object> duplicateFilters = new LinkedHashMap<>();
+            duplicateFilters.put("courseId", courseId);
+            duplicateFilters.put("questionBankId", questionBankId);
+            duplicateFilters.put("authorId", authorId);
+            duplicateFilters.put("type", type);
+            duplicateFilters.put("backUrl", resolvedBackUrl);
+            model.addAttribute(ControllerSettings.ATTR_PAGINATION, PaginationView.of(
+                    "/questions/" + id + "/duplicates", currentPage, pageSizeValue, totalPages, totalElements, duplicateFilters));
             model.addAttribute(ControllerSettings.ATTR_BACK_TO_QUESTIONS_URL, resolvedBackUrl);
             model.addAttribute(ControllerSettings.ATTR_QUESTION_VIEW_URL, buildQuestionViewUrl(id, navigationContext));
             model.addAttribute(ControllerSettings.ATTR_QUESTION_CORRECTION_URL, buildQuestionCorrectionUrl(id, navigationContext));
@@ -885,7 +911,8 @@ public class ThyQuestionController {
      */
     private void populateQuestionListModelFromDto(
             Model model,
-            QuestionFilterResponseDto filterDto, Integer page, Integer pageSize, String type) {
+            QuestionFilterResponseDto filterDto, Integer page, Integer pageSize, Long courseId, Long authorId,
+            Long questionBankId, String type, Integer mcPage, Integer tfPage, Integer errorsPage) {
         PaginationParams pagination = PaginationSupport.normalize(page, pageSize);
         int currentPage = filterDto.getPage() != null ? filterDto.getPage() : pagination.page();
         int effectivePageSize = filterDto.getPageSize() != null ? filterDto.getPageSize() : pagination.pageSize();
@@ -896,6 +923,9 @@ public class ThyQuestionController {
         model.addAttribute(ControllerSettings.ATTR_TOTAL_PAGES, filterDto.getTotalPages() != null ? filterDto.getTotalPages() : 1);
         model.addAttribute(ControllerSettings.ATTR_TOTAL_ELEMENTS, filterDto.getTotalElements() != null ? filterDto.getTotalElements() : 0);
         model.addAttribute(ControllerSettings.ATTR_PAGE_SIZE, effectivePageSize);
+
+        addQuestionBankSecondaryPagination(model, filterDto.getSelectedQuestionBank(), page, effectivePageSize,
+                courseId, authorId, questionBankId, type, mcPage, tfPage, errorsPage);
 
         // Filter selections
         model.addAttribute(ControllerSettings.ATTR_SELECTED_COURSE, filterDto.getSelectedCourse());
@@ -908,6 +938,58 @@ public class ThyQuestionController {
         model.addAttribute(ControllerSettings.ATTR_COURSES, filterDto.getAllCourses() != null ? filterDto.getAllCourses() : new ArrayList<>());
         model.addAttribute(ControllerSettings.ATTR_AUTHORS, filterDto.getAuthors() != null ? filterDto.getAuthors() : new ArrayList<>());
         model.addAttribute(ControllerSettings.ATTR_QUESTION_BANKS, filterDto.getQuestionBanks() != null ? filterDto.getQuestionBanks() : new ArrayList<>());
+        Map<String, Object> filters = new LinkedHashMap<>();
+        filters.put("courseId", filterDto.getSelectedCourseId() != null ? filterDto.getSelectedCourseId() : courseId);
+        filters.put("questionBankId", filterDto.getSelectedQuestionBankId() != null ? filterDto.getSelectedQuestionBankId() : questionBankId);
+        filters.put("authorId", filterDto.getSelectedAuthorId() != null ? filterDto.getSelectedAuthorId() : authorId);
+        filters.put("type", type);
+        model.addAttribute(ControllerSettings.ATTR_PAGINATION, PaginationView.of(
+                "/questions", currentPage, effectivePageSize,
+                filterDto.getTotalPages() != null ? filterDto.getTotalPages() : 0,
+                filterDto.getTotalElements() != null ? filterDto.getTotalElements() : 0L, filters));
+    }
+
+    private void addQuestionBankSecondaryPagination(
+            Model model, QuestionBankDto questionBank, Integer parentPage, Integer parentPageSize,
+            Long courseId, Long authorId, Long questionBankId, String type,
+            Integer mcPage, Integer tfPage, Integer errorsPage) {
+        List<QuestionDto> multipleChoiceQuestions = questionBank != null && questionBank.getQuestionsMultichoice() != null
+                ? questionBank.getQuestionsMultichoice() : List.of();
+        List<QuestionDto> trueFalseQuestions = questionBank != null && questionBank.getQuestionsTruefalse() != null
+                ? questionBank.getQuestionsTruefalse() : List.of();
+        List<QuestionErrorDto> authorErrors = questionBank != null && questionBank.getQuestionErrorDtos() != null
+                ? questionBank.getQuestionErrorDtos() : List.of();
+
+        PaginationResult<QuestionDto> mcResult = PaginationSupport.paginate(multipleChoiceQuestions, mcPage, parentPageSize);
+        PaginationResult<QuestionDto> tfResult = PaginationSupport.paginate(trueFalseQuestions, tfPage, parentPageSize);
+        PaginationResult<QuestionErrorDto> errorsResult = PaginationSupport.paginate(authorErrors, errorsPage, parentPageSize);
+
+        model.addAttribute("questionBankQuestionsMC", mcResult.items());
+        model.addAttribute("questionBankQuestionsTF", tfResult.items());
+        model.addAttribute("questionBankAuthorErrors", errorsResult.items());
+
+        Map<String, Object> filters = new LinkedHashMap<>();
+        filters.put(ControllerSettings.ATTR_PAGE_NUMBER, parentPage);
+        filters.put("courseId", courseId);
+        filters.put("questionBankId", questionBankId);
+        filters.put("authorId", authorId);
+        filters.put("type", type);
+        filters.put("mcPage", mcPage);
+        filters.put("tfPage", tfPage);
+        filters.put("errorsPage", errorsPage);
+
+        model.addAttribute("questionBankMcPagination", toPaginationView(
+                "/questions", "mcPage", parentPageSize, mcResult, filters));
+        model.addAttribute("questionBankTfPagination", toPaginationView(
+                "/questions", "tfPage", parentPageSize, tfResult, filters));
+        model.addAttribute("questionBankErrorsPagination", toPaginationView(
+                "/questions", "errorsPage", parentPageSize, errorsResult, filters));
+    }
+
+    private <T> PaginationView toPaginationView(String path, String pageParam, int requestedPageSize,
+                                                 PaginationResult<T> result, Map<String, ?> filters) {
+        return PaginationView.of(path, pageParam, ControllerSettings.ATTR_PAGE_SIZE,
+                result.page(), result.pageSize(), result.totalPages(), result.totalElements(), filters);
     }
 
     /**
@@ -929,6 +1011,12 @@ public class ThyQuestionController {
         model.addAttribute(ControllerSettings.ATTR_SELECTED_TYPE, type);
         model.addAttribute(ControllerSettings.ATTR_PAGE_SIZE, pagination.pageSize());
         model.addAttribute(ControllerSettings.ATTR_COURSES, new ArrayList<>());
+        Map<String, Object> filters = new LinkedHashMap<>();
+        filters.put("courseId", courseId);
+        filters.put("questionBankId", questionBankId);
+        filters.put("type", type);
+        model.addAttribute(ControllerSettings.ATTR_PAGINATION, PaginationView.of(
+                "/questions", pagination.page(), pagination.pageSize(), 0, 0, filters));
     }
 
     private String buildQuestionsBackUrl(Integer page, Integer pageSize, Long courseId, Long authorId, String type, Long questionBankId) {

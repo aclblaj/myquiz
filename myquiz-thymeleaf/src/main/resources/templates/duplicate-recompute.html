@@ -22,6 +22,8 @@
 
         <form id="duplicateForm" method="post" th:action="@{/duplicate-management/recompute}">
             <input type="hidden" id="hiddenAction" name="action" value="loadCascade"/>
+            <input type="hidden" name="page" th:value="${currentPage}"/>
+            <input type="hidden" name="pageSize" th:value="${pageSize}"/>
 
             <div class="searchfilter mt-3">
                 <div class="searchfilter-form">
@@ -157,6 +159,8 @@
             <input type="hidden" name="duplicateErrorsRemoved" th:value="${recomputeResult.duplicateErrorsRemoved}"/>
             <input type="hidden" name="duplicateErrorsCreated" th:value="${recomputeResult.duplicateErrorsCreated}"/>
             <input type="hidden" name="durationMs"             th:value="${recomputeResult.durationMs}"/>
+            <input type="hidden" name="page"                   th:value="${currentPage}"/>
+            <input type="hidden" name="pageSize"               th:value="${pageSize}"/>
             <div class="form-actions">
                 <button type="submit" class="btn-save">💾 Save to History</button>
             </div>
@@ -194,6 +198,26 @@
     <!-- ===== SECTION 5: Recompute History ===== -->
     <div class="card mt-3">
         <div class="card-header">📋 Recompute History</div>
+
+        <form method="get" th:action="@{/duplicate-management}" class="searchfilter-form mt-3">
+            <input type="hidden" name="courseId" th:value="${selectedCourseId}"/>
+            <input type="hidden" name="questionBankId" th:value="${selectedQuestionBankId}"/>
+            <input type="hidden" name="authorId" th:value="${selectedAuthorId}"/>
+            <div class="list-filter-field">
+                <label for="historyPageSize" class="searchfilter-label">Page Size</label>
+                <select id="historyPageSize" name="pageSize" class="searchfilter-select"
+                        onchange="this.form.querySelector('[name=page]').value = 1">
+                    <th:block th:replace="~{fragments/pagination :: page-size-options(${pageSize})}"></th:block>
+                </select>
+            </div>
+            <div class="list-filter-field">
+                <label for="historyPage" class="searchfilter-label">Page</label>
+                <input type="number" id="historyPage" name="page"
+                       th:value="${currentPage != null ? currentPage : 1}"
+                       min="1" class="searchfilter-select searchfilter-select-small"/>
+            </div>
+            <button type="submit" class="btn-filter">Filter</button>
+        </form>
 
         <table class="styled-table">
             <thead>
@@ -243,12 +267,15 @@
                         <input type="hidden" name="courseId"       th:value="${selectedCourseId}"/>
                         <input type="hidden" name="questionBankId" th:value="${selectedQuestionBankId}"/>
                         <input type="hidden" name="authorId"       th:value="${selectedAuthorId}"/>
+                        <input type="hidden" name="page"           th:value="${currentPage}"/>
+                        <input type="hidden" name="pageSize"       th:value="${pageSize}"/>
                         <button type="submit" class="btn btn-outline">🗑️ Delete</button>
                     </form>
                 </td>
             </tr>
             </tbody>
         </table>
+        <div th:replace="~{fragments/pagination :: controls(${pagination}, 'recompute history entr(y/ies)')}"></div>
     </div>
 
 </div>

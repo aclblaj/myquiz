@@ -82,6 +82,7 @@
                     </tr>
                     </tbody>
                 </table>
+                <div th:replace="~{fragments/pagination :: controls(${questionPaginationByQuestionBank[questionBank.id]}, 'question(s)')}"></div>
             </div>
 
             <div th:if="${errorsByQuestionBank != null && errorsByQuestionBank[questionBank.id] != null && !errorsByQuestionBank[questionBank.id].isEmpty()}">
@@ -113,6 +114,7 @@
                     </tr>
                     </tbody>
                 </table>
+                <div th:replace="~{fragments/pagination :: controls(${errorPaginationByQuestionBank[questionBank.id]}, 'error(s)')}"></div>
             </div>
         </div>
     </div>

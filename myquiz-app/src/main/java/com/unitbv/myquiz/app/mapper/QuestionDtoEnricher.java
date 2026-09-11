@@ -31,11 +31,15 @@ public final class QuestionDtoEnricher {
     }
 
     public void enrichWithErrors(QuestionDto dto, Question question) {
+        enrichWithErrors(dto, question, null);
+    }
+
+    public void enrichWithErrors(QuestionDto dto, Question question, List<QuestionDuplicate> duplicateLinks) {
         if (dto == null || question == null) {
             logger.error("QuestionDtoEnricher.enrichWithErrors error, null dto or question");
             return;
         }
-        dto.setDuplicateCount(question.getDuplicateCount());
+        dto.setDuplicateCount(duplicateLinks == null ? question.getDuplicateCount() : duplicateLinks.size());
 
         List<QuestionErrorDto> errorDtos = new ArrayList<>();
         if (question.getQuestionErrors() != null && !question.getQuestionErrors().isEmpty()) {
@@ -52,11 +56,25 @@ public final class QuestionDtoEnricher {
             dto.setErrors(errorDtos);
         }
         logger.debug("Enriched question {} with {} errors", question.getId(), errorDtos.size());
-        enrichWithDuplicates(dto, question);
+        enrichWithDuplicates(dto, question, duplicateLinks);
     }
 
     public void enrichWithDuplicates(QuestionDto dto, Question question) {
+        enrichWithDuplicates(dto, question, null);
+    }
+
+    public void enrichWithDuplicates(QuestionDto dto, Question question, List<QuestionDuplicate> duplicateLinks) {
         if (dto == null || question == null) {
+            return;
+        }
+        if (duplicateLinks != null) {
+            List<QuestionDuplicateDto> duplicateDtos = duplicateLinks.stream()
+                    .map(duplicate -> question.getId().equals(duplicate.getQuestion().getId())
+                            ? questionDuplicateMapper.toDuplicateDto(duplicate, duplicate.getDuplicateQuestion())
+                            : questionDuplicateMapper.toDuplicateDto(duplicate, duplicate.getQuestion()))
+                    .toList();
+            dto.setDuplicates(duplicateDtos);
+            logger.debug("Enriched question {} with {} duplicates", question.getId(), duplicateDtos.size());
             return;
         }
         logger.debug("Enriching question {} with duplicates, {} duplicated links",

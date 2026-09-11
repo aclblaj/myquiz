@@ -26,13 +26,13 @@ import com.unitbv.myquiz.app.specifications.CourseSpecification;
 import com.unitbv.myquiz.app.specifications.QuestionBankAuthorSpecification;
 import com.unitbv.myquiz.app.specifications.QuestionBankSpecification;
 import com.unitbv.myquiz.app.specifications.QuestionSpecification;
+import com.unitbv.myquiz.app.util.SpringDataPaginationAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
@@ -201,13 +201,7 @@ public class QuestionService {
     }
 
     public List<Question> getQuestionBankQuestionsForAuthor(Long id) {
-        // Refactored: Use Specification-based filtering for all question queries
-        Specification<Question> spec = QuestionSpecification.byFilters(
-                null,
-                id,
-                null,
-                null
-        );
+        Specification<Question> spec = QuestionSpecification.byQuestionBankAuthorId(id);
         return questionRepository.findAll(spec);
     }
 
@@ -472,12 +466,7 @@ public class QuestionService {
         int validPage = pagination.page();
         int validPageSize = pagination.pageSize();
 
-        // Convert 1-based page number to 0-based page index for Spring Data
-        int pageIndex = validPage - 1;
-        Pageable pageable = PageRequest.of(
-                pageIndex,
-                validPageSize
-        );
+        Pageable pageable = SpringDataPaginationAdapter.toPageable(pagination, "crtNo", "asc");
         Specification<Question> spec = QuestionSpecification.byFilters(
                 normalizedCourse,
                 authorId,
@@ -490,6 +479,11 @@ public class QuestionService {
                 spec,
                 pageable
         );
+        if (questions.getTotalPages() > 0 && validPage > questions.getTotalPages()) {
+            validPage = questions.getTotalPages();
+            pageable = SpringDataPaginationAdapter.toPageable(validPage, validPageSize, "crtNo", "asc");
+            questions = questionRepository.findAll(spec, pageable);
+        }
         long queryTime = System.currentTimeMillis() - startTime;
 
         logger.atInfo().log(
@@ -504,11 +498,12 @@ public class QuestionService {
                 questionType
         );
 
-        List<QuestionDto> questionDtos = getQuestionDtosSortedByRow(questions);
+        List<QuestionDto> questionDtos = convertQuestionsToEnrichedDtos(questions.getContent());
         QuestionFilterResponseDto dto = QuestionFilterResponseDto.builder()
                 .questions(questionDtos)
                 // Return 1-based page number for frontend
                 .page(questions.getNumber() + 1)
+                .pageSize(validPageSize)
                 .totalPages(questions.getTotalPages())
                 .selectedCourse(normalizedCourse)
                 .selectedAuthorId(authorId)
@@ -561,18 +556,6 @@ public class QuestionService {
                 questionBank.getName(),
                 questionBank.getCourseName()
         );
-    }
-
-    private List<QuestionDto> getQuestionDtosSortedByRow(Page<Question> questions) {
-        List<Question> entities = questions.getContent().stream().sorted((q1, q2) -> {
-            if (q1.getCrtNo() == 0) return 1;
-            if (q2.getCrtNo() == 0) return -1;
-            return Integer.compare(
-                    q1.getCrtNo(),
-                    q2.getCrtNo()
-            );
-        }).toList();
-        return convertQuestionsToEnrichedDtos(entities);
     }
 
     /**
