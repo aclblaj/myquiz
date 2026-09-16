@@ -1,7 +1,9 @@
 package com.unitbv.myquiz.api.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -21,6 +23,6 @@ import java.util.List;
 public class DuplicateUnlinkRequestDto {
 
     @Schema(description = "IDs of duplicate questions to unlink from the source question")
-    @JsonProperty("duplicateQuestionIds")
-    private List<Long> duplicateQuestionIds = new ArrayList<>();
+    @NotEmpty(message = "At least one duplicate question ID is required")
+    private List<@NotNull(message = "Duplicate question ID cannot be null") @Positive(message = "Duplicate question ID must be positive") Long> duplicateQuestionIds = new ArrayList<>();
 }

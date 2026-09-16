@@ -14,6 +14,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.Optional;
@@ -85,7 +86,7 @@ public class UsersController {
     }
 
     @PostMapping("create")
-    public ResponseEntity<RegisterResponse> createUser(@RequestBody RegisterRequest request) {
+    public ResponseEntity<RegisterResponse> createUser(@Valid @RequestBody RegisterRequest request) {
         log.info("Received registration: username={}, email={}", request.getUsername(), request.getEmail());
         try {
             User user = usersService.createUser(request.getUsername(), request.getEmail(), request.getPassword());

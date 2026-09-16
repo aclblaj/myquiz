@@ -42,7 +42,9 @@ public final class QuestionSpecification implements Specification<Question> {
             var questionBankAuthorFetch = root.fetch(QUESTION_BANK_AUTHOR, jakarta.persistence.criteria.JoinType.LEFT);
             questionBankAuthorFetch.fetch(AUTHOR, jakarta.persistence.criteria.JoinType.LEFT);
             questionBankAuthorFetch.fetch(QUESTION_BANK, jakarta.persistence.criteria.JoinType.LEFT);
-            query.distinct(true);
+            // All fetched associations here are to-one associations. DISTINCT is not
+            // needed to remove row multiplication and would make PostgreSQL reject
+            // the CASE expression used by the deterministic crtNo ordering.
         }
 
         List<Predicate> predicates = new ArrayList<>();

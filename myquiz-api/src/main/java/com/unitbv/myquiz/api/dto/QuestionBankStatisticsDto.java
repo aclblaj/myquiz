@@ -1,16 +1,17 @@
 package com.unitbv.myquiz.api.dto;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class QuestionBankStatisticsDto {
-    private QuestionBankDto questionBank;
-    private List<AuthorStatsDto> authorStats;
+    private QuestionBankSummaryDto questionBank;
+    private List<AuthorStatsDto> authorStats = new ArrayList<>();
 
-    public QuestionBankDto getQuestionBank() {
+    public QuestionBankSummaryDto getQuestionBank() {
         return questionBank;
     }
 
-    public void setQuestionBank(QuestionBankDto questionBank) {
+    public void setQuestionBank(QuestionBankSummaryDto questionBank) {
         this.questionBank = questionBank;
     }
 

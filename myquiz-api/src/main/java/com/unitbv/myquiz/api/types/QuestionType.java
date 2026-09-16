@@ -1,5 +1,7 @@
 package com.unitbv.myquiz.api.types;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+
 public enum QuestionType {
     UNKNOWN(0, "UN"),
     MULTICHOICE(1, "MC"),
@@ -48,6 +50,18 @@ public enum QuestionType {
             typesAsString[i] = types[i].name();
         }
         return typesAsString;
+    }
+
+    @JsonCreator
+    public static QuestionType fromValue(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return valueOf(value.trim().toUpperCase());
+        } catch (IllegalArgumentException ex) {
+            return UNKNOWN;
+        }
     }
 
 }

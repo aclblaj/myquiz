@@ -135,7 +135,7 @@ class QuestionControllerTest {
     void listQuestionsFiltered_resolvesCourseFromQuestionBankWhenCourseMissing() {
         QuestionFilterRequestDto request = new QuestionFilterRequestDto();
         request.setAuthorId(202L);
-        request.setQuestionBank(24L);
+        request.setQuestionBankId(24L);
 
         QuestionBankDto questionBankDto = new QuestionBankDto();
         questionBankDto.setId(24L);

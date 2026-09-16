@@ -14,6 +14,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -67,7 +68,7 @@ public class AuthController {
     }
 
     @PostMapping("register")
-    public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest request) {
+    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
         final String FIND_URL = "/users/find/";
         logger.info("Register attempt: username={}, email={}", request.getUsername(), request.getEmail());
         try {
@@ -125,7 +126,7 @@ public class AuthController {
     }
 
     @PostMapping("login")
-    public ResponseEntity<AuthResponse> login(@RequestBody AuthRequest request) {
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody AuthRequest request) {
         logger.info("=== LOGIN ATTEMPT START ===");
         logger.info("Login attempt for identifier: {}", request.getIdentifier());
         logger.info("Request received: identifier={}, password length={}",
@@ -387,4 +388,3 @@ public class AuthController {
         return new HashSet<>();
     }
 }
-

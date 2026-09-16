@@ -1,6 +1,7 @@
 package com.unitbv.myquiz.app.upload.application.support;
 
 import com.unitbv.myquiz.api.dto.ArchiveFolderItemDto;
+import com.unitbv.myquiz.api.dto.ArchiveFolderItemStatus;
 import com.unitbv.myquiz.api.dto.ArchiveFolderUploadResultDto;
 import com.unitbv.myquiz.api.dto.ArchiveUploadResult;
 import org.springframework.stereotype.Component;
@@ -19,20 +20,20 @@ public class ArchiveFolderResultSupport {
     }
 
     public void markSkipped(ArchiveFolderUploadResultDto result, ArchiveFolderItemDto item, String message) {
-        item.setStatus(ArchiveFolderItemStatus.SKIPPED.value());
+        item.setStatus(ArchiveFolderItemStatus.SKIPPED);
         item.setMessage(message);
         result.setSkippedArchives(result.getSkippedArchives() + 1);
     }
 
     public void markProcessed(ArchiveFolderUploadResultDto result, ArchiveFolderItemDto item, ArchiveUploadResult uploadResult) {
-        item.setStatus(ArchiveFolderItemStatus.PROCESSED.value());
+        item.setStatus(ArchiveFolderItemStatus.PROCESSED);
         item.setFilesProcessed(uploadResult.filesProcessed());
         item.setMessage(uploadResult.toMessage());
         result.setProcessedArchives(result.getProcessedArchives() + 1);
     }
 
     public void markFailed(ArchiveFolderUploadResultDto result, ArchiveFolderItemDto item, Exception e) {
-        item.setStatus(ArchiveFolderItemStatus.FAILED.value());
+        item.setStatus(ArchiveFolderItemStatus.FAILED);
         item.setMessage(formatFailureMessage(e));
         result.setFailedArchives(result.getFailedArchives() + 1);
     }

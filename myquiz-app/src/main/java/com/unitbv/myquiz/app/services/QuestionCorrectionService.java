@@ -49,7 +49,7 @@ public class QuestionCorrectionService {
      */
     public QuestionCorrectionDto correctGrammar(QuestionCorrectionDto correctionDto) throws IOException, InterruptedException {
         log.info("Correcting grammar for question ID: {}", correctionDto.getOriginalQuestion().getId());
-        String language = correctionDto.getLanguage() != null ? correctionDto.getLanguage() : "ro";
+        String language = correctionDto.getLanguage() != null ? correctionDto.getLanguage().value() : "ro";
         String model = getModelFromDto(correctionDto);
         correctionDto.copyOriginalToModified();
         QuestionDto modified = correctionDto.getModifiedQuestion();
@@ -115,7 +115,7 @@ public class QuestionCorrectionService {
      */
     public QuestionCorrectionDto improveQuestion(QuestionCorrectionDto correctionDto) throws IOException, InterruptedException {
         log.info("Improving question ID: {}", correctionDto.getOriginalQuestion().getId());
-        String language = correctionDto.getLanguage() != null ? correctionDto.getLanguage() : "ro";
+        String language = correctionDto.getLanguage() != null ? correctionDto.getLanguage().value() : "ro";
         String model = getModelFromDto(correctionDto);
         correctionDto.copyOriginalToModified();
         QuestionDto modified = correctionDto.getModifiedQuestion();

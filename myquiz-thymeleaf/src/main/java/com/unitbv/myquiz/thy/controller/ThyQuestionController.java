@@ -167,7 +167,7 @@ public class ThyQuestionController {
             filterInputDto.setCourseId(courseId);
             filterInputDto.setAuthorId(authorId);
             filterInputDto.setQuestionType(questionType);
-            filterInputDto.setQuestionBank(questionBankId);
+            filterInputDto.setQuestionBankId(questionBankId);
             filterInputDto.setPage(safePage);
             filterInputDto.setPageSize(safePageSize);
             log.debug("Filtering questions with input: {}", filterInputDto);

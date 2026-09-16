@@ -2,6 +2,7 @@ package com.unitbv.myquiz.app.controller;
 
 import com.unitbv.myquiz.api.dto.CourseDto;
 import com.unitbv.myquiz.api.dto.CourseDuplicateRecomputeResultDto;
+import com.unitbv.myquiz.api.dto.CourseUpsertDto;
 import com.unitbv.myquiz.api.dto.DuplicateRecomputeHistoryDto;
 import com.unitbv.myquiz.api.dto.DuplicateStatisticsDto;
 import com.unitbv.myquiz.api.interfaces.CourseApi;
@@ -64,22 +65,22 @@ public class CourseController implements CourseApi {
     @Override
     public ResponseEntity<Void> updateCourse(
             @PathVariable Long id,
-            @Valid @RequestBody CourseDto courseDto) {
+            @Valid @RequestBody CourseUpsertDto courseDto) {
         log.info("Updating course with id: {}", id);
         if (courseDto != null) {
-            courseService.updateCourse(id, courseDto);
+            courseService.updateCourseFromInput(id, courseDto);
         }
         return ResponseEntity.noContent().build();
     }
 
     @Override
-    public ResponseEntity<CourseDto> createCourse(@Valid @RequestBody CourseDto courseDto) {
+    public ResponseEntity<CourseDto> createCourse(@Valid @RequestBody CourseUpsertDto courseDto) {
         if (courseDto == null) {
-            log.warn("Attempted to create course with null CourseDto");
+            log.warn("Attempted to create course with null CourseUpsertDto");
             return ResponseEntity.badRequest().build();
         }
         log.info("Creating new course: {}", courseDto);
-        return ResponseEntity.status(HttpStatus.CREATED).body(courseService.createCourse(courseDto));
+        return ResponseEntity.status(HttpStatus.CREATED).body(courseService.createCourseFromInput(courseDto));
     }
 
     @Override

@@ -1,6 +1,5 @@
 package com.unitbv.myquiz.api.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -30,22 +29,18 @@ public class QuestionErrorFilterResponseDto extends BaseFilterDto {
     private ArrayList<String> authorNames;
     private Map<String, List<QuestionErrorDto>> questionErrorsByAuthor;
 
-    @JsonProperty("courses")
     public List<CourseInfo> getCourses() {
         return getFilterCourses();
     }
 
-    @JsonProperty("courses")
     public void setCourses(List<CourseInfo> courses) {
         setFilterCourses(courses);
     }
 
-    @JsonProperty("questionBanks")
     public List<QuestionBankInfo> getQuestionBanks() {
         return getFilterQuestionBanks();
     }
 
-    @JsonProperty("questionBanks")
     public void setQuestionBanks(List<QuestionBankInfo> questionBanks) {
         setFilterQuestionBanks(questionBanks);
     }

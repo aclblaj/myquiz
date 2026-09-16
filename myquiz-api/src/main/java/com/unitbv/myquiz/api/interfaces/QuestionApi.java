@@ -5,6 +5,7 @@ import com.unitbv.myquiz.api.dto.QuestionCorrectionDto;
 import com.unitbv.myquiz.api.dto.QuestionDto;
 import com.unitbv.myquiz.api.dto.QuestionFilterRequestDto;
 import com.unitbv.myquiz.api.dto.QuestionFilterResponseDto;
+import com.unitbv.myquiz.api.dto.QuestionUpsertDto;
 import com.unitbv.myquiz.api.settings.ControllerSettings;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -40,13 +41,13 @@ public interface QuestionApi {
     @Operation(summary = "Create new question", description = "Create a new question")
     @ApiResponses(value = {@ApiResponse(responseCode = "201", description = "Question created successfully"), @ApiResponse(responseCode = "400", description = "Invalid input"), @ApiResponse(responseCode = "500", description = "Internal server error")})
     @PostMapping
-    ResponseEntity<QuestionDto> createQuestion(@Parameter(description = "Question data", required = true) @Valid @RequestBody QuestionDto questionDto);
+    ResponseEntity<QuestionDto> createQuestion(@Parameter(description = "Question data", required = true) @Valid @RequestBody QuestionUpsertDto questionDto);
 
     @Operation(summary = "Update question", description = "Update an existing question")
     @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Question updated successfully"), @ApiResponse(responseCode = "400", description = "Invalid input"), @ApiResponse(responseCode = "404", description = "Question not found"), @ApiResponse(responseCode = "500", description = "Internal server error")})
     @PutMapping("/{id}")
     ResponseEntity<QuestionDto> updateQuestion(@Parameter(description = "Question ID", required = true) @PathVariable Long id,
-                                               @Parameter(description = "Updated question data", required = true) @Valid @RequestBody QuestionDto questionDto);
+                                               @Parameter(description = "Updated question data", required = true) @Valid @RequestBody QuestionUpsertDto questionDto);
 
     @Operation(summary = "Delete question", description = "Delete a question by ID")
     @ApiResponses(value = {@ApiResponse(responseCode = "204", description = "Question deleted successfully"), @ApiResponse(responseCode = "404", description = "Question not found"), @ApiResponse(responseCode = "500", description = "Internal server error")})

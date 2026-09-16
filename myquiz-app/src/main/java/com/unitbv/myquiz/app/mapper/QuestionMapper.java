@@ -2,6 +2,7 @@ package com.unitbv.myquiz.app.mapper;
 
 import com.unitbv.myquiz.api.dto.AuthorInfo;
 import com.unitbv.myquiz.api.dto.QuestionDto;
+import com.unitbv.myquiz.api.dto.QuestionUpsertDto;
 import com.unitbv.myquiz.app.entities.Author;
 import com.unitbv.myquiz.app.entities.Question;
 import com.unitbv.myquiz.app.entities.QuestionBankAuthor;
@@ -23,6 +24,7 @@ public interface QuestionMapper {
     QuestionDto toDto(Question question);
 
     @Mapping(target = "crtNo", source = "row")
+    @Mapping(target = "id", ignore = true)
     @Mapping(target = "questionErrors", ignore = true)
     @Mapping(target = "answersReference", ignore = true)
     @Mapping(target = "questionBankAuthor", ignore = true)
@@ -31,6 +33,17 @@ public interface QuestionMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     Question toEntity(QuestionDto dto);
+
+    @Mapping(target = "crtNo", source = "row")
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "questionErrors", ignore = true)
+    @Mapping(target = "answersReference", ignore = true)
+    @Mapping(target = "questionBankAuthor", ignore = true)
+    @Mapping(target = "duplicateLinks", ignore = true)
+    @Mapping(target = "duplicateOfLinks", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    Question toEntity(QuestionUpsertDto dto);
 
     /**
      * Custom mapping helper for extracting AuthorInfo from QuestionBankAuthor.

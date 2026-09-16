@@ -1,6 +1,5 @@
 package com.unitbv.myquiz.api.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -29,11 +28,10 @@ public class AuthorUpsertDto {
     @Schema(description = "Author's full name", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "Name cannot be blank")
     @Size(max = 200, message = "Name cannot exceed 200 characters")
-    @JsonProperty("name")
     private String name;
 
-    @Schema(description = "Author's initials")
-    @JsonProperty("initials")
+    @Schema(description = "Author's initials", maxLength = 10)
+    @Size(max = 10, message = "Initials cannot exceed 10 characters")
     private String initials;
 
     /**
@@ -50,4 +48,3 @@ public class AuthorUpsertDto {
         return dto;
     }
 }
-

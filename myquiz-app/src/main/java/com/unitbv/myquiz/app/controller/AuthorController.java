@@ -63,14 +63,14 @@ public class AuthorController implements AuthorApi {
     @Override
     public ResponseEntity<AuthorDto> createAuthor(@Valid @RequestBody AuthorUpsertDto authorUpsertDto) {
         log.info("Creating new author: {}", authorUpsertDto.getName());
-        AuthorDto dto = authorService.saveAuthorDto(authorUpsertDto.toAuthorDto(null));
+        AuthorDto dto = authorService.saveAuthor(authorUpsertDto);
         return ResponseEntity.status(201).body(dto);
     }
 
     @Override
     public ResponseEntity<AuthorDto> updateAuthor(Long id, @Valid @RequestBody AuthorUpsertDto authorUpsertDto) {
         log.info("Updating author id: {}", id);
-        AuthorDto dto = authorService.saveAuthorDto(authorUpsertDto.toAuthorDto(id));
+        AuthorDto dto = authorService.updateAuthor(id, authorUpsertDto);
         return ResponseEntity.ok(dto);
     }
 

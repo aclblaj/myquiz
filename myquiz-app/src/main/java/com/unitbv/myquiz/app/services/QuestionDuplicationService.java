@@ -1,5 +1,6 @@
 package com.unitbv.myquiz.app.services;
 
+import com.unitbv.myquiz.api.dto.DuplicateRecomputeSummaryDto;
 import com.unitbv.myquiz.api.dto.QuestionDto;
 import com.unitbv.myquiz.api.settings.ControllerSettings;
 import com.unitbv.myquiz.api.types.DuplicateComparisonStrategy;
@@ -737,10 +738,10 @@ public class QuestionDuplicationService {
     }
 
     @Transactional
-    public void removeAllDuplicateAssociationsForQuestion(Long questionId) {
+    public long removeAllDuplicateAssociationsForQuestion(Long questionId) {
         if (questionId == null) {
             logger.atWarn().log("removeAllDuplicateAssociationsForQuestion called with null questionId");
-            return;
+            return 0;
         }
         List<QuestionDuplicate> links = questionDuplicateRepository.findByQuestionIdOrDuplicateQuestionId(
                 questionId,
@@ -762,6 +763,7 @@ public class QuestionDuplicationService {
         }
         logger.atInfo().addArgument(questionId).addArgument(removedLinks).log("Removed {} links, {} total, for question {}");
         cleanupDuplicateErrors(affectedQuestionIds);
+        return removedLinks;
     }
 
     /**
@@ -770,11 +772,11 @@ public class QuestionDuplicationService {
      * Links can be stored with the pair in either column order, so both directions are attempted.
      */
     @Transactional
-    public void removeSpecificDuplicateAssociations(Long questionId, List<Long> duplicateIds) {
+    public long removeSpecificDuplicateAssociations(Long questionId, List<Long> duplicateIds) {
         logger.atInfo().addArgument(questionId).addArgument(duplicateIds).log("Removing specific duplicate associations for question {}: {}");
         if (questionId == null || duplicateIds == null || duplicateIds.isEmpty()) {
             logger.atWarn().addArgument(questionId).log("removeSpecificDuplicateAssociations called with null questionId or empty duplicateIds for question {}");
-            return;
+            return 0;
         }
 
         Set<Long> affectedQuestionIds = new LinkedHashSet<>();
@@ -794,6 +796,7 @@ public class QuestionDuplicationService {
         }
         logger.atInfo().addArgument(removedLinks).addArgument(duplicateIds.size()).log("Removed {} of {} requested duplicate links");
         cleanupDuplicateErrors(affectedQuestionIds);
+        return removedLinks;
     }
 
     /**
@@ -829,7 +832,7 @@ public class QuestionDuplicationService {
     }
 
     @Transactional
-    public DuplicateRecomputeSummary recomputeDuplicatesForCourse(String courseName) {
+    public DuplicateRecomputeSummaryDto recomputeDuplicatesForCourse(String courseName) {
         return recomputeDuplicatesForCourseInternal(
                 courseName,
                 defaultSimilarityStrategy.getAlgorithmName()
@@ -843,10 +846,10 @@ public class QuestionDuplicationService {
      * @param courseName           the course these questions belong to
      * @param questionsToProcess   the questions to recompute duplicates for
      * @param similarityAlgorithm  the similarity algorithm name to use
-     * @return DuplicateRecomputeSummary with results
+     * @return immutable {@link DuplicateRecomputeSummaryDto} with the recomputation metrics
      */
     @Transactional
-    public DuplicateRecomputeSummary recomputeDuplicatesForQuestionList(
+    public DuplicateRecomputeSummaryDto recomputeDuplicatesForQuestionList(
             String courseName,
             List<Question> questionsToProcess,
             String similarityAlgorithm) {
@@ -861,14 +864,14 @@ public class QuestionDuplicationService {
     }
 
     @Transactional
-    public DuplicateRecomputeSummary recomputeDuplicatesForCourse(String courseName, String similarityAlgorithm) {
+    public DuplicateRecomputeSummaryDto recomputeDuplicatesForCourse(String courseName, String similarityAlgorithm) {
         return recomputeDuplicatesForCourseInternal(
                 courseName,
                 similarityAlgorithm
         );
     }
 
-    private DuplicateRecomputeSummary recomputeDuplicatesForCourseInternal(String courseName, String similarityAlgorithm) {
+    private DuplicateRecomputeSummaryDto recomputeDuplicatesForCourseInternal(String courseName, String similarityAlgorithm) {
         AbstractQuestionSimilarityStrategy selectedStrategy = resolveStrategy(similarityAlgorithm);
 
         if (courseName == null || courseName.isBlank()) {
@@ -890,7 +893,7 @@ public class QuestionDuplicationService {
     }
 
     @Transactional
-    public DuplicateRecomputeSummary recomputeDuplicatesForCourseSubset(String courseName, String similarityAlgorithm, int maxQuestions) {
+    public DuplicateRecomputeSummaryDto recomputeDuplicatesForCourseSubset(String courseName, String similarityAlgorithm, int maxQuestions) {
         AbstractQuestionSimilarityStrategy selectedStrategy = resolveStrategy(similarityAlgorithm);
 
         if (courseName == null || courseName.isBlank()) {
@@ -918,7 +921,7 @@ public class QuestionDuplicationService {
         );
     }
 
-    private DuplicateRecomputeSummary recomputeDuplicatesForQuestions(
+    private DuplicateRecomputeSummaryDto recomputeDuplicatesForQuestions(
             String courseName,
             AbstractQuestionSimilarityStrategy selectedStrategy,
             List<Question> questionsToProcess,
@@ -965,7 +968,7 @@ public class QuestionDuplicationService {
         logger.atInfo().addArgument(courseName).addArgument(createdErrors.size()).addArgument(persistedPairs.size())
               .log("Duplicate recompute completed for course '{}': created errors={}, persisted pairs={}");
 
-        return new DuplicateRecomputeSummary(
+        return new DuplicateRecomputeSummaryDto(
                 courseQuestionCount,
                 multichoiceQuestions.size(),
                 truefalseQuestions.size(),
@@ -1797,9 +1800,6 @@ public class QuestionDuplicationService {
     }
 
     private record DuplicateExecutionPlan(int total, int progressStep, int totalBatches) {
-    }
-
-    public record DuplicateRecomputeSummary(int totalQuestions, int multichoiceQuestions, int truefalseQuestions, int duplicateLinksRemoved, int duplicateErrorsRemoved, int duplicateErrorsCreated) {
     }
 
     /**

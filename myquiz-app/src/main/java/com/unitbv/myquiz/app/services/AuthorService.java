@@ -2,6 +2,7 @@ package com.unitbv.myquiz.app.services;
 
 import com.unitbv.myquiz.api.dto.AuthorDetailsDto;
 import com.unitbv.myquiz.api.dto.AuthorDto;
+import com.unitbv.myquiz.api.dto.AuthorUpsertDto;
 import com.unitbv.myquiz.api.dto.AuthorFilterRequestDto;
 import com.unitbv.myquiz.api.dto.AuthorFilterResponseDto;
 import com.unitbv.myquiz.api.dto.AuthorFormDataDto;
@@ -146,6 +147,15 @@ public class AuthorService {
             }
         }
         return initials.toString();
+    }
+
+    @Transactional
+    @CacheEvict(value = {"allAuthorsBasic", "authorsByCourse"}, allEntries = true)
+    public AuthorDto saveAuthor(AuthorUpsertDto input) {
+        if (input == null) {
+            return null;
+        }
+        return saveAuthorDto(input.toAuthorDto(null));
     }
 
     @Transactional
@@ -346,10 +356,10 @@ public class AuthorService {
 
     public Page<AuthorDto> findPaginated(int pageNo, int pageSize, String sortField, String sortDirection) {
         PaginationParams pagination = PaginationSupport.normalize(pageNo, pageSize);
-        Pageable paging = SpringDataPaginationAdapter.toPageable(pagination, sortField, sortDirection);
+        Pageable paging = SpringDataPaginationAdapter.toPageable(pagination, sortField, sortDirection, "id");
         Page<Author> page = authorRepository.findAll(paging);
         if (page.getTotalPages() > 0 && pagination.page() > page.getTotalPages()) {
-            paging = SpringDataPaginationAdapter.toPageable(page.getTotalPages(), pagination.pageSize(), sortField, sortDirection);
+            paging = SpringDataPaginationAdapter.toPageable(page.getTotalPages(), pagination.pageSize(), sortField, sortDirection, "id");
             page = authorRepository.findAll(paging);
         }
         List<AuthorDto> content = page.getContent().stream().map(this::mapToAuthorDto).toList();
@@ -364,7 +374,7 @@ public class AuthorService {
         );
 
         PaginationParams pagination = PaginationSupport.normalize(pageNo, pageSize);
-        Pageable paging = SpringDataPaginationAdapter.toPageable(pagination, sortField, sortDirection);
+        Pageable paging = SpringDataPaginationAdapter.toPageable(pagination, sortField, sortDirection, "id");
 
         Page<Author> page;
         Specification<Author> specification = null;
@@ -380,7 +390,7 @@ public class AuthorService {
         }
         page = specification != null ? authorRepository.findAll(specification, paging) : authorRepository.findAll(paging);
         if (page.getTotalPages() > 0 && pagination.page() > page.getTotalPages()) {
-            paging = SpringDataPaginationAdapter.toPageable(page.getTotalPages(), pagination.pageSize(), sortField, sortDirection);
+            paging = SpringDataPaginationAdapter.toPageable(page.getTotalPages(), pagination.pageSize(), sortField, sortDirection, "id");
             page = specification != null ? authorRepository.findAll(specification, paging) : authorRepository.findAll(paging);
         }
 
@@ -397,6 +407,15 @@ public class AuthorService {
      * @return updated AuthorDto
      * @throws jakarta.persistence.EntityNotFoundException if author not found
      */
+    @Transactional
+    @CacheEvict(value = {"allAuthorsBasic", "authorsByCourse"}, allEntries = true)
+    public AuthorDto updateAuthor(Long id, AuthorUpsertDto input) {
+        if (input == null) {
+            throw new IllegalArgumentException("AuthorUpsertDto cannot be null");
+        }
+        return updateAuthor(id, input.toAuthorDto(id));
+    }
+
     @Transactional
     @CacheEvict(value = {"allAuthorsBasic", "authorsByCourse"}, allEntries = true)
     public AuthorDto updateAuthor(Long id, AuthorDto authorDto) {

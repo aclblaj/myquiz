@@ -170,9 +170,9 @@ public class ThyErrorController {
         try {
             String filterUrl = apiBaseUrl + ControllerSettings.API_ERRORS_FILTER;
             QuestionErrorFilterRequestDto filterInputDto = new QuestionErrorFilterRequestDto();
-            filterInputDto.setSelectedCourseId(courseId);
-            filterInputDto.setSelectedAuthor(author);
-            filterInputDto.setSelectedQuestionBankId(questionBankId);
+            filterInputDto.setCourseId(courseId);
+            filterInputDto.setAuthor(author);
+            filterInputDto.setQuestionBankId(questionBankId);
             filterInputDto.setPage(safePage);
             filterInputDto.setPageSize(safePageSize);
 

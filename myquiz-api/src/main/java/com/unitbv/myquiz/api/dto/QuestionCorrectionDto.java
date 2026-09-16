@@ -1,7 +1,8 @@
 package com.unitbv.myquiz.api.dto;
 
 import com.fasterxml.jackson.annotation.JsonAlias;
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.unitbv.myquiz.api.types.CorrectionType;
+import com.unitbv.myquiz.api.types.CorrectionLanguage;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -22,31 +23,35 @@ import lombok.ToString;
 public class QuestionCorrectionDto {
 
     @Schema(description = "Original question data")
-    @JsonProperty("originalQuestion")
     @NotNull(message = "Original question cannot be null")
     @Valid
     private QuestionDto originalQuestion = new QuestionDto();
 
     @Schema(description = "Modified/corrected question data")
-    @JsonProperty("modifiedQuestion")
     private QuestionDto modifiedQuestion = new QuestionDto();
 
     @Schema(description = "Type of correction applied (grammar, improve, alternatives, explain)")
-    @JsonProperty("correctionType")
-    private String correctionType;
+    private CorrectionType correctionType;
+
+    /** Keeps source compatibility for legacy internal callers. */
+    public void setCorrectionType(String correctionType) {
+        this.correctionType = CorrectionType.fromValue(correctionType);
+    }
 
     @Schema(description = "AI model used for correction")
-    @JsonProperty("modelUsed")
     @JsonAlias("model")
     private String modelUsed;
 
     @Schema(description = "Additional notes or explanation from AI")
-    @JsonProperty("correctionNotes")
     private String correctionNotes;
 
     @Schema(description = "Language for correction (ro/en)")
-    @JsonProperty("language")
-    private String language;
+    private CorrectionLanguage language;
+
+    /** Keeps source compatibility for legacy internal callers. */
+    public void setLanguage(String language) {
+        this.language = CorrectionLanguage.fromValue(language);
+    }
 
     public QuestionCorrectionDto(QuestionDto originalQuestion) {
         this.originalQuestion = originalQuestion;

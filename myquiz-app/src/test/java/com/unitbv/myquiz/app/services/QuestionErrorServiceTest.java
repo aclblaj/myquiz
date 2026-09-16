@@ -80,6 +80,33 @@ class QuestionErrorServiceTest {
     }
 
     @Test
+    void getAuthorErrorsUsesErrorIdAsTieBreakerBeforePagination() {
+        QuestionError first = questionError(MyUtil.MISSING_ANSWER, 1);
+        first.setId(10L);
+        QuestionError second = questionError(MyUtil.DATATYPE_ERROR, 1);
+        second.setId(20L);
+        QuestionError third = questionError(MyUtil.MISSING_ANSWER, 2);
+        third.setId(30L);
+
+        QuestionErrorService service = new QuestionErrorService(
+                questionErrorRepository,
+                questionRepository,
+                questionBankService,
+                courseService
+        );
+
+        when(questionErrorRepository.findByQuestionQuestionBankAuthorQuestionBankId(5L))
+                .thenReturn(List.of(second, third, first));
+        when(courseService.getAllCourses()).thenReturn(List.of());
+
+        var firstPage = service.getAuthorErrors(null, null, null, 5L, 1, 1);
+        var secondPage = service.getAuthorErrors(null, null, null, 5L, 2, 1);
+
+        assertEquals(List.of(10L), firstPage.getQuestionErrors().stream().map(error -> error.getId()).toList());
+        assertEquals(List.of(20L), secondPage.getQuestionErrors().stream().map(error -> error.getId()).toList());
+    }
+
+    @Test
     void getErrorById_hidesDuplicateValidationErrors() {
         QuestionErrorService service = new QuestionErrorService(
                 questionErrorRepository,

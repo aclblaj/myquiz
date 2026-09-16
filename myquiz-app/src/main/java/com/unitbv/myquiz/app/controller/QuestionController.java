@@ -9,6 +9,7 @@ import com.unitbv.myquiz.api.dto.QuestionCorrectionDto;
 import com.unitbv.myquiz.api.dto.QuestionDto;
 import com.unitbv.myquiz.api.dto.QuestionFilterRequestDto;
 import com.unitbv.myquiz.api.dto.QuestionFilterResponseDto;
+import com.unitbv.myquiz.api.dto.QuestionUpsertDto;
 import com.unitbv.myquiz.api.interfaces.QuestionApi;
 import com.unitbv.myquiz.api.settings.ControllerSettings;
 import com.unitbv.myquiz.api.types.QuestionType;
@@ -22,6 +23,7 @@ import com.unitbv.myquiz.app.services.QuestionBankAuthorService;
 import com.unitbv.myquiz.app.services.QuestionBankService;
 import com.unitbv.myquiz.app.services.QuestionCorrectionService;
 import com.unitbv.myquiz.app.services.QuestionService;
+import com.unitbv.myquiz.app.services.DuplicateUnlinkResult;
 import com.unitbv.myquiz.app.web.ResourceNotFoundException;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -102,7 +104,7 @@ public class QuestionController implements QuestionApi {
     }
 
     @Override
-    public ResponseEntity<QuestionDto> createQuestion(@Valid @RequestBody QuestionDto questionDto) {
+    public ResponseEntity<QuestionDto> createQuestion(@Valid @RequestBody QuestionUpsertDto questionDto) {
         log.atInfo().log("Creating new question");
         try {
             if (questionDto == null) {
@@ -123,15 +125,14 @@ public class QuestionController implements QuestionApi {
     }
 
     @Override
-    public ResponseEntity<QuestionDto> updateQuestion(@PathVariable Long id, @Valid @RequestBody QuestionDto questionDto) {
+    public ResponseEntity<QuestionDto> updateQuestion(@PathVariable Long id, @Valid @RequestBody QuestionUpsertDto questionDto) {
         log.atInfo().addArgument(id).log("Updating question with id: {}");
         try {
             if (questionDto == null) {
                 log.atWarn().addArgument(id).log("Received null question data for update id: {}");
                 return ResponseEntity.badRequest().build();
             }
-            questionDto.setId(id);
-            QuestionDto updatedQuestion = questionService.updateQuestion(questionDto);
+            QuestionDto updatedQuestion = questionService.updateQuestion(id, questionDto);
             if (updatedQuestion == null) {
                 return ResponseEntity.notFound().build();
             }
@@ -199,7 +200,7 @@ public class QuestionController implements QuestionApi {
             return ResponseEntity.badRequest().build();
         }
 
-        Long questionBankId = filterInput.getQuestionBank();
+        Long questionBankId = filterInput.getQuestionBankId();
         AuthorInfo authorInfo = resolveAuthorInfo(filterInput.getAuthorId());
         String selectedCourse = null;
         Long selectedCourseId = filterInput.getCourseId();
@@ -281,18 +282,17 @@ public class QuestionController implements QuestionApi {
                 return ResponseEntity.badRequest().build();
             }
 
-            boolean removed = questionService.removeDuplicationLinks(
+            DuplicateUnlinkResult result = questionService.removeDuplicationLinks(
                     id,
                     selectionDto.getDuplicateQuestionIds()
             );
 
-            if (removed) {
-                log.atInfo().addArgument(id).addArgument(selectionDto.getDuplicateQuestionIds().size()).log("Removed {} duplication links for question {}");
-                return ResponseEntity.noContent().build();
-            } else {
+            if (result.status() == DuplicateUnlinkResult.Status.QUESTION_NOT_FOUND) {
                 log.atWarn().addArgument(id).log(QUESTION_NOT_FOUND);
                 return ResponseEntity.notFound().build();
             }
+            log.atInfo().addArgument(id).addArgument(result.removedLinks()).log("Removed {} duplication links for question {}");
+            return ResponseEntity.noContent().build();
         }
         catch (Exception e) {
             log.atError().setCause(e).addArgument(id).log("Error removing duplication links for question {}");
@@ -310,15 +310,14 @@ public class QuestionController implements QuestionApi {
     public ResponseEntity<Void> removeAllQuestionDuplicates(@PathVariable Long id) {
         log.atInfo().addArgument(id).log("Removing all duplication links for question {}");
         try {
-            boolean removed = questionService.removeAllDuplicationLinks(id);
+            DuplicateUnlinkResult result = questionService.removeAllDuplicationLinks(id);
 
-            if (removed) {
-                log.atInfo().addArgument(id).log("Removed all duplication links for question {}");
-                return ResponseEntity.noContent().build();
-            } else {
+            if (result.status() == DuplicateUnlinkResult.Status.QUESTION_NOT_FOUND) {
                 log.atWarn().addArgument(id).log(QUESTION_NOT_FOUND);
                 return ResponseEntity.notFound().build();
             }
+            log.atInfo().addArgument(id).addArgument(result.removedLinks()).log("Removed {} duplication links for question {}");
+            return ResponseEntity.noContent().build();
         }
         catch (Exception e) {
             log.atError().setCause(e).addArgument(id).log("Error removing all duplication links for question {}");

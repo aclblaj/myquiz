@@ -1,7 +1,9 @@
 package com.unitbv.myquiz.app.services;
 
+import com.unitbv.myquiz.api.dto.DuplicateRecomputeSummaryDto;
 import com.unitbv.myquiz.api.dto.CourseDto;
 import com.unitbv.myquiz.api.dto.QuestionDto;
+import com.unitbv.myquiz.api.dto.QuestionFilterResponseDto;
 import com.unitbv.myquiz.api.types.QuestionType;
 import com.unitbv.myquiz.api.types.StudyYear;
 import com.unitbv.myquiz.app.entities.Author;
@@ -139,7 +141,7 @@ class QuestionServiceTest {
               .log("Starting first-N duplicate recompute comparison for course '{}': selected {} questions (requested max {})");
 
         logger.atInfo().addArgument("levenshtein").addArgument(Thread.currentThread().getName()).log("Invoking recompute subset with algorithm '{}' from test thread '{}'");
-        QuestionDuplicationService.DuplicateRecomputeSummary levenshteinSummary = questionDuplicationService.recomputeDuplicatesForCourseSubset(
+        DuplicateRecomputeSummaryDto levenshteinSummary = questionDuplicationService.recomputeDuplicatesForCourseSubset(
                 courseName,
                 "levenshtein",
                 maxQuestions
@@ -147,7 +149,7 @@ class QuestionServiceTest {
         Set<String> levenshteinPairs = loadDuplicatePairsForQuestionIds(selectedQuestionIds);
 
         logger.atInfo().addArgument("jaro-winkler").addArgument(Thread.currentThread().getName()).log("Invoking recompute subset with algorithm '{}' from test thread '{}'");
-        QuestionDuplicationService.DuplicateRecomputeSummary jaroWinklerSummary = questionDuplicationService.recomputeDuplicatesForCourseSubset(
+        DuplicateRecomputeSummaryDto jaroWinklerSummary = questionDuplicationService.recomputeDuplicatesForCourseSubset(
                 courseName,
                 "jaro-winkler",
                 maxQuestions
@@ -760,6 +762,62 @@ class QuestionServiceTest {
     @Test
     void getQuestionsByQuestionBankIdReturnsEmptyListForMissingBank() {
         assertTrue(questionService.getQuestionsByQuestionBankId(-1L).isEmpty());
+    }
+
+    @Test
+    void getQuestionsFilteredKeepsDeterministicOrderAcrossPages() {
+        TestEntityFactory.QuestionBankAuthorFixture fixture = testEntityFactory.createQuestionBankAuthorFixture(
+                ServiceTestData.questionBankAuthorSpecBuilder().build()
+        );
+
+        Question first = testEntityFactory.createQuestion(
+                fixture.questionBankAuthor(), QuestionType.MULTICHOICE, "First", "First text"
+        );
+        first.setCrtNo(10);
+        questionRepository.save(first);
+
+        Question second = testEntityFactory.createQuestion(
+                fixture.questionBankAuthor(), QuestionType.MULTICHOICE, "Second", "Second text"
+        );
+        second.setCrtNo(10);
+        questionRepository.save(second);
+
+        Question unnumbered = testEntityFactory.createQuestion(
+                fixture.questionBankAuthor(), QuestionType.MULTICHOICE, "Unnumbered", "Unnumbered text"
+        );
+        unnumbered.setCrtNo(0);
+        questionRepository.save(unnumbered);
+
+        QuestionFilterResponseDto firstPage = questionService.getQuestionsFiltered(
+                fixture.questionBank().getCourseName(),
+                fixture.author().getId(),
+                1,
+                1,
+                fixture.questionBank().getId(),
+                null
+        );
+        QuestionFilterResponseDto secondPage = questionService.getQuestionsFiltered(
+                fixture.questionBank().getCourseName(),
+                fixture.author().getId(),
+                2,
+                1,
+                fixture.questionBank().getId(),
+                null
+        );
+        QuestionFilterResponseDto thirdPage = questionService.getQuestionsFiltered(
+                fixture.questionBank().getCourseName(),
+                fixture.author().getId(),
+                3,
+                1,
+                fixture.questionBank().getId(),
+                null
+        );
+
+        assertEquals(3L, firstPage.getTotalElements());
+        assertEquals(3, firstPage.getTotalPages());
+        assertEquals(List.of(first.getId()), firstPage.getQuestions().stream().map(QuestionDto::getId).toList());
+        assertEquals(List.of(second.getId()), secondPage.getQuestions().stream().map(QuestionDto::getId).toList());
+        assertEquals(List.of(unnumbered.getId()), thirdPage.getQuestions().stream().map(QuestionDto::getId).toList());
     }
 
     @Test

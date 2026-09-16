@@ -1,8 +1,10 @@
 package com.unitbv.myquiz.app.services;
 
 import com.unitbv.myquiz.api.dto.CourseDto;
+import com.unitbv.myquiz.api.dto.CourseUpsertDto;
 import com.unitbv.myquiz.api.dto.CourseDuplicateRecomputeResultDto;
 import com.unitbv.myquiz.api.dto.CourseSourceDto;
+import com.unitbv.myquiz.api.dto.DuplicateRecomputeSummaryDto;
 import com.unitbv.myquiz.api.dto.DuplicateRecomputeHistoryDto;
 import com.unitbv.myquiz.api.dto.DuplicateStatisticsDto;
 import com.unitbv.myquiz.api.types.DefaultCourse;
@@ -250,6 +252,15 @@ public class CourseService {
 
     @Transactional
     @CacheEvict(value = "courseNames", allEntries = true)
+    public void updateCourseFromInput(Long id, CourseUpsertDto input) {
+        if (input == null) {
+            throw new IllegalArgumentException("CourseUpsertDto cannot be null");
+        }
+        updateCourse(id, input.toCourseDto());
+    }
+
+    @Transactional
+    @CacheEvict(value = "courseNames", allEntries = true)
     public void updateCourse(Long id, CourseDto courseDto) {
         // Input validation
         if (id == null) {
@@ -270,6 +281,15 @@ public class CourseService {
         log.atInfo().addArgument(id).log("Course {} updated");
     }
 
+
+    @Transactional
+    @CacheEvict(value = "courseNames", allEntries = true)
+    public CourseDto createCourseFromInput(CourseUpsertDto input) {
+        if (input == null) {
+            throw new IllegalArgumentException("CourseUpsertDto cannot be null");
+        }
+        return createCourse(input.toCourseDto());
+    }
 
     @Transactional
     @CacheEvict(value = "courseNames", allEntries = true)
@@ -364,24 +384,13 @@ public class CourseService {
         java.time.OffsetDateTime startedAt = java.time.OffsetDateTime.now();
         long startedMs = System.currentTimeMillis();
 
-        QuestionDuplicationService.DuplicateRecomputeSummary summary = questionDuplicationService.recomputeDuplicatesForCourse(course.getCourse());
+        DuplicateRecomputeSummaryDto summary = questionDuplicationService.recomputeDuplicatesForCourse(course.getCourse());
 
         long endedMs = System.currentTimeMillis();
         java.time.OffsetDateTime endedAt = java.time.OffsetDateTime.now();
 
-        CourseDuplicateRecomputeResultDto dto = new CourseDuplicateRecomputeResultDto();
-        dto.setCourseId(course.getId());
-        dto.setCourseName(course.getCourse());
-        dto.setStartedAt(startedAt);
-        dto.setEndedAt(endedAt);
-        dto.setDurationMs(endedMs - startedMs);
-        dto.setTotalQuestions(summary.totalQuestions());
-        dto.setMultichoiceQuestions(summary.multichoiceQuestions());
-        dto.setTruefalseQuestions(summary.truefalseQuestions());
-        dto.setDuplicateLinksRemoved(summary.duplicateLinksRemoved());
-        dto.setDuplicateErrorsRemoved(summary.duplicateErrorsRemoved());
-        dto.setDuplicateErrorsCreated(summary.duplicateErrorsCreated());
-        return dto;
+        return CourseDuplicateRecomputeResultDto.from(
+                course.getId(), course.getCourse(), startedAt, endedAt, endedMs - startedMs, summary);
     }
 
     @Transactional
@@ -395,24 +404,13 @@ public class CourseService {
         java.time.OffsetDateTime startedAt = java.time.OffsetDateTime.now();
         long startedMs = System.currentTimeMillis();
 
-        QuestionDuplicationService.DuplicateRecomputeSummary summary = questionDuplicationService.recomputeDuplicatesForCourse(course.getCourse(), strategy);
+        DuplicateRecomputeSummaryDto summary = questionDuplicationService.recomputeDuplicatesForCourse(course.getCourse(), strategy);
 
         long endedMs = System.currentTimeMillis();
         java.time.OffsetDateTime endedAt = java.time.OffsetDateTime.now();
 
-        CourseDuplicateRecomputeResultDto dto = new CourseDuplicateRecomputeResultDto();
-        dto.setCourseId(course.getId());
-        dto.setCourseName(course.getCourse());
-        dto.setStartedAt(startedAt);
-        dto.setEndedAt(endedAt);
-        dto.setDurationMs(endedMs - startedMs);
-        dto.setTotalQuestions(summary.totalQuestions());
-        dto.setMultichoiceQuestions(summary.multichoiceQuestions());
-        dto.setTruefalseQuestions(summary.truefalseQuestions());
-        dto.setDuplicateLinksRemoved(summary.duplicateLinksRemoved());
-        dto.setDuplicateErrorsRemoved(summary.duplicateErrorsRemoved());
-        dto.setDuplicateErrorsCreated(summary.duplicateErrorsCreated());
-        return dto;
+        return CourseDuplicateRecomputeResultDto.from(
+                course.getId(), course.getCourse(), startedAt, endedAt, endedMs - startedMs, summary);
     }
 
     @Transactional(readOnly = true)
@@ -636,11 +634,11 @@ public class CourseService {
     private CourseDuplicateRecomputeResultDto executeRecompute(
             String courseName,
             Long courseId,
-            Supplier<QuestionDuplicationService.DuplicateRecomputeSummary> recomputeAction
+            Supplier<DuplicateRecomputeSummaryDto> recomputeAction
     ) {
         OffsetDateTime startedAt = OffsetDateTime.now();
         long startedMs = System.currentTimeMillis();
-        QuestionDuplicationService.DuplicateRecomputeSummary summary = recomputeAction.get();
+        DuplicateRecomputeSummaryDto summary = recomputeAction.get();
         long durationMs = System.currentTimeMillis() - startedMs;
         OffsetDateTime endedAt = OffsetDateTime.now();
         return buildRecomputeResult(courseName, courseId, startedAt, endedAt, durationMs, summary);
@@ -652,21 +650,10 @@ public class CourseService {
             OffsetDateTime startedAt,
             OffsetDateTime endedAt,
             long durationMs,
-            QuestionDuplicationService.DuplicateRecomputeSummary summary
-    ) {
-        CourseDuplicateRecomputeResultDto dto = new CourseDuplicateRecomputeResultDto();
-        dto.setCourseId(courseId);
-        dto.setCourseName(courseName);
-        dto.setStartedAt(startedAt);
-        dto.setEndedAt(endedAt);
-        dto.setDurationMs(durationMs);
-        dto.setTotalQuestions(summary.totalQuestions());
-        dto.setMultichoiceQuestions(summary.multichoiceQuestions());
-        dto.setTruefalseQuestions(summary.truefalseQuestions());
-        dto.setDuplicateLinksRemoved(summary.duplicateLinksRemoved());
-        dto.setDuplicateErrorsRemoved(summary.duplicateErrorsRemoved());
-        dto.setDuplicateErrorsCreated(summary.duplicateErrorsCreated());
-        return dto;
+            DuplicateRecomputeSummaryDto summary
+        ) {
+        return CourseDuplicateRecomputeResultDto.from(
+                courseId, courseName, startedAt, endedAt, durationMs, summary);
     }
 
     private record DuplicateClearSummary(int duplicateLinksRemoved, int duplicateErrorsRemoved) {
