@@ -6,6 +6,8 @@ import com.unitbv.myquiz.api.dto.CourseDto;
 import com.unitbv.myquiz.api.dto.CourseInfo;
 import com.unitbv.myquiz.api.dto.QuestionBankInfo;
 import com.unitbv.myquiz.api.dto.QuestionDto;
+import com.unitbv.myquiz.api.dto.QuestionUpsertDto;
+import com.unitbv.myquiz.api.dto.AuthorUpsertDto;
 import com.unitbv.myquiz.api.dto.QuestionFilterResponseDto;
 import com.unitbv.myquiz.api.types.QuestionType;
 import com.unitbv.myquiz.api.util.PaginationParams;
@@ -26,6 +28,7 @@ import com.unitbv.myquiz.app.specifications.CourseSpecification;
 import com.unitbv.myquiz.app.specifications.QuestionBankAuthorSpecification;
 import com.unitbv.myquiz.app.specifications.QuestionBankSpecification;
 import com.unitbv.myquiz.app.specifications.QuestionSpecification;
+import com.unitbv.myquiz.app.util.QuestionOrdering;
 import com.unitbv.myquiz.app.util.SpringDataPaginationAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -193,7 +196,9 @@ public class QuestionService {
     }
 
     public List<Question> findAllQuestions() {
-        return (List<Question>) questionRepository.findAll();
+        return ((List<Question>) questionRepository.findAll()).stream()
+                .sorted(QuestionOrdering.byCrtNoThenId())
+                .toList();
     }
 
     public QuestionBank saveQuestionBank(QuestionBank questionBank) {
@@ -202,7 +207,9 @@ public class QuestionService {
 
     public List<Question> getQuestionBankQuestionsForAuthor(Long id) {
         Specification<Question> spec = QuestionSpecification.byQuestionBankAuthorId(id);
-        return questionRepository.findAll(spec);
+        return questionRepository.findAll(spec).stream()
+                .sorted(QuestionOrdering.byCrtNoThenId())
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -221,12 +228,16 @@ public class QuestionService {
                 null,
                 null
         );
-        return questionRepository.findAll(spec);
+        return questionRepository.findAll(spec).stream()
+                .sorted(QuestionOrdering.byCrtNoThenId())
+                .toList();
     }
 
     public List<Question> getQuestionsForAuthorName(String authorName) {
         Specification<Question> spec = QuestionSpecification.hasAuthorName(authorName);
-        return questionRepository.findAll(spec);
+        return questionRepository.findAll(spec).stream()
+                .sorted(QuestionOrdering.byCrtNoThenId())
+                .toList();
     }
 
     @Cacheable(value = "questionsByQuestionBank", key = "#questionBankId")
@@ -238,7 +249,9 @@ public class QuestionService {
                 questionBankId,
                 null
         );
-        List<Question> questions = questionRepository.findAll(spec);
+        List<Question> questions = questionRepository.findAll(spec).stream()
+                .sorted(QuestionOrdering.byCrtNoThenId())
+                .toList();
         return convertQuestionsToEnrichedDtos(questions);
     }
 
@@ -286,7 +299,7 @@ public class QuestionService {
             }, allEntries = true
     )
     @Transactional
-    public QuestionDto createQuestion(QuestionDto questionDto) {
+    public QuestionDto createQuestion(QuestionUpsertDto questionDto) {
         Question question = questionMapper.toEntity(questionDto);
         question.setAnswerReferenceText(textProcessingService.sanitizeReferenceForSave(questionDto.getAnswerReferenceText()));
 
@@ -300,7 +313,7 @@ public class QuestionService {
         return questionMapper.toDto(savedQuestion);
     }
 
-    private void assignQuestionBankAuthorForQuestion(QuestionDto questionDto, Question question, QuestionBankAuthor fallbackQuestionBankAuthor) {
+    private void assignQuestionBankAuthorForQuestion(QuestionUpsertDto questionDto, Question question, QuestionBankAuthor fallbackQuestionBankAuthor) {
         Author author = resolveAuthor(
                 questionDto,
                 fallbackQuestionBankAuthor
@@ -331,8 +344,8 @@ public class QuestionService {
         return questionBankAuthor;
     }
 
-    private Author createAuthor(QuestionDto questionDto) {
-        AuthorInfo authorInfo = questionDto.getAuthor();
+    private Author createAuthor(QuestionUpsertDto questionDto) {
+        AuthorUpsertDto authorInfo = questionDto.getAuthor();
         String authorName = authorInfo != null ? authorInfo.getName() : null;
         if (authorName == null || authorName.isBlank()) {
             return null;
@@ -350,7 +363,7 @@ public class QuestionService {
         return authorRepository.findById(authorDto.getId()).orElse(null);
     }
 
-    private Author resolveAuthor(QuestionDto questionDto, QuestionBankAuthor fallbackQuestionBankAuthor) {
+    private Author resolveAuthor(QuestionUpsertDto questionDto, QuestionBankAuthor fallbackQuestionBankAuthor) {
         Author createdOrFound = createAuthor(questionDto);
         if (createdOrFound != null) {
             return createdOrFound;
@@ -361,7 +374,7 @@ public class QuestionService {
         return null;
     }
 
-    private QuestionBank createQuestionBank(QuestionDto questionDto, String course) {
+    private QuestionBank createQuestionBank(QuestionUpsertDto questionDto, String course) {
         if (questionDto.getQuestionBankId() != null) {
             return questionBankRepository.findById(questionDto.getQuestionBankId())
                                          .orElseThrow(() -> new IllegalArgumentException("QuestionBank not found for id: " + questionDto.getQuestionBankId()));
@@ -381,7 +394,7 @@ public class QuestionService {
         return questionBank;
     }
 
-    private QuestionBank resolveQuestionBank(QuestionDto questionDto) {
+    private QuestionBank resolveQuestionBank(QuestionUpsertDto questionDto) {
         String course = createCourse(questionDto);
         return createQuestionBank(
                 questionDto,
@@ -389,7 +402,7 @@ public class QuestionService {
         );
     }
 
-    private String createCourse(QuestionDto questionDto) {
+    private String createCourse(QuestionUpsertDto questionDto) {
         String course = questionDto.getCourse();
         Specification<Course> spec = CourseSpecification.byCourseName(course);
         List<Course> courseDtos = courseRepository.findAll(spec);
@@ -411,11 +424,11 @@ public class QuestionService {
             }, allEntries = true
     )
     @Transactional
-    public QuestionDto updateQuestion(QuestionDto questionDto) {
-        if (questionDto.getId() == null) {
+    public QuestionDto updateQuestion(Long id, QuestionUpsertDto questionDto) {
+        if (id == null || questionDto == null) {
             return null;
         }
-        Question existingQuestion = findQuestionById(questionDto.getId());
+        Question existingQuestion = findQuestionById(id);
         if (existingQuestion == null) {
             return null;
         }
@@ -434,7 +447,7 @@ public class QuestionService {
         return questionMapper.toDto(savedQuestion);
     }
 
-    private void applyEditableFields(Question existingQuestion, QuestionDto questionDto) {
+    private void applyEditableFields(Question existingQuestion, QuestionUpsertDto questionDto) {
         existingQuestion.setTitle(questionDto.getTitle());
         existingQuestion.setText(questionDto.getText());
         existingQuestion.setAnswerReferenceText(textProcessingService.sanitizeReferenceForSave(questionDto.getAnswerReferenceText()));
@@ -466,7 +479,7 @@ public class QuestionService {
         int validPage = pagination.page();
         int validPageSize = pagination.pageSize();
 
-        Pageable pageable = SpringDataPaginationAdapter.toPageable(pagination, "crtNo", "asc");
+        Pageable pageable = SpringDataPaginationAdapter.toPageable(pagination, "crtNo", "asc", "id");
         Specification<Question> spec = QuestionSpecification.byFilters(
                 normalizedCourse,
                 authorId,
@@ -481,7 +494,7 @@ public class QuestionService {
         );
         if (questions.getTotalPages() > 0 && validPage > questions.getTotalPages()) {
             validPage = questions.getTotalPages();
-            pageable = SpringDataPaginationAdapter.toPageable(validPage, validPageSize, "crtNo", "asc");
+            pageable = SpringDataPaginationAdapter.toPageable(validPage, validPageSize, "crtNo", "asc", "id");
             questions = questionRepository.findAll(spec, pageable);
         }
         long queryTime = System.currentTimeMillis() - startTime;
@@ -610,7 +623,7 @@ public class QuestionService {
      *
      * @param questionId   The primary question ID
      * @param duplicateIds List of duplicate question IDs to unlink
-     * @return true if operation successful
+     * @return the explicit operation outcome and number of links removed
      */
     @CacheEvict(
             value = {
@@ -622,21 +635,17 @@ public class QuestionService {
             }, allEntries = true
     )
     @Transactional
-    public boolean removeDuplicationLinks(Long questionId, List<Long> duplicateIds) {
+    public DuplicateUnlinkResult removeDuplicationLinks(Long questionId, List<Long> duplicateIds) {
         if (questionId == null || duplicateIds == null || duplicateIds.isEmpty()) {
-            return false;
+            throw new IllegalArgumentException("Question ID and duplicate IDs are required");
         }
-
-        try {
-            questionDuplicationService.removeSpecificDuplicateAssociations(questionId, duplicateIds);
-            logger.atInfo().addArgument(duplicateIds.size()).addArgument(questionId)
-                    .log("Removed {} duplication links for question {}");
-            return true;
+        if (!questionRepository.existsById(questionId)) {
+            return DuplicateUnlinkResult.questionNotFound();
         }
-        catch (Exception e) {
-            logger.atError().setCause(e).log("Error removing duplication links for question {}: {}", questionId, e.getMessage());
-            return false;
-        }
+        long removedLinks = questionDuplicationService.removeSpecificDuplicateAssociations(questionId, duplicateIds);
+        logger.atInfo().addArgument(removedLinks).addArgument(questionId)
+                .log("Removed {} duplication links for question {}");
+        return DuplicateUnlinkResult.fromRemovedLinks(removedLinks);
     }
 
     /**
@@ -644,7 +653,7 @@ public class QuestionService {
      * page they would appear on in a paginated UI.
      *
      * @param questionId The primary question ID
-     * @return true if operation successful
+     * @return the explicit operation outcome and number of links removed
      */
     @CacheEvict(
             value = {
@@ -656,20 +665,16 @@ public class QuestionService {
             }, allEntries = true
     )
     @Transactional
-    public boolean removeAllDuplicationLinks(Long questionId) {
+    public DuplicateUnlinkResult removeAllDuplicationLinks(Long questionId) {
         if (questionId == null) {
-            return false;
+            throw new IllegalArgumentException("Question ID is required");
         }
-
-        try {
-            questionDuplicationService.removeAllDuplicateAssociationsForQuestion(questionId);
-            logger.atInfo().addArgument(questionId).log("Removed all duplication links for question {}");
-            return true;
+        if (!questionRepository.existsById(questionId)) {
+            return DuplicateUnlinkResult.questionNotFound();
         }
-        catch (Exception e) {
-            logger.atError().setCause(e).log("Error removing all duplication links for question {}: {}", questionId, e.getMessage());
-            return false;
-        }
+        long removedLinks = questionDuplicationService.removeAllDuplicateAssociationsForQuestion(questionId);
+        logger.atInfo().addArgument(removedLinks).addArgument(questionId).log("Removed {} duplication links for question {}");
+        return DuplicateUnlinkResult.fromRemovedLinks(removedLinks);
     }
 
     /**

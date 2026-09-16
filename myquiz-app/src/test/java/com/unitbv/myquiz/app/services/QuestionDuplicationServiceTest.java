@@ -1,5 +1,6 @@
 package com.unitbv.myquiz.app.services;
 
+import com.unitbv.myquiz.api.dto.DuplicateRecomputeSummaryDto;
 import com.unitbv.myquiz.api.types.DuplicateComparisonStrategy;
 import com.unitbv.myquiz.api.types.QuestionType;
 import com.unitbv.myquiz.api.types.StudyYear;
@@ -120,7 +121,7 @@ class QuestionDuplicationServiceTest {
         saveDuplicateError(q2, MyUtil.REFORMULATE_QUESTION_ANSWER_ALREADY_EXISTS);
         saveDuplicateError(q3, MyUtil.REFORMULATE_QUESTION_TITLE_ALREADY_EXISTS);
 
-        QuestionDuplicationService.DuplicateRecomputeSummary summary = service.recomputeDuplicatesForCourse(course);
+        DuplicateRecomputeSummaryDto summary = service.recomputeDuplicatesForCourse(course);
 
         assertEquals(3, summary.totalQuestions());
         assertTrue(summary.duplicateLinksRemoved() >= 2);
@@ -135,7 +136,7 @@ class QuestionDuplicationServiceTest {
         Question q2 = createQuestionForCourse(course, QuestionType.MULTICHOICE, marker + "-TITLE", marker + "-TEXT", "R1");
         Question q3 = createQuestionForCourse(course, QuestionType.MULTICHOICE, marker + "-title-modified", marker + "-text", "R1");
 
-        QuestionDuplicationService.DuplicateRecomputeSummary summary = service.recomputeDuplicatesForCourse(course, DuplicateComparisonStrategy.STRING_EQUALITY.getAlgorithmName());
+        DuplicateRecomputeSummaryDto summary = service.recomputeDuplicatesForCourse(course, DuplicateComparisonStrategy.STRING_EQUALITY.getAlgorithmName());
 
         assertEquals(3, summary.totalQuestions());
         // String equality should only find q1 and q2 (exact case-insensitive match)

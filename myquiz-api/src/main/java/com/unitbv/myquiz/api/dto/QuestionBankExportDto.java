@@ -1,6 +1,5 @@
 package com.unitbv.myquiz.api.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -18,9 +17,7 @@ import java.util.List;
 @AllArgsConstructor
 public class QuestionBankExportDto {
 
-    @JsonProperty("questionBank")
     private QuestionBankDto questionBank;
 
-    @JsonProperty("authorSections")
     private List<QuestionBankExportAuthorSectionDto> authorSections = new ArrayList<>();
 }

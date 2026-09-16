@@ -5,6 +5,7 @@ import com.unitbv.myquiz.api.dto.QuestionBankExportDto;
 import com.unitbv.myquiz.api.dto.QuestionBankFilterRequestDto;
 import com.unitbv.myquiz.api.dto.QuestionBankFilterResponseDto;
 import com.unitbv.myquiz.api.dto.QuestionBankStatisticsDto;
+import com.unitbv.myquiz.api.dto.QuestionBankUpsertDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -45,13 +46,13 @@ public interface QuestionBankApi {
     @Operation(summary = "Create new question bank", description = "Create a new question bank")
     @ApiResponses(value = {@ApiResponse(responseCode = "201", description = "Question bank created successfully"), @ApiResponse(responseCode = "400", description = "Invalid input"), @ApiResponse(responseCode = "500", description = "Internal server error")})
     @PostMapping
-    ResponseEntity<QuestionBankDto> createQuestionBank(@Parameter(description = "Question Bank data", required = true) @Valid @RequestBody QuestionBankDto questionBankDto);
+    ResponseEntity<QuestionBankDto> createQuestionBank(@Parameter(description = "Question Bank data", required = true) @Valid @RequestBody QuestionBankUpsertDto questionBankDto);
 
     @Operation(summary = "Update question bank", description = "Update an existing question bank")
     @ApiResponses(value = {@ApiResponse(responseCode = "200", description = "Question bank updated successfully"), @ApiResponse(responseCode = "400", description = "Invalid input"), @ApiResponse(responseCode = "404", description = "Question bank not found"), @ApiResponse(responseCode = "500", description = "Internal server error")})
     @PutMapping("/{id}")
     ResponseEntity<QuestionBankDto> updateQuestionBank(@Parameter(description = "Question Bank ID", required = true) @PathVariable Long id,
-                                                       @Parameter(description = "Updated question bank data", required = true) @Valid @RequestBody QuestionBankDto questionBankDto);
+                                                       @Parameter(description = "Updated question bank data", required = true) @Valid @RequestBody QuestionBankUpsertDto questionBankDto);
 
     @Operation(summary = "Delete question bank", description = "Delete a question bank by ID")
     @ApiResponses(value = {@ApiResponse(responseCode = "204", description = "Question bank deleted successfully"), @ApiResponse(responseCode = "404", description = "Question bank not found"), @ApiResponse(responseCode = "500", description = "Internal server error")})

@@ -1,8 +1,10 @@
 package com.unitbv.myquiz.api.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 /**
@@ -14,23 +16,22 @@ public class OllamaRequestDto {
     @Schema(description = "The prompt to send to Ollama")
     @NotBlank(message = "Prompt cannot be blank")
     @Size(max = 5000, message = "Prompt cannot exceed 5000 characters")
-    @JsonProperty("prompt")
     private String prompt;
 
     @Schema(description = "The model to use")
-    @JsonProperty("model")
+    @Size(max = 100, message = "Model name cannot exceed 100 characters")
     private String model;
 
     @Schema(description = "Temperature for response generation")
-    @JsonProperty("temperature")
+    @DecimalMin(value = "0.0", message = "Temperature cannot be negative")
+    @DecimalMax(value = "2.0", message = "Temperature cannot exceed 2")
     private Double temperature;
 
     @Schema(description = "Maximum tokens in response")
-    @JsonProperty("maxTokens")
+    @Positive(message = "Maximum tokens must be positive")
     private Integer maxTokens;
 
     @Schema(description = "If true, enables real-time streaming of the model’s output")
-    @JsonProperty("stream")
     private boolean stream = false;
 
     public OllamaRequestDto() {

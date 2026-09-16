@@ -489,7 +489,7 @@ public class ThyAuthorController {
         QuestionFilterRequestDto filterInput = new QuestionFilterRequestDto();
         filterInput.setAuthorId(normalizedAuthorId);
         filterInput.setCourseId(courseId);
-        filterInput.setQuestionBank(questionBankId);
+        filterInput.setQuestionBankId(questionBankId);
         filterInput.setPage(pagination.page());
         filterInput.setPageSize(pagination.pageSize());
 

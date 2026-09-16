@@ -7,6 +7,7 @@ import com.unitbv.myquiz.api.dto.QuestionBankExportAuthorSectionDto;
 import com.unitbv.myquiz.api.dto.QuestionBankFilterRequestDto;
 import com.unitbv.myquiz.api.dto.QuestionBankFilterResponseDto;
 import com.unitbv.myquiz.api.dto.QuestionBankStatisticsDto;
+import com.unitbv.myquiz.api.dto.QuestionBankUpsertDto;
 import com.unitbv.myquiz.api.settings.ControllerSettings;
 import com.unitbv.myquiz.api.util.PaginationParams;
 import com.unitbv.myquiz.api.util.PaginationResult;
@@ -451,7 +452,7 @@ public class ThyQuestionBankController {
         String redirect = sessionService.validateSessionOrRedirect();
         if (redirect != null) return redirect;
 
-        HttpEntity<QuestionBankDto> entity = sessionService.createAuthorizedRequest(questionBankDto);
+        HttpEntity<QuestionBankUpsertDto> entity = sessionService.createAuthorizedRequest(toUpsertDto(questionBankDto));
         try {
             restTemplate.postForEntity(apiBaseUrl + ControllerSettings.API_QUESTION_BANKS, entity, QuestionBankDto.class);
             redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_QUESTION_BANK_CREATED_SUCCESS);
@@ -499,7 +500,7 @@ public class ThyQuestionBankController {
         String redirect = sessionService.validateSessionOrRedirect();
         if (redirect != null) return redirect;
 
-        HttpEntity<QuestionBankDto> entity = sessionService.createAuthorizedRequest(questionBankDto);
+        HttpEntity<QuestionBankUpsertDto> entity = sessionService.createAuthorizedRequest(toUpsertDto(questionBankDto));
         try {
             restTemplate.put(apiBaseUrl + ControllerSettings.API_QUESTION_BANKS_SLASH + id, entity);
             redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_QUESTION_BANK_UPDATED_SUCCESS);
@@ -530,7 +531,7 @@ public class ThyQuestionBankController {
         String redirect = sessionService.validateSessionOrRedirect();
         if (redirect != null) return redirect;
 
-        HttpEntity<QuestionBankDto> entity = sessionService.createAuthorizedRequest(questionBankDto);
+        HttpEntity<QuestionBankUpsertDto> entity = sessionService.createAuthorizedRequest(toUpsertDto(questionBankDto));
         try {
             if (questionBankDto.getId() == null) {
                 restTemplate.exchange(apiBaseUrl + ControllerSettings.API_QUESTION_BANKS, HttpMethod.POST, entity, QuestionBankDto.class);
@@ -544,6 +545,13 @@ public class ThyQuestionBankController {
             redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_ERROR_MSG, ControllerSettings.MSG_QUESTION_BANK_SAVE_FAILED);
         }
         return ControllerSettings.VIEW_REDIRECT_QUESTION_BANK;
+    }
+
+    private QuestionBankUpsertDto toUpsertDto(QuestionBankDto questionBankDto) {
+        return new QuestionBankUpsertDto(
+                questionBankDto.getName(),
+                questionBankDto.getCourse(),
+                questionBankDto.getStudyYear());
     }
 
     @GetMapping("/new")

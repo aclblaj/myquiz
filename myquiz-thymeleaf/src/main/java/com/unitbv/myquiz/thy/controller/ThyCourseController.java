@@ -2,6 +2,7 @@ package com.unitbv.myquiz.thy.controller;
 
 import com.unitbv.myquiz.api.dto.CourseDto;
 import com.unitbv.myquiz.api.dto.CourseDuplicateRecomputeResultDto;
+import com.unitbv.myquiz.api.dto.CourseUpsertDto;
 import com.unitbv.myquiz.api.settings.ControllerSettings;
 import com.unitbv.myquiz.api.util.PaginationParams;
 import com.unitbv.myquiz.api.util.PaginationSupport;
@@ -218,14 +219,14 @@ public class ThyCourseController {
     }
 
     @PostMapping({"", "/"})
-    public String createCourse(@ModelAttribute CourseDto courseDto, RedirectAttributes redirectAttributes) {
+    public String createCourse(@ModelAttribute CourseUpsertDto courseDto, RedirectAttributes redirectAttributes) {
         String redirect = sessionService.validateSessionOrRedirect();
         if (redirect != null) {
             return redirect;
         }
 
         try {
-            HttpEntity<CourseDto> entity = sessionService.createAuthorizedRequest(courseDto);
+            HttpEntity<CourseUpsertDto> entity = sessionService.createAuthorizedRequest(courseDto);
             restTemplate.exchange(apiBaseUrl + ControllerSettings.API_COURSES, HttpMethod.POST, entity, CourseDto.class);
             redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_COURSE_CREATED_SUCCESS);
             return ControllerSettings.VIEW_REDIRECT_COURSES;
@@ -236,14 +237,14 @@ public class ThyCourseController {
     }
 
     @PutMapping("/{id}")
-    public String updateCourse(@PathVariable Long id, @ModelAttribute CourseDto courseDto, RedirectAttributes redirectAttributes) {
+    public String updateCourse(@PathVariable Long id, @ModelAttribute CourseUpsertDto courseDto, RedirectAttributes redirectAttributes) {
         String redirect = sessionService.validateSessionOrRedirect();
         if (redirect != null) {
             return redirect;
         }
 
         try {
-            HttpEntity<CourseDto> entity = sessionService.createAuthorizedRequest(courseDto);
+            HttpEntity<CourseUpsertDto> entity = sessionService.createAuthorizedRequest(courseDto);
             restTemplate.exchange(apiBaseUrl + ControllerSettings.API_COURSES + id, HttpMethod.PUT, entity, Void.class);
             redirectAttributes.addFlashAttribute(ControllerSettings.ATTR_MESSAGE, ControllerSettings.MSG_COURSE_UPDATED_SUCCESS);
             return ControllerSettings.VIEW_REDIRECT_COURSES;
@@ -278,7 +279,7 @@ public class ThyCourseController {
             return redirect;
         }
 
-        model.addAttribute(ControllerSettings.ATTR_COURSE, new CourseDto());
+        model.addAttribute(ControllerSettings.ATTR_COURSE, new CourseUpsertDto());
         model.addAttribute(ControllerSettings.ATTR_LOGGED_IN_USER, sessionService.getLoggedInUser());
         return ControllerSettings.VIEW_COURSE_EDIT;
     }
@@ -293,7 +294,7 @@ public class ThyCourseController {
         try {
             HttpEntity<Void> entity = sessionService.getAuthorizationHeader();
             CourseDto course = restTemplate.exchange(apiBaseUrl + ControllerSettings.API_COURSES + id, HttpMethod.GET, entity, CourseDto.class).getBody();
-            model.addAttribute(ControllerSettings.ATTR_COURSE, course);
+            model.addAttribute(ControllerSettings.ATTR_COURSE, CourseUpsertDto.from(course));
             model.addAttribute(ControllerSettings.ATTR_LOGGED_IN_USER, sessionService.getLoggedInUser());
             return ControllerSettings.VIEW_COURSE_EDIT;
         } catch (HttpClientErrorException.Forbidden ex) {
@@ -303,7 +304,7 @@ public class ThyCourseController {
     }
 
     @PostMapping("/edit/{id}")
-    public String saveEditedCourse(@PathVariable Long id, @ModelAttribute CourseDto courseDto, RedirectAttributes redirectAttributes) {
+    public String saveEditedCourse(@PathVariable Long id, @ModelAttribute CourseUpsertDto courseDto, RedirectAttributes redirectAttributes) {
         return updateCourse(id, courseDto, redirectAttributes);
     }
 

@@ -9,6 +9,7 @@ import com.unitbv.myquiz.api.dto.QuestionBankExportDto;
 import com.unitbv.myquiz.api.dto.QuestionBankFilterRequestDto;
 import com.unitbv.myquiz.api.dto.QuestionBankFilterResponseDto;
 import com.unitbv.myquiz.api.dto.QuestionBankInfo;
+import com.unitbv.myquiz.api.dto.QuestionBankSummaryDto;
 import com.unitbv.myquiz.api.dto.QuestionDuplicateDto;
 import com.unitbv.myquiz.api.dto.QuestionErrorDto;
 import com.unitbv.myquiz.api.settings.ControllerSettings;
@@ -34,6 +35,7 @@ import com.unitbv.myquiz.app.repositories.QuestionBankRepository;
 import com.unitbv.myquiz.app.specifications.QuestionSpecification;
 import com.unitbv.myquiz.app.specifications.QuestionBankAuthorSpecification;
 import com.unitbv.myquiz.app.specifications.QuestionBankSpecification;
+import com.unitbv.myquiz.app.util.QuestionOrdering;
 import org.springframework.transaction.annotation.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -119,7 +121,9 @@ public class QuestionBankService {
             dto.setStudyYear(questionBank.getStudyYear());
             // Fetch questions for this questionBank using QuestionSpecification
             var spec = QuestionSpecification.byFilters(null, null, questionBank.getId(), null);
-            List<Question> questions = questionRepository.findAll(spec);
+            List<Question> questions = questionRepository.findAll(spec).stream()
+                    .sorted(QuestionOrdering.byCrtNoThenId())
+                    .toList();
             int mcCount = 0;
             int tfCount = 0;
             for (Question question : questions) {
@@ -279,9 +283,17 @@ public class QuestionBankService {
             dto.setAuthors(authorDtos);
             // Use QuestionSpecification for MC and TF questions
             var questionSpec = QuestionSpecification.byFilters(null, null, questionBank.getId(), null);
-            List<QuestionDto> mcQuestions = questionRepository.findAll(questionSpec).stream().filter(q -> q.getType() == QuestionType.MULTICHOICE).map(questionMapper::toDto).toList();
+            List<QuestionDto> mcQuestions = questionRepository.findAll(questionSpec).stream()
+                    .filter(q -> q.getType() == QuestionType.MULTICHOICE)
+                    .sorted(QuestionOrdering.byCrtNoThenId())
+                    .map(questionMapper::toDto)
+                    .toList();
             dto.setQuestionsMultichoice(mcQuestions);
-            List<QuestionDto> tfQuestions = questionRepository.findAll(questionSpec).stream().filter(q -> q.getType() == QuestionType.TRUEFALSE).map(questionMapper::toDto).toList();
+            List<QuestionDto> tfQuestions = questionRepository.findAll(questionSpec).stream()
+                    .filter(q -> q.getType() == QuestionType.TRUEFALSE)
+                    .sorted(QuestionOrdering.byCrtNoThenId())
+                    .map(questionMapper::toDto)
+                    .toList();
             dto.setQuestionsTruefalse(tfQuestions);
             return dto;
         }).toList();
@@ -333,7 +345,7 @@ public class QuestionBankService {
         filtered = filtered.stream().sorted(Comparator.comparing(QuestionBank::getName, Comparator.nullsLast(String::compareToIgnoreCase))
                 .thenComparing(QuestionBank::getId, Comparator.nullsLast(Long::compareTo))).toList();
         PaginationResult<QuestionBank> pageResult = PaginationSupport.paginate(filtered, pagination);
-        List<QuestionBankDto> pageContent = pageResult.items().stream().map(questionBank -> {
+        List<QuestionBankSummaryDto> pageContent = pageResult.items().stream().map(questionBank -> {
             QuestionBankDto dto = new QuestionBankDto();
             dto.setId(questionBank.getId());
             dto.setName(questionBank.getName());
@@ -353,7 +365,7 @@ public class QuestionBankService {
             dto.setNumberOfDuplicates(countDuplicateQuestions(questions));
             List<QuestionBankAuthor> questionBankAuthors = questionBankAuthorRepository.findAll(QuestionBankAuthorSpecification.hasQuestionBankId(questionBank.getId()).and(QuestionBankAuthorSpecification.fetchQuestions()));
             dto.setNoAuthors(questionBankAuthors.size());
-            return dto;
+            return QuestionBankSummaryDto.from(dto);
         }).toList();
         QuestionBankFilterResponseDto result = new QuestionBankFilterResponseDto();
         result.setQuestionBanks(pageContent);
@@ -437,8 +449,11 @@ public class QuestionBankService {
 
         List<QuestionBankExportAuthorSectionDto> authorSections = questionBankAuthors.stream()
                 .sorted(Comparator.comparing(
-                        qa -> qa.getAuthor() != null ? qa.getAuthor().getName() : null,
+                        (QuestionBankAuthor qa) -> qa.getAuthor() != null ? qa.getAuthor().getName() : null,
                         Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)
+                ).thenComparing(
+                        (QuestionBankAuthor qa) -> qa.getAuthor() != null ? qa.getAuthor().getId() : null,
+                        Comparator.nullsLast(Long::compareTo)
                 ))
                 .map(questionBankAuthor -> buildAuthorSection(id, questionBankName, questionBankAuthor))
                 .toList();
@@ -567,7 +582,7 @@ public class QuestionBankService {
     private List<QuestionDto> mapQuestionsByType(List<Question> questions, QuestionType type) {
         return questions.stream()
                 .filter(question -> question.getType() == type)
-                .sorted(Comparator.comparingInt(Question::getCrtNo))
+                .sorted(QuestionOrdering.byCrtNoThenId())
                 .map(questionMapper::toDto)
                 .toList();
     }

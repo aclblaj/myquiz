@@ -2,6 +2,7 @@ package com.unitbv.myquiz.api.interfaces;
 
 import com.unitbv.myquiz.api.dto.CourseDto;
 import com.unitbv.myquiz.api.dto.CourseDuplicateRecomputeResultDto;
+import com.unitbv.myquiz.api.dto.CourseUpsertDto;
 import com.unitbv.myquiz.api.dto.DuplicateRecomputeHistoryDto;
 import com.unitbv.myquiz.api.dto.DuplicateStatisticsDto;
 import com.unitbv.myquiz.api.settings.ControllerSettings;
@@ -42,13 +43,13 @@ public interface CourseApi {
     @Operation(summary = "Create new course", description = "Create a new course")
     @ApiResponses(value = {@ApiResponse(responseCode = "201", description = "Course created successfully"), @ApiResponse(responseCode = "400", description = "Invalid input"), @ApiResponse(responseCode = "500", description = "Internal server error")})
     @PostMapping
-    ResponseEntity<CourseDto> createCourse(@Parameter(description = "Course data", required = true) @Valid @RequestBody CourseDto courseDto);
+    ResponseEntity<CourseDto> createCourse(@Parameter(description = "Course data", required = true) @Valid @RequestBody CourseUpsertDto courseDto);
 
     @Operation(summary = "Update course", description = "Update an existing course by ID")
     @ApiResponses(value = {@ApiResponse(responseCode = "204", description = "Course updated successfully"), @ApiResponse(responseCode = "404", description = "Course not found"), @ApiResponse(responseCode = "400", description = "Invalid input"), @ApiResponse(responseCode = "500", description = "Internal server error")})
     @PutMapping("/{id}")
     ResponseEntity<Void> updateCourse(@Parameter(description = "Course ID", required = true) @PathVariable Long id,
-                                      @Parameter(description = "Course data", required = true) @Valid @RequestBody CourseDto courseDto);
+                                      @Parameter(description = "Course data", required = true) @Valid @RequestBody CourseUpsertDto courseDto);
 
     @Operation(summary = "Delete course", description = "Delete a course by ID")
     @ApiResponses(value = {@ApiResponse(responseCode = "204", description = "Course deleted successfully"), @ApiResponse(responseCode = "404", description = "Course not found"), @ApiResponse(responseCode = "500", description = "Internal server error")})

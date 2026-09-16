@@ -5,6 +5,8 @@ import com.unitbv.myquiz.api.dto.QuestionBankExportDto;
 import com.unitbv.myquiz.api.dto.QuestionBankFilterRequestDto;
 import com.unitbv.myquiz.api.dto.QuestionBankFilterResponseDto;
 import com.unitbv.myquiz.api.dto.QuestionBankStatisticsDto;
+import com.unitbv.myquiz.api.dto.QuestionBankSummaryDto;
+import com.unitbv.myquiz.api.dto.QuestionBankUpsertDto;
 import com.unitbv.myquiz.api.dto.QuestionDto;
 import com.unitbv.myquiz.api.interfaces.QuestionBankApi;
 import com.unitbv.myquiz.api.settings.ControllerSettings;
@@ -101,7 +103,7 @@ public class QuestionBankController implements QuestionBankApi {
      * Create new QuestionBank
      */
     @Override
-    public ResponseEntity<QuestionBankDto> createQuestionBank(@Valid @RequestBody QuestionBankDto questionBankDto) {
+    public ResponseEntity<QuestionBankDto> createQuestionBank(@Valid @RequestBody QuestionBankUpsertDto questionBankDto) {
         try {
             var questionBank = questionBankService.createQuestionBank(questionBankDto.getCourse(), questionBankDto.getName(), questionBankDto.getStudyYear());
             QuestionBankDto createdDto = questionBankService.getQuestionBankBasicById(questionBank.getId());
@@ -116,7 +118,7 @@ public class QuestionBankController implements QuestionBankApi {
      * Update QuestionBank by ID
      */
     @Override
-    public ResponseEntity<QuestionBankDto> updateQuestionBank(@PathVariable("id") Long id, @Valid @RequestBody QuestionBankDto questionBankDto) {
+    public ResponseEntity<QuestionBankDto> updateQuestionBank(@PathVariable("id") Long id, @Valid @RequestBody QuestionBankUpsertDto questionBankDto) {
         try {
             var updatedQuestionBank = questionBankService.updateQuestionBank(id, questionBankDto.getCourse(), questionBankDto.getName(), questionBankDto.getStudyYear());
             if (updatedQuestionBank == null) return ResponseEntity.notFound().build();
@@ -331,7 +333,7 @@ public class QuestionBankController implements QuestionBankApi {
                 stat.setErrorCount(errorCount);
             }
             QuestionBankStatisticsDto dto = new QuestionBankStatisticsDto();
-            dto.setQuestionBank(questionBank);
+            dto.setQuestionBank(QuestionBankSummaryDto.from(questionBank));
             dto.setAuthorStats(new java.util.ArrayList<>(statsMap.values()));
             return ResponseEntity.ok(dto);
         } catch (Exception e) {
@@ -358,6 +360,7 @@ public class QuestionBankController implements QuestionBankApi {
 
     private QuestionDto toDto(Question question) {
         QuestionDto dto = new QuestionDto();
+        dto.setId(question.getId());
         dto.setTitle(question.getTitle());
         dto.setText(question.getText());
         dto.setResponse1(question.getResponse1());

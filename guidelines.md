@@ -121,7 +121,7 @@ The microservices follow a strict communication pattern:
 
 - Use DTOs for all data transfer between frontend and backend
 - Implement pagination to limit result set size, and filtering using filter DTOs
-- All filter DTOs must extend `BasePaginationDto` (defined in `myquiz-api`) for consistent pagination fields (`page`, `pageSize`, `totalPages`, `totalElements`)
+- Request filter DTOs must extend `PaginationRequestDto` (only `page` and `pageSize`); response DTOs must extend `PaginationResponseDto` for calculated metadata (`totalPages`, `totalElements`)
 - Backend modules must not contain any GUI logic
 - All user interactions and templates are handled in myquiz-thymeleaf
 - Use environment variables for database and service configuration

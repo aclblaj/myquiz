@@ -19,7 +19,7 @@ import java.util.List;
 @AllArgsConstructor
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
-public class BaseFilterDto extends BasePaginationDto {
+public class BaseFilterDto extends PaginationResponseDto {
     @JsonIgnore
     private List<AuthorInfo> filterAuthors;
 
@@ -29,4 +29,3 @@ public class BaseFilterDto extends BasePaginationDto {
     @JsonIgnore
     private List<QuestionBankInfo> filterQuestionBanks;
 }
-

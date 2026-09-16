@@ -1,6 +1,5 @@
 package com.unitbv.myquiz.api.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -18,18 +17,13 @@ import java.util.List;
 @AllArgsConstructor
 public class QuestionBankExportAuthorSectionDto {
 
-    @JsonProperty("author")
     private AuthorDto author;
 
-    @JsonProperty("multipleChoiceQuestions")
     private List<QuestionDto> multipleChoiceQuestions = new ArrayList<>();
 
-    @JsonProperty("trueFalseQuestions")
     private List<QuestionDto> trueFalseQuestions = new ArrayList<>();
 
-    @JsonProperty("errors")
     private List<QuestionErrorDto> errors = new ArrayList<>();
 
-    @JsonProperty("duplicateQuestions")
     private List<QuestionDuplicateDto> duplicateQuestions = new ArrayList<>();
 }

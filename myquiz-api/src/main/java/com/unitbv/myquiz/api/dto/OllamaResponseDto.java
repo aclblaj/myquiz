@@ -1,7 +1,6 @@
 package com.unitbv.myquiz.api.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 /**
@@ -12,39 +11,30 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public class OllamaResponseDto {
 
     @Schema(description = "The generated response from Ollama")
-    @JsonProperty("response")
     private String response;
 
     @Schema(description = "The model used for generation")
-    @JsonProperty("model")
     private String model;
 
     @Schema(description = "Whether the response is complete")
-    @JsonProperty("done")
     private Boolean done;
 
     @Schema(description = "Total duration of the request")
-    @JsonProperty("totalDuration")
     private Long totalDuration;
 
     @Schema(description = "Time taken to load the model")
-    @JsonProperty("loadDuration")
     private Long loadDuration;
 
     @Schema(description = "Number of tokens in the prompt")
-    @JsonProperty("promptEvalCount")
     private Integer promptEvalCount;
 
     @Schema(description = "Time taken to evaluate the prompt")
-    @JsonProperty("promptEvalDuration")
     private Long promptEvalDuration;
 
     @Schema(description = "Number of tokens in the response")
-    @JsonProperty("evalCount")
     private Integer evalCount;
 
     @Schema(description = "Time taken to generate the response")
-    @JsonProperty("evalDuration")
     private Long evalDuration;
 
     // Default constructor

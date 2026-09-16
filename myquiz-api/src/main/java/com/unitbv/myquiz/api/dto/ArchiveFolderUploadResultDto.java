@@ -54,7 +54,7 @@ public class ArchiveFolderUploadResultDto {
     }
 
     public void setItems(List<ArchiveFolderItemDto> items) {
-        this.items = items;
+        this.items = items != null ? items : new ArrayList<>();
     }
 
     public List<ArchiveImportDto> getArchiveImports() {
@@ -62,7 +62,7 @@ public class ArchiveFolderUploadResultDto {
     }
 
     public void setArchiveImports(List<ArchiveImportDto> archiveImports) {
-        this.archiveImports = archiveImports;
+        this.archiveImports = archiveImports != null ? archiveImports : new ArrayList<>();
     }
 }
 

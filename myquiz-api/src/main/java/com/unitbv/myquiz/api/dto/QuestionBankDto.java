@@ -4,8 +4,6 @@ import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.unitbv.myquiz.api.types.StudyYear;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.EqualsAndHashCode;
@@ -28,70 +26,54 @@ import java.util.List;
 public class QuestionBankDto {
 
     @Schema(description = "Unique identifier of the question bank")
-    @JsonProperty("id")
     private Long id;
 
     @Schema(description = "Question bank name", requiredMode = Schema.RequiredMode.REQUIRED)
-    @NotBlank(message = "Question bank name cannot be blank")
-    @Size(max = 255, message = "Question bank name cannot exceed 255 characters")
-    @JsonProperty("name")
     private String name;
 
     @Schema(description = "Course name")
-    @JsonProperty("course")
     private String course;
 
     @Schema(description = "Course ID")
-    @JsonProperty("courseId")
     private Long courseId;
 
     @Schema(description = "Question bank study year")
     @JsonProperty("study_year")
-    @JsonAlias({"studyYear", "study_year"})
+    @JsonAlias("studyYear")
     private StudyYear studyYear;
 
     @Schema(description = "Source file")
-    @JsonProperty("sourceFile")
     private String sourceFile;
 
     @Schema(description = "Question bank author ID")
-    @JsonProperty("questionBankAuthorId")
     private Long questionBankAuthorId;
 
     @Schema(description = "Number of authors")
-    @JsonProperty("noAuthors")
     private Integer noAuthors;
 
     @Schema(description = "Multiple choice questions")
-    @JsonProperty("questionsMultichoice")
     @Builder.Default
     private List<QuestionDto> questionsMultichoice = new ArrayList<>();
 
     @Schema(description = "True/false questions")
-    @JsonProperty("questionsTruefalse")
     @Builder.Default
     private List<QuestionDto> questionsTruefalse = new ArrayList<>();
 
     @Schema(description = "Question error DTOs")
-    @JsonProperty("questionErrorDtos")
     @Builder.Default
     private List<QuestionErrorDto> questionErrorDtos = new ArrayList<>();
 
     @Schema(description = "Authors")
-    @JsonProperty("authors")
     @Builder.Default
     private List<AuthorDto> authors = new ArrayList<>();
 
     @Schema(description = "Number of MC questions")
-    @JsonProperty("mcQuestionsCount")
     private int mcQuestionsCount;
 
     @Schema(description = "Number of TF questions")
-    @JsonProperty("tfQuestionsCount")
     private int tfQuestionsCount;
 
     @Schema(description = "Number of duplicated questions in this question bank")
-    @JsonProperty("numberOfDuplicates")
     @Builder.Default
     private Long numberOfDuplicates = 0L;
 

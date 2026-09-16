@@ -1,12 +1,14 @@
 package com.unitbv.myquiz.api.dto;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 import lombok.experimental.SuperBuilder;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -19,6 +21,8 @@ import java.util.List;
 @ToString(callSuper = true)
 @EqualsAndHashCode(callSuper = true)
 public class QuestionBankFilterResponseDto extends BaseFilterDto {
-    private List<QuestionBankDto> questionBanks;
-    private List<CourseDto> courses;
+    @Builder.Default
+    private List<QuestionBankSummaryDto> questionBanks = new ArrayList<>();
+    @Builder.Default
+    private List<CourseDto> courses = new ArrayList<>();
 }

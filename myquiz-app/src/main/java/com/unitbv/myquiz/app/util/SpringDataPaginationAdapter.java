@@ -5,6 +5,7 @@ import com.unitbv.myquiz.api.util.PaginationSupport;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.JpaSort;
 
 /**
  * Translates the framework-neutral pagination contract into Spring Data.
@@ -20,11 +21,22 @@ public final class SpringDataPaginationAdapter {
         return toPageable(PaginationSupport.normalize(page, pageSize), sortField, sortDirection);
     }
 
+    public static Pageable toPageable(Integer page, Integer pageSize, String sortField, String sortDirection,
+                                      String... tieBreakers) {
+        return toPageable(PaginationSupport.normalize(page, pageSize), sortField, sortDirection, tieBreakers);
+    }
+
     public static Pageable toPageable(PaginationParams pagination) {
         return toPageable(pagination, null, null);
     }
 
     public static Pageable toPageable(PaginationParams pagination, String sortField, String sortDirection) {
+        return toPageable(pagination, sortField, sortDirection, new String[0]);
+    }
+
+    /** Creates a deterministic order by appending ascending tie-breaker fields. */
+    public static Pageable toPageable(PaginationParams pagination, String sortField, String sortDirection,
+                                      String... tieBreakers) {
         PaginationParams effective = pagination == null
                 ? PaginationSupport.normalize(null, null)
                 : PaginationSupport.normalize(pagination.page(), pagination.pageSize());
@@ -33,7 +45,18 @@ public final class SpringDataPaginationAdapter {
         }
 
         Sort.Direction direction = "desc".equalsIgnoreCase(sortDirection) ? Sort.Direction.DESC : Sort.Direction.ASC;
-        Sort sort = Sort.by(direction, sortField.trim());
+        String normalizedSortField = sortField.trim();
+        Sort sort = "crtNo".equals(normalizedSortField)
+                ? JpaSort.unsafe(Sort.Direction.ASC, "CASE WHEN crtNo = 0 THEN 1 ELSE 0 END")
+                .and(Sort.by(direction, normalizedSortField))
+                : Sort.by(direction, normalizedSortField);
+        if (tieBreakers != null) {
+            for (String tieBreaker : tieBreakers) {
+                if (tieBreaker != null && !tieBreaker.isBlank() && !normalizedSortField.equals(tieBreaker.trim())) {
+                    sort = sort.and(Sort.by(Sort.Direction.ASC, tieBreaker.trim()));
+                }
+            }
+        }
         return PageRequest.of(effective.page() - 1, effective.pageSize(), sort);
     }
 }

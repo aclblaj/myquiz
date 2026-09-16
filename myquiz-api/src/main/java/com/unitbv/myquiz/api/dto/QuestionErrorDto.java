@@ -1,6 +1,7 @@
 package com.unitbv.myquiz.api.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import com.unitbv.myquiz.api.types.QuestionType;
+import com.unitbv.myquiz.api.types.ResolutionStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,47 +27,43 @@ import lombok.ToString;
 @ToString(of = {"id", "errorCode", "row", "authorName"})
 public class QuestionErrorDto {
 
-    @JsonProperty("id")
     private Long id;
 
-    @JsonProperty("errorCode")
     private String errorCode;
 
-    @JsonProperty("message")
     private String message;
 
-    @JsonProperty("description")
     private String description;
 
-    @JsonProperty("row")
     private Integer row;
 
-    @JsonProperty("authorId")
     private Long authorId;
 
-    @JsonProperty("authorName")
     private String authorName;
 
-    @JsonProperty("questionBankName")
     private String questionBankName;
 
-    @JsonProperty("questionBankId")
     private Long questionBankId;
 
-    @JsonProperty("dateCreated")
-    private java.util.Date dateCreated;
+    private java.time.OffsetDateTime dateCreated;
 
-    @JsonProperty("status")
-    private String status;
+    private ResolutionStatus status;
 
-    @JsonProperty("timestamp")
     private java.time.OffsetDateTime timestamp;
 
-    @JsonProperty("questionId")
     private Long questionId;
 
-    @JsonProperty("questionType")
-    private String questionType;
+    private QuestionType questionType;
+
+    /** Keeps source compatibility for legacy internal mappers. */
+    public void setStatus(String status) {
+        this.status = ResolutionStatus.fromValue(status);
+    }
+
+    /** Keeps source compatibility for legacy internal mappers. */
+    public void setQuestionType(String questionType) {
+        this.questionType = QuestionType.fromValue(questionType);
+    }
 
     /**
      * Convenience constructor used when mapping from a {@code QuestionError} entity.

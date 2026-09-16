@@ -7,7 +7,7 @@ public class ArchiveFolderItemDto {
     private int index;
     private int total;
     private String archiveName;
-    private String status;
+    private ArchiveFolderItemStatus status;
     private String courseName;
     private String questionBankName;
     private int filesProcessed;
@@ -40,11 +40,11 @@ public class ArchiveFolderItemDto {
         this.archiveName = archiveName;
     }
 
-    public String getStatus() {
+    public ArchiveFolderItemStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(ArchiveFolderItemStatus status) {
         this.status = status;
     }
 
